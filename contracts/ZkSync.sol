@@ -218,14 +218,6 @@ contract ZkSync is UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
         return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
     }
 
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
-    /// @notice DEPRECATED: to be removed in future,  use getPendingBalance instead
-    /// @param _address Address of the tokens owner
-    /// @param _tokenId token id, 0 is used for ETH
-    function getBalanceToWithdraw(address _address, uint16 _tokenId) public view returns (uint128) {
-        return pendingBalances[packAddressAndTokenId(_address, _tokenId)].balanceToWithdraw;
-    }
-
     /// @notice  Withdraws tokens from zkSync contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _token Address of tokens, zero address is used for ETH
@@ -251,27 +243,6 @@ contract ZkSync is UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
             uint128 withdrawnAmount = this._transferERC20(IERC20(_token), _owner, _amount, balance);
             registerWithdrawal(tokenId, withdrawnAmount, _owner);
         }
-    }
-
-    /// @notice Withdraw ERC20 token to Layer 1 - register withdrawal and transfer ERC20 to sender
-    /// @notice DEPRECATED: use withdrawPendingBalance instead
-    /// @param _token Token address
-    /// @param _amount amount to withdraw
-    function withdrawERC20(IERC20 _token, uint128 _amount) external nonReentrant {
-        uint16 tokenId = governance.validateTokenAddress(address(_token));
-        bytes22 packedBalanceKey = packAddressAndTokenId(msg.sender, tokenId);
-        uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-        uint128 withdrawnAmount = this._transferERC20(_token, msg.sender, _amount, balance);
-        registerWithdrawal(tokenId, withdrawnAmount, msg.sender);
-    }
-
-    /// @notice Withdraw ETH to Layer 1 - register withdrawal and transfer ether to sender
-    /// @notice DEPRECATED: use withdrawPendingBalance instead
-    /// @param _amount Ether amount to withdraw
-    function withdrawETH(uint128 _amount) external nonReentrant {
-        registerWithdrawal(0, _amount, msg.sender);
-        (bool success, ) = msg.sender.call{value: _amount}("");
-        require(success, "D"); // ETH withdraw failed
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request
@@ -303,14 +274,6 @@ contract ZkSync is UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
         // In this case operator should just overwrite this slot during confirming withdrawal
         bytes22 packedBalanceKey = packAddressAndTokenId(msg.sender, tokenId);
         pendingBalances[packedBalanceKey].gasReserveValue = FILLED_GAS_RESERVE_VALUE;
-    }
-
-    /// @notice Register full exit request - pack pubdata, add priority request
-    /// @notice DEPRECATED: use requestFullExit instead.
-    /// @param _accountId Numerical id of the account
-    /// @param _token Token address, 0 address for ether
-    function fullExit(uint32 _accountId, address _token) external {
-        requestFullExit(_accountId, _token);
     }
 
     /// @dev Process one block commit using previous block StoredBlockInfo,
