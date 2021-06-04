@@ -1,0 +1,24 @@
+{
+  "name": "zklink-contracts",
+  "version": "1.0.0",
+  "license": "MIT",
+  "homepage": "https://zklink.org",
+  "keywords": [
+    "zklink",
+    "zk-rollup",
+    "cross chain",
+    "amm"
+  ],
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.3.4",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.1.4",
+    "hardhat": "^2.2.1"
+  },
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx harthat test"
+  }
+}
