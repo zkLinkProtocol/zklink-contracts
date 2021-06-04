@@ -21,16 +21,6 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
         uint256[] memory _individual_vks_inputs,
         uint256[16] memory _subproofs_limbs
     ) external view returns (bool) {
-        // #if DUMMY_VERIFIER
-        uint256 oldGasValue = gasleft();
-        // HACK: ignore warnings from unused variables
-        abi.encode(_recursiveInput, _proof, _vkIndexes, _individual_vks_inputs, _subproofs_limbs);
-        uint256 tmp;
-        while (gasleft() + 500000 > oldGasValue) {
-            tmp += 1;
-        }
-        return true;
-        // #else
         for (uint256 i = 0; i < _individual_vks_inputs.length; ++i) {
             uint256 commitment = _individual_vks_inputs[i];
             _individual_vks_inputs[i] = commitment & INPUT_MASK;
