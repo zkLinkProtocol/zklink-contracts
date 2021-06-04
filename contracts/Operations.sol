@@ -22,7 +22,11 @@ library Operations {
         FullExit,
         ChangePubKey,
         ForcedExit,
-        TransferFrom
+        TransferFrom,
+        CreatePair,
+        AddLiquidity,
+        RemoveLiquidity,
+        Swap
     }
 
     // Byte lengths
@@ -189,5 +193,50 @@ library Operations {
         (offset, parsed.pubKeyHash) = Bytes.readBytes20(_data, offset); // pubKeyHash
         (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
+    }
+
+    // CreatePair
+
+    struct CreatePair {
+        // uint8 opType
+        uint32 accountId;
+        uint16 tokenAId;
+        uint16 tokenBId;
+        uint16 tokenPairId;
+        address pair;
+    }
+
+    uint256 public constant PACKED_CREATE_PAIR_PUBDATA_BYTES =
+    OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES * 3 + ADDRESS_BYTES;
+
+    /// Deserialize CreatePair pubdata
+    function readCreatePairPubdata(bytes memory _data) internal pure
+    returns (CreatePair memory parsed)
+    {
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
+        (offset, parsed.tokenAId) = Bytes.readUInt16(_data, offset); // tokenAId
+        (offset, parsed.tokenBId) = Bytes.readUInt16(_data, offset); // tokenBId
+        (offset, parsed.tokenPairId) = Bytes.readUInt16(_data, offset); // tokenPairId
+        (offset, parsed.pair) = Bytes.readAddress(_data, offset); // pair address
+
+        require(offset == PACKED_CREATE_PAIR_PUBDATA_BYTES, "CP"); // reading invalid create pair pubdata size
+    }
+
+    /// Serialize CreatePair pubdata
+    function writeCreatePairPubdataForPriorityQueue(CreatePair memory op) internal pure returns (bytes memory buf) {
+        buf = abi.encodePacked(
+            uint8(OpType.CreatePair),
+            bytes4(0), // accountId (ignored) (update when ACCOUNT_ID_BYTES is changed)
+            op.tokenAId, // tokenAId
+            op.tokenBId, // tokenBId
+            op.tokenPairId, // tokenPairId
+            op.pair // pair address
+        );
+    }
+
+    /// @notice Write create pair pubdata for priority queue check.
+    function checkCreatePairInPriorityQueue(CreatePair memory op, bytes20 hashedPubdata) internal pure returns (bool) {
+        return Utils.hashBytesToBytes20(writeCreatePairPubdataForPriorityQueue(op)) == hashedPubdata;
     }
 }

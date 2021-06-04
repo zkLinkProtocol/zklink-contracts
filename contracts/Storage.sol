@@ -9,6 +9,7 @@ import "./IERC20.sol";
 import "./Governance.sol";
 import "./Verifier.sol";
 import "./Operations.sol";
+import "./uniswap/interfaces/IUniswapV2Factory.sol";
 
 /// @title zkSync storage contract
 /// @author Matter Labs
@@ -26,6 +27,9 @@ contract Storage {
 
     /// @dev Governance contract. Contains the governor (the owner) of whole system, validators list, possible tokens list
     Governance public governance;
+
+    /// @dev UniswapV2Factory contract. Used to create pair
+    IUniswapV2Factory public pairManager;
 
     uint8 internal constant FILLED_GAS_RESERVE_VALUE = 0xff; // we use it to set gas revert value so slot will not be emptied with 0 balance
     struct PendingBalance {

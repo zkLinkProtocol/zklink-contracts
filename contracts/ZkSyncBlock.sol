@@ -4,23 +4,19 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./ReentrancyGuard.sol";
 import "./SafeMath.sol";
 import "./SafeMathUInt128.sol";
 import "./SafeCast.sol";
 import "./Utils.sol";
 
-import "./Storage.sol";
-import "./Config.sol";
-import "./Events.sol";
-
 import "./Bytes.sol";
 import "./Operations.sol";
+import "./ZkSyncBase.sol";
 
 /// @title zkSync main contract part 2: commit block, prove block, execute block
 /// @author Matter Labs
 /// @author ZkLink Labs
-contract ZkSyncBlock is Storage, Config, Events, ReentrancyGuard {
+contract ZkSyncBlock is ZkSyncBase {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -60,30 +56,6 @@ contract ZkSyncBlock is Storage, Config, Events, ReentrancyGuard {
         uint256[] commitments;
         uint8[] vkIndexes;
         uint256[16] subproofsLimbs;
-    }
-
-    /// @notice Sends tokens
-    /// @dev NOTE: will revert if transfer call fails or rollup balance difference (before and after transfer) is bigger than _maxAmount
-    /// @dev This function is used to allow tokens to spend zkSync contract balance up to amount that is requested
-    /// @param _token Token address
-    /// @param _to Address of recipient
-    /// @param _amount Amount of tokens to transfer
-    /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
-    function _transferERC20(
-        IERC20 _token,
-        address _to,
-        uint128 _amount,
-        uint128 _maxAmount
-    ) external returns (uint128 withdrawnAmount) {
-        require(msg.sender == address(this), "5"); // wtg10 - can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
-
-        uint256 balanceBefore = _token.balanceOf(address(this));
-        require(Utils.sendERC20(_token, _to, _amount), "6"); // wtg11 - ERC20 transfer fails
-        uint256 balanceAfter = _token.balanceOf(address(this));
-        uint256 balanceDiff = balanceBefore.sub(balanceAfter);
-        require(balanceDiff <= _maxAmount, "7"); // wtg12 - rollup balance difference (before and after transfer) is bigger than _maxAmount
-
-        return SafeCast.toUint128(balanceDiff);
     }
 
     /// @notice Commit block
@@ -415,7 +387,18 @@ contract ZkSyncBlock is Storage, Config, Events, ReentrancyGuard {
                     bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
                     require(valid, "E"); // new pub key hash is not authenticated properly
                 }
-            } else {
+            } else if (opType == Operations.OpType.CreatePair) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CREATE_PAIR_BYTES);
+
+                Operations.CreatePair memory createPairData = Operations.readCreatePairPubdata(opPubData);
+
+                checkPriorityOperation(createPairData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                priorityOperationsProcessed++;
+            } else if (opType == Operations.OpType.AddLiquidity || opType == Operations.OpType.RemoveLiquidity) {
+                Bytes.slice(pubData, pubdataOffset, ADD_RM_LIQ_BYTES);
+            } else if (opType == Operations.OpType.Swap) {
+                Bytes.slice(pubData, pubdataOffset, SWAP_BYTES);
+            }  else {
                 bytes memory opPubData;
 
                 if (opType == Operations.OpType.PartialExit) {
@@ -598,9 +581,15 @@ contract ZkSyncBlock is Storage, Config, Events, ReentrancyGuard {
         require(Operations.checkFullExitInPriorityQueue(_fullExit, hashedPubdata), "K");
     }
 
-    /// @notice Checks that current state not is exodus mode
-    function requireActive() internal view {
-        require(!exodusMode, "L"); // exodus mode activated
+    /// @notice Checks that create pair is same as operation in priority queue
+    /// @param _createPair Create pair data
+    /// @param _priorityRequestId Operation's id in priority queue
+    function checkPriorityOperation(Operations.CreatePair memory _createPair, uint64 _priorityRequestId) internal view {
+        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
+        require(priorReqType == Operations.OpType.CreatePair, "CP0"); // incorrect priority op type
+
+        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
+        require(Operations.checkCreatePairInPriorityQueue(_createPair, hashedPubdata), "CP1");
     }
 
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
