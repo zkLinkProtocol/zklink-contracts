@@ -125,31 +125,6 @@ contract ZkSync is UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
     /// @notice zkSync contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {
-        // NOTE: this line does not have any effect in contracts-4 upgrade since we require priority queue to be empty,
-        // but this should be enabled in future upgrades.
-        activateExodusMode();
-
-        require(upgradeParameters.length == 0, "0"); // upgrade parameters should be empty
-
-        // Convert last verified block from old format to new format
-        require(totalBlocksCommitted == totalBlocksExecuted, "1"); // all blocks should be verified
-        require(numberOfPendingWithdrawals_DEPRECATED == 0, "2"); // pending withdrawal is not used anymore
-        require(totalOpenPriorityRequests == 0, "3"); // no uncommitted priority requests
-
-        Block_DEPRECATED memory lastBlock = blocks_DEPRECATED[totalBlocksExecuted];
-        require(lastBlock.priorityOperations == 0, "4"); // last block should not contain priority operations
-
-        StoredBlockInfo memory rehashedLastBlock =
-            StoredBlockInfo(
-                totalBlocksExecuted,
-                lastBlock.priorityOperations,
-                EMPTY_STRING_KECCAK,
-                0,
-                lastBlock.stateRoot,
-                lastBlock.commitment
-            );
-        storedBlockHashes[totalBlocksExecuted] = hashStoredBlockInfo(rehashedLastBlock);
-        totalBlocksProven = totalBlocksExecuted;
     }
 
     /// @notice Sends tokens

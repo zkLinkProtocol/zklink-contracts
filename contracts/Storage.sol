@@ -36,39 +36,11 @@ contract Storage {
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => PendingBalance) internal pendingBalances;
 
-    // @dev Pending withdrawals are not used in this version
-    struct PendingWithdrawal_DEPRECATED {
-        address to;
-        uint16 tokenId;
-    }
-    mapping(uint32 => PendingWithdrawal_DEPRECATED) internal pendingWithdrawals_DEPRECATED;
-    uint32 internal firstPendingWithdrawalIndex_DEPRECATED;
-    uint32 internal numberOfPendingWithdrawals_DEPRECATED;
-
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
 
     /// @notice Total number of committed blocks i.e. blocks[totalBlocksCommitted] points at the latest committed block
     uint32 public totalBlocksCommitted;
-
-    /// @Old rollup block stored data - not used in current version
-    /// @member validator Block producer
-    /// @member committedAtBlock ETH block number at which this block was committed
-    /// @member cumulativeOnchainOperations Total number of operations in this and all previous blocks
-    /// @member priorityOperations Total number of priority operations for this block
-    /// @member commitment Hash of the block circuit commitment
-    /// @member stateRoot New tree root hash
-    ///
-    /// Consider memory alignment when changing field order: https://solidity.readthedocs.io/en/v0.4.21/miscellaneous.html
-    struct Block_DEPRECATED {
-        uint32 committedAtBlock;
-        uint64 priorityOperations;
-        uint32 chunks;
-        bytes32 withdrawalsDataHash; // can be restricted to 16 bytes to reduce number of required storage slots
-        bytes32 commitment;
-        bytes32 stateRoot;
-    }
-    mapping(uint32 => Block_DEPRECATED) internal blocks_DEPRECATED;
 
     /// @notice Flag indicates that a user has exited in the exodus mode certain token balance (per account id and tokenId)
     mapping(uint32 => mapping(uint16 => bool)) public performedExodus;
@@ -79,21 +51,6 @@ contract Storage {
 
     /// @notice User authenticated fact hashes for some nonce.
     mapping(address => mapping(uint32 => bytes32)) public authFacts;
-
-    /// @notice Old Priority Operation container
-    /// @member opType Priority operation type
-    /// @member pubData Priority operation public data
-    /// @member expirationBlock Expiration block number (ETH block) for this request (must be satisfied before)
-    struct PriorityOperation_DEPRECATED {
-        Operations.OpType opType;
-        bytes pubData;
-        uint256 expirationBlock;
-    }
-
-    /// @dev Priority Requests mapping (request id - operation)
-    /// @dev Contains op type, pubdata and expiration block of unsatisfied requests.
-    /// @dev Numbers are in order of requests receiving
-    mapping(uint64 => PriorityOperation_DEPRECATED) internal priorityRequests_DEPRECATED;
 
     /// @notice First open priority request id
     uint64 public firstPriorityRequestId;
