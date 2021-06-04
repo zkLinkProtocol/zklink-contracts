@@ -855,22 +855,6 @@ contract ZkSync is UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
         totalOpenPriorityRequests++;
     }
 
-    /// @notice Deletes processed priority requests
-    /// @param _number The number of requests
-    function deleteRequests(uint64 _number) internal {
-        require(_number <= totalOpenPriorityRequests, "M"); // number is higher than total priority requests number
-
-        uint64 numberOfRequestsToClear = Utils.minU64(_number, MAX_PRIORITY_REQUESTS_TO_DELETE_IN_VERIFY);
-        uint64 startIndex = firstPriorityRequestId;
-        for (uint64 i = startIndex; i < startIndex + numberOfRequestsToClear; i++) {
-            delete priorityRequests[i];
-        }
-
-        totalOpenPriorityRequests -= _number;
-        firstPriorityRequestId += _number;
-        totalCommittedPriorityRequests -= _number;
-    }
-
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
         uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
