@@ -10,6 +10,7 @@ import "./Governance.sol";
 import "./Verifier.sol";
 import "./Operations.sol";
 import "./uniswap/interfaces/IUniswapV2Factory.sol";
+import "./Vault.sol";
 
 /// @title zkSync storage contract
 /// @author Matter Labs
@@ -30,6 +31,9 @@ contract Storage {
 
     /// @dev UniswapV2Factory contract. Used to create pair
     IUniswapV2Factory public pairManager;
+
+    /// @dev Vault contract. Used to hold token user deposited to L1
+    Vault public vault;
 
     uint8 internal constant FILLED_GAS_RESERVE_VALUE = 0xff; // we use it to set gas revert value so slot will not be emptied with 0 balance
     struct PendingBalance {

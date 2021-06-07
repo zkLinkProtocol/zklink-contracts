@@ -11,4 +11,5 @@ interface IUniswapV2Factory {
     function createPair(address tokenA, address tokenB) external returns (address pair);
     function mint(address pair, address to, uint amount) external;
     function burn(address pair, address to, uint amount) external;
+    function setZkSyncAddress(address _zksyncAddress) external;
 }
