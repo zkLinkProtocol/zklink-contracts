@@ -575,13 +575,4 @@ contract ZkSyncBlock is ZkSyncBase {
         uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
     }
-
-    /// @notice Sends ETH
-    /// @param _to Address of recipient
-    /// @param _amount Amount of tokens to transfer
-    /// @return bool flag indicating that transfer is successful
-    function sendETHNoRevert(address payable _to, uint256 _amount) internal returns (bool) {
-        (bool callSuccess, ) = _to.call{gas: WITHDRAWAL_GAS_LIMIT, value: _amount}("");
-        return callSuccess;
-    }
 }
