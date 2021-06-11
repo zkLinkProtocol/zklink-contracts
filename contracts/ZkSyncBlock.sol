@@ -265,14 +265,39 @@ contract ZkSyncBlock is ZkSyncBase {
         );
     }
 
-    /// @dev Can not withdraw while execute block because withdraw from vault may produce loss and gas limit is not predictable
-    function store(
+    /// @dev 1. Try to send token to _recipients
+    /// @dev 2. On failure: Increment _recipients balance to withdraw.
+    /// @dev 3. Set lossBip to zero
+    function withdrawOrStore(
         uint16 _tokenId,
         address _recipient,
         uint128 _amount
     ) internal {
         bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
+
+        bool sent = false;
+        // lp token will not transfer to vault and withdraw by mint new token to owner
+        if (_tokenId >= PAIR_TOKEN_START_ID) {
+            address _token = tokenAddresses[_tokenId];
+            try pairManager.mint{gas: WITHDRAWAL_GAS_LIMIT}(_token, _recipient, _amount) {
+                sent = true;
+            } catch {
+                sent = false;
+            }
+        } else {
+            // eth and non lp erc20 token is managed by vault and withdraw from vault
+            // set lossBip to zero to avoid loss
+            try vault.withdraw{gas: WITHDRAWAL_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
+                sent = true;
+            } catch {
+                sent = false;
+            }
+        }
+        if (sent) {
+            emit Withdrawal(_tokenId, _amount);
+        } else {
+            increaseBalanceToWithdraw(packedBalanceKey, _amount);
+        }
     }
 
     /// @dev Executes one block
@@ -296,13 +321,13 @@ contract ZkSyncBlock is ZkSyncBase {
 
             if (opType == Operations.OpType.PartialExit) {
                 Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
-                store(op.tokenId, op.owner, op.amount);
+                withdrawOrStore(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                store(op.tokenId, op.target, op.amount);
+                withdrawOrStore(op.tokenId, op.target, op.amount);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                store(op.tokenId, op.owner, op.amount);
+                withdrawOrStore(op.tokenId, op.owner, op.amount);
             } else {
                 revert("l"); // unsupported op in block execution
             }
