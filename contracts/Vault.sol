@@ -80,23 +80,6 @@ contract Vault is VaultStorage {
         emit RewardConfigUpdate(_userRewardAddress, _protocolRewardAddress, _protocolRewardRatio);
     }
 
-    /// @notice Return the total amount of token in this vault and strategy if exist
-    /// @param tokenId Token id
-    function totalAsset(uint16 tokenId) public view returns (uint256) {
-        address strategy = tokenVaults[tokenId].strategy;
-        if (strategy != address(0)) {
-            return _tokenBalance(tokenId).add(IStrategy(strategy).totalAsset());
-        } else {
-            return _tokenBalance(tokenId);
-        }
-    }
-
-    /// @notice Return amount of debt owned by this vault
-    /// @param tokenId Token id
-    function totalDebt(uint16 tokenId) external view returns (uint256) {
-        return tokenVaults[tokenId].debt;
-    }
-
     /// @notice Record user deposit(can only be call by zkSync), after deposit debt of vault will increase
     /// @param tokenId Token id
     /// @param amount Token amount
@@ -124,8 +107,11 @@ contract Vault is VaultStorage {
         uint256 balanceBefore = _tokenBalance(tokenId);
         if (balanceBefore < amount) {
             // withdraw from strategy when token balance of vault can not satisfy withdraw
-            address strategy = tokenVaults[tokenId].strategy;
+            TokenVault memory tv = tokenVaults[tokenId];
+            address strategy = tv.strategy;
             require(strategy != address(0), 'Vault: no strategy');
+            require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+
             uint256 withdrawNeeded = amount - balanceBefore;
             loss = IStrategy(strategy).withdraw(withdrawNeeded);
             uint256 balanceAfterStrategyWithdraw = _tokenBalance(tokenId);
@@ -291,8 +277,15 @@ contract Vault is VaultStorage {
         require(userRewardAddress != address(0), 'Vault: no user reward address');
         require(protocolRewardAddress != address(0), 'Vault: no protocol reward address');
 
-        uint256 asset = totalAsset(tokenId);
         TokenVault memory tv = tokenVaults[tokenId];
+        uint asset;
+        if (tv.strategy == address(0)) {
+            asset = _tokenBalance(tokenId);
+        } else {
+            require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+            asset = _tokenBalance(tokenId).add(IStrategy(tv.strategy).wantNetValue());
+        }
+
         uint debt = tv.debt;
         if (debt >= asset) {
             return;

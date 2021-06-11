@@ -21,7 +21,7 @@ contract SimpleStrategy is IStrategy{
         lossBip = _lossBip;
     }
 
-    function totalAsset() override public view returns (uint256) {
+    function wantNetValue() override public view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
     }
 
@@ -39,6 +39,6 @@ contract SimpleStrategy is IStrategy{
     }
 
     function migrate(address _newStrategy) override external {
-        IERC20(token).transfer(_newStrategy, totalAsset());
+        IERC20(token).transfer(_newStrategy, wantNetValue());
     }
 }
