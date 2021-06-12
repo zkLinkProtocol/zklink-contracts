@@ -39,6 +39,16 @@ contract ZkSyncBlock is ZkSyncBase {
         OnchainOperationData[] onchainOperations;
         uint32 blockNumber;
         uint32 feeAccount;
+        uint8 chainId; // current chain id
+        uint256[] crtCommitments; // current chain roll up commitments
+        CrossChain[] crossChains; // cross chain info
+        uint256[16] subProofsAggregated; // aggregated proof used in verifier
+    }
+
+    struct CrossChain {
+        uint8 chainId; // chain id
+        uint256[] crtCommitments; // cross chain roll up commitments
+        bytes32 rollingHash; // rolling hash
     }
 
     /// @notice Data needed to execute committed and verified block
@@ -559,8 +569,40 @@ contract ZkSyncBlock is ZkSyncBase {
                 invalid()
             }
 
-            commitment := mload(hashResult)
+            hash := mload(hashResult)
         }
+
+        uint inputNum = _newBlockData.crossChains.length + 1;
+        bytes32[] memory inputs = new bytes32[](inputNum);
+        // current chain rolling hash
+        bytes32 rollingHash = hash & bytes32(INPUT_MASK);
+        inputs[0] = calInput(rollingHash, _newBlockData.chainId, _newBlockData.crtCommitments);
+        // other cross chain
+        for(uint i = 0; i < _newBlockData.crossChains.length; i++) {
+            CrossChain memory cc = _newBlockData.crossChains[i];
+            inputs[i+1] = calInput(cc.rollingHash, cc.chainId, cc.crtCommitments);
+        }
+        // concatenate root, chain index, inputs, subProofsAggregated
+        bytes memory concatenated = abi.encodePacked(uint256(0x1a43c57bec3d14042787df971652b9dca13601abbc57e33ffa48b1cd1a030fe9));
+        for (uint256 i = 0; i < inputNum; i++) {
+            uint8 index = uint8(inputNum - 1 - i); // chain index
+            concatenated = abi.encodePacked(concatenated, index);
+        }
+        for (uint256 i = 0; i < inputNum; i++) {
+            concatenated = abi.encodePacked(concatenated, inputs[i]);
+        }
+        concatenated = abi.encodePacked(concatenated, _newBlockData.subProofsAggregated);
+
+        commitment = sha256(concatenated) & 0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    }
+
+    /// @notice Calculate input used in commitment of each chain
+    function calInput(bytes32 rollingHash, uint8 chainId, uint256[] memory crtCommitments) internal pure returns (bytes32) {
+        bytes memory concatenated = abi.encodePacked(rollingHash, uint256(chainId));
+        for (uint i = 0; i < crtCommitments.length; i++) {
+            concatenated = abi.encodePacked(concatenated, crtCommitments[i]);
+        }
+        return sha256(concatenated)  & bytes32(INPUT_MASK);
     }
 
     /// @notice Checks that deposit is same as operation in priority queue
