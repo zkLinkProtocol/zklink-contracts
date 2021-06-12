@@ -289,7 +289,7 @@ contract ZkSyncBlock is ZkSyncBase {
         // lp token will not transfer to vault and withdraw by mint new token to owner
         if (_tokenId >= PAIR_TOKEN_START_ID) {
             address _token = tokenAddresses[_tokenId];
-            try pairManager.mint{gas: WITHDRAWAL_GAS_LIMIT}(_token, _recipient, _amount) {
+            try pairManager.mint{gas: WITHDRAWAL_LP_GAS_LIMIT}(_token, _recipient, _amount) {
                 sent = true;
             } catch {
                 sent = false;
@@ -297,7 +297,7 @@ contract ZkSyncBlock is ZkSyncBase {
         } else {
             // eth and non lp erc20 token is managed by vault and withdraw from vault
             // set lossBip to zero to avoid loss
-            try vault.withdraw{gas: WITHDRAWAL_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
+            try vault.withdraw{gas: WITHDRAWAL_FROM_VAULT_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
                 sent = true;
             } catch {
                 sent = false;

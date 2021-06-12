@@ -219,4 +219,45 @@ describe('ZkSync unit tests', function () {
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
         expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x00443461a081421e030a0ea2bd0cdf871a712903d7796cb3c63a4cdcf6b7d7fc');
     });
+
+    context('withdrawOrStore', async() => {
+        let lpTokenAddr, lpToken, lpTokenId;
+        beforeEach(async () => {
+            await zkSync.connect(alice).createPair(tokenA, tokenB);
+            lpTokenAddr = await uniswapV2.getPair(tokenA, tokenB);
+            const uniswapErc20Factory = await hardhat.ethers.getContractFactory('UniswapV2ERC20');
+            lpToken = uniswapErc20Factory.attach(lpTokenAddr);
+            lpTokenId = await zkSync.validatePairTokenAddress(lpTokenAddr);
+        });
+
+        it('gas used in mint lp is smaller then WITHDRAWAL_LP_GAS_LIMIT should success', async () => {
+            await expect(zkSyncBlock.testWithdrawOrStore(lpTokenId, bob.address, 100))
+                .to.emit(zkSyncBlock, 'Withdrawal')
+                .withArgs(lpTokenId, 100);
+            expect(await lpToken.balanceOf(bob.address)).to.equal(100);
+        });
+
+        it('gas used in mint lp is bigger then WITHDRAWAL_LP_GAS_LIMIT should success', async () => {
+            await zkSyncBlock.testWithdrawOrStoreWithLittleGas(lpTokenId, bob.address, 100);
+            expect(await lpToken.balanceOf(bob.address)).to.equal(0);
+            expect(await zkSync.getPendingBalance(bob.address, lpTokenAddr)).to.equal(100);
+        });
+
+        it('gas used in withdraw eth is smaller then WITHDRAWAL_LP_GAS_LIMIT should success', async () => {
+            zkSync.depositETH(wallet.address, {value:100});
+            let bobEthBalance0 = await hardhat.ethers.provider.getBalance(bob.address);
+            await expect(zkSyncBlock.testWithdrawOrStore(0, bob.address, 50))
+                .to.emit(zkSyncBlock, 'Withdrawal')
+                .withArgs(0, 50);
+            expect(await hardhat.ethers.provider.getBalance(bob.address)).to.equal(bobEthBalance0.add(50));
+        });
+
+        it('gas used in withdraw eth is bigger then WITHDRAWAL_LP_GAS_LIMIT should success', async () => {
+            zkSync.depositETH(wallet.address, {value:100});
+            let bobEthBalance0 = await hardhat.ethers.provider.getBalance(bob.address);
+            await zkSyncBlock.testWithdrawOrStoreWithLittleGas(0, bob.address, 50);
+            expect(await hardhat.ethers.provider.getBalance(bob.address)).to.equal(bobEthBalance0);
+            expect(await zkSync.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero)).to.equal(50);
+        });
+    })
 });
