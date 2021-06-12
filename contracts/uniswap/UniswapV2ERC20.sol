@@ -6,8 +6,8 @@ import './libraries/UniswapSafeMath.sol';
 contract UniswapV2ERC20 is IUniswapV2ERC20 {
     using UniswapSafeMath for uint;
 
-    string public constant name = 'ZKSWAP V1';
-    string public constant symbol = 'ZKS-V1';
+    string public constant name = 'ZKLINK V1';
+    string public constant symbol = 'ZKL-V1';
     uint8 public constant decimals = 18;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
