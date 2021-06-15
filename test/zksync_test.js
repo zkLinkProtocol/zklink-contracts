@@ -179,11 +179,11 @@ describe('ZkSync unit tests', function () {
             priorityOperations:0,
             pendingOnchainOperationsHash:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
             timestamp:0,
-            stateHash: hardhat.ethers.utils.arrayify('0x169bb46b9a62050e0531ee585b30fe130010858cdc22ab5475292eff3b522949'),
+            stateHash: hardhat.ethers.utils.arrayify('0x10810351101ac52df3fd9bd10b53676ba8a312ba4e21a6f1091164e14326af52'),
             commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000')
         }
         const newBlockData = {
-            newStateHash:hardhat.ethers.utils.arrayify('0x2b9bae484bb6ed1ef3ba13c7dabfbb8e00d7e33b4e0acf47175b03cff2f428d9'),
+            newStateHash:hardhat.ethers.utils.arrayify('0x1ae0b76d14fa292ad69b7cfc6213878caf8e5181a28866554c5082960a402fba'),
             publicData:hardhat.ethers.utils.arrayify('0x0b000000000001000000026fc23ac00900000001000000000100000000000000000000000b000000000001000000026fc23ac0090000000100000000010000000000000000000000'),
             timestamp:305419896,
             onchainOperations: [{ethWitness:[],publicDataOffset:0},{ethWitness:[],publicDataOffset:36},{ethWitness:[],publicDataOffset:72}],
@@ -191,33 +191,16 @@ describe('ZkSync unit tests', function () {
             feeAccount:0,
             chainId:0,
             crtCommitments:[1],
-            crossChains:[{
-                chainId :1,
-                crtCommitments: [1],
-                rollingHash: hardhat.ethers.utils.arrayify('0x0a0864344450d5a9629008c9ee78dd685bde84dc86ad0b06af6e3092c1e83dd6')
-            }
-            ],
-            subProofsAggregated:[
-                BigNumber.from("0x00000000000000000000000000000000000000000000000de60b6e812290fbc0"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000021dadb4aa168d9789"),
-                BigNumber.from("0x000000000000000000000000000000000000000000000005b68e1fe23f90a679"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000000000cf30cd4933a9"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000063c91a56075641884"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000085c602cf06878638d"),
-                BigNumber.from("0x000000000000000000000000000000000000000000000003e38ff28dba5aba5c"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000000002f0691ae02c14"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000de7e6fe187455cb7d"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000ff906b1c9a09ed4ad"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000336a434f03b0f010a"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000000029e11810c58ab"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000de47f5bcd552512e9"),
-                BigNumber.from("0x00000000000000000000000000000000000000000000000314999e28143c3415"),
-                BigNumber.from("0x000000000000000000000000000000000000000000000008e67d96a8215c67e7"),
-                BigNumber.from("0x0000000000000000000000000000000000000000000000000002d060baa0fb16")
+            crossChains:[
+                {
+                    chainId :1,
+                    crtCommitments: [1],
+                    rollingHash: hardhat.ethers.utils.arrayify('0x0d7c2994ac069c764a37ec07282cff2426af3c03994e7e00213bf9c54a57f37b')
+                }
             ]
         }
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
-        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x00443461a081421e030a0ea2bd0cdf871a712903d7796cb3c63a4cdcf6b7d7fc');
+        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x02fe2d764f0298a0565f64323e522883c6020e56c5593246cad7d7dc118adcd8');
     });
 
     context('withdrawOrStore', async() => {

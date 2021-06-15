@@ -95,4 +95,7 @@ contract Config {
 
     /// @dev Auth fact reset timelock
     uint256 constant AUTH_FACT_RESET_TIMELOCK = 1 days;
+
+    /// @dev Number of cross chains, this will be changed when add more cross chain
+    uint256 constant CROSS_CHAIN_NUM = 2;
 }
