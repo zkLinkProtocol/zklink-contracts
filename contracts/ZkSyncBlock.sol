@@ -412,11 +412,7 @@ contract ZkSyncBlock is ZkSyncBase {
 
                 checkPriorityOperation(createPairData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
                 priorityOperationsProcessed++;
-            } else if (opType == Operations.OpType.AddLiquidity || opType == Operations.OpType.RemoveLiquidity) {
-                Bytes.slice(pubData, pubdataOffset, ADD_RM_LIQ_BYTES);
-            } else if (opType == Operations.OpType.Swap) {
-                Bytes.slice(pubData, pubdataOffset, SWAP_BYTES);
-            }  else {
+            } else {
                 bytes memory opPubData;
 
                 if (opType == Operations.OpType.PartialExit) {
@@ -594,20 +590,17 @@ contract ZkSyncBlock is ZkSyncBase {
         // ensure the crt is match each other for all crossChains
         for(uint i = 0; i < CROSS_CHAIN_NUM; i++) {
             for(uint j = 0; j < CROSS_CHAIN_NUM; j++) {
-                require(getCrtCommitment(crossChains[i], j) == getCrtCommitment(crossChains[j], i), 'cc');
+                if (i != j) {
+                    require(getCrtCommitment(crossChains[i], j) == getCrtCommitment(crossChains[j], i), 'cc');
+                }
             }
         }
 
         // concatenate inputs by chain id
         bytes memory concatenated;
         for (uint256 i = 0; i < CROSS_CHAIN_NUM; i++) {
-            bytes32 input;
-            if (i == 0) {
-                input = calInput(rollingHash, _newBlockData.chainId, _newBlockData.crtCommitments);
-            } else {
-                CrossChain memory cc = _newBlockData.crossChains[i-1];
-                input = calInput(cc.rollingHash, cc.chainId, cc.crtCommitments);
-            }
+            CrossChain memory cc = crossChains[i];
+            bytes32 input = calInput(cc.rollingHash, cc.chainId, cc.crtCommitments);
             concatenated = abi.encodePacked(concatenated, input);
         }
 
