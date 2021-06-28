@@ -96,6 +96,7 @@ contract Vault is VaultStorage {
     /// @param lossBip Loss bip which user can accept, 100 means 1% loss
     /// @return uint256 Amount debt of vault decreased
     function withdraw(uint16 tokenId, address to, uint256 amount, uint256 maxAmount, uint256 lossBip) onlyZkSync external returns (uint256) {
+        _validateToken(tokenId);
         if (amount == 0) {
             return 0;
         }
@@ -188,6 +189,7 @@ contract Vault is VaultStorage {
         require(strategy != address(0), 'Vault: zero strategy address');
 
         uint16 tokenId = IStrategy(strategy).want();
+        _validateToken(tokenId);
         TokenVault storage tv = tokenVaults[tokenId];
         require(tv.strategy != address(0), 'Vault: no strategy');
         require(tv.strategy != strategy, 'Vault: upgrade to self');
@@ -217,7 +219,7 @@ contract Vault is VaultStorage {
 
     /// @notice Migrate strategy of vault after effective time
     /// @param tokenId Token id
-    function migrateStrategy(uint16 tokenId) external {
+    function migrateStrategy(uint16 tokenId) onlyNetworkGovernor external {
         TokenVault storage tv = tokenVaults[tokenId];
         require(tv.strategy != address(0), 'Vault: no strategy');
         require(tv.status == StrategyStatus.PREPARE_UPGRADE, 'Vault: require prepare upgrade');

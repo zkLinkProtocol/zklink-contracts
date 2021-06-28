@@ -293,6 +293,7 @@ contract ZkSyncBlock is ZkSyncBase {
         // lp token will not transfer to vault and withdraw by mint new token to owner
         if (_tokenId >= PAIR_TOKEN_START_ID) {
             address _token = tokenAddresses[_tokenId];
+            validatePairTokenAddress(_token);
             try pairManager.mint{gas: WITHDRAWAL_LP_GAS_LIMIT}(_token, _recipient, _amount) {
                 sent = true;
             } catch {

@@ -24,11 +24,12 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         unlocked = 1;
     }
 
+    /// @notice only factory can mint or burn pair token, factory can not be set once at the initialization of the protocol(see DeployFactory.sol)
     constructor() public {
         factory = msg.sender;
     }
 
-    // called once by the factory at time of deployment
+    // @notice called once by the factory at time of deployment
     function initialize(address _token0, address _token1) external {
         require(msg.sender == factory, 'UniswapV2: FORBIDDEN'); // sufficient check
         token0 = _token0;

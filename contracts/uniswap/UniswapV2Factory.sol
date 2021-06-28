@@ -17,6 +17,7 @@ contract UniswapV2Factory is IUniswapV2Factory {
 
     }
 
+    /// @notice Zksync address is the address of ZkSync contract and can only be set once at the initialization of the protocol(see DeployFactory.sol)
     function setZkSyncAddress(address _zksyncAddress) external {
         require(zkSyncAddress == address(0), "szsa1");
         zkSyncAddress = _zksyncAddress;
