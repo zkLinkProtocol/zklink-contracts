@@ -41,13 +41,6 @@ contract ZkSyncBlock is ZkSyncBase {
         uint32 feeAccount;
         uint8 chainId; // current chain id
         uint256[] crtCommitments; // current chain roll up commitments
-        CrossChain[] crossChains; // cross chain info
-    }
-
-    struct CrossChain {
-        uint8 chainId; // chain id
-        uint256[] crtCommitments; // cross chain roll up commitments
-        bytes32 rollingHash; // rolling hash
     }
 
     /// @notice Data needed to execute committed and verified block
@@ -101,12 +94,7 @@ contract ZkSyncBlock is ZkSyncBase {
             require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "o1");
             ++currentTotalBlocksProven;
 
-            bytes memory concatenated;
-            for (uint256 j = 0; j < CROSS_CHAIN_NUM; j++) {
-                concatenated = abi.encodePacked(concatenated, _proof.commitments[CROSS_CHAIN_NUM*i+j] & INPUT_MASK);
-            }
-            bytes32 hash = sha256(concatenated);
-            require(uint256(hash) & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "o"); // incorrect block commitment in proof
+            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "o"); // incorrect block commitment in proof
         }
 
         bool success =
@@ -575,47 +563,7 @@ contract ZkSyncBlock is ZkSyncBase {
 
         // current chain rolling hash
         bytes32 rollingHash = hash & bytes32(INPUT_MASK);
-
-        // sort cross chain by chain id asc
-        require(_newBlockData.crossChains.length == CROSS_CHAIN_NUM - 1, 'cn');
-        CrossChain[] memory crossChains = new CrossChain[](CROSS_CHAIN_NUM);
-        crossChains[uint256(_newBlockData.chainId)] = CrossChain({
-            chainId:_newBlockData.chainId,
-            crtCommitments:_newBlockData.crtCommitments,
-            rollingHash:rollingHash
-        });
-        for(uint i = 0; i < CROSS_CHAIN_NUM - 1; i++) {
-            CrossChain memory cc = _newBlockData.crossChains[i];
-            crossChains[uint256(cc.chainId)] = cc;
-        }
-        // ensure the crt is match each other for all crossChains
-        for(uint i = 0; i < CROSS_CHAIN_NUM; i++) {
-            for(uint j = 0; j < CROSS_CHAIN_NUM; j++) {
-                if (i != j) {
-                    require(getCrtCommitment(crossChains[i], j) == getCrtCommitment(crossChains[j], i), 'cc');
-                }
-            }
-        }
-
-        // concatenate inputs by chain id
-        bytes memory concatenated;
-        for (uint256 i = 0; i < CROSS_CHAIN_NUM; i++) {
-            CrossChain memory cc = crossChains[i];
-            bytes32 input = calInput(cc.rollingHash, cc.chainId, cc.crtCommitments);
-            concatenated = abi.encodePacked(concatenated, input);
-        }
-
-        commitment = sha256(concatenated) & bytes32(INPUT_MASK);
-    }
-
-    function getCrtCommitment(CrossChain memory chain, uint256 i) internal pure returns (uint256) {
-        if (i < chain.chainId) {
-            return chain.crtCommitments[i];
-        } else if (i == chain.chainId) {
-            return 0;
-        } else {
-            return chain.crtCommitments[i-1];
-        }
+        commitment = calInput(rollingHash, _newBlockData.chainId, _newBlockData.crtCommitments);
     }
 
     /// @notice Calculate input used in commitment of each chain
