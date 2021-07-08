@@ -16,7 +16,7 @@ contract SimpleZkSync {
         vault = Vault(_vault);
     }
 
-    function depositETH(address _zkSyncAddress) external payable {
+    function depositETH(address /*_zkSyncAddress*/) external payable {
         vault.recordDeposit(0, msg.value);
         address(vault).transfer(msg.value);
     }
@@ -24,19 +24,19 @@ contract SimpleZkSync {
     function depositERC20(
         IERC20 _token,
         uint104 _amount,
-        address _zkSyncAddress
+        address /*_zkSyncAddress*/
     ) external {
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), SafeCast.toUint128(_amount)), "fd012"); // token transfer failed deposit
         vault.recordDeposit(tokenId, _amount);
     }
 
-    function depositETHFromVault(address _zkSyncAddress, uint256 _amount) external {
+    function depositETHFromVault(address /*_zkSyncAddress*/, uint256 _amount) external {
         require(msg.sender == address(vault), 'dev0');
         vault.recordDeposit(0, _amount);
     }
 
-    function depositERC20FromVault(uint16 _tokenId, address _zkSyncAddress, uint256 _amount) external {
+    function depositERC20FromVault(uint16 _tokenId, address /*_zkSyncAddress*/, uint256 _amount) external {
         require(msg.sender == address(vault), 'dev1');
         vault.recordDeposit(_tokenId, _amount);
     }
