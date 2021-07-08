@@ -89,6 +89,7 @@ contract Vault is VaultStorage {
 
     /// @notice Withdraw token from vault to satisfy user withdraw request(can only be call by zkSync)
     /// @notice Withdraw may produce loss, after withdraw debt of vault will decrease
+    /// @dev More details see test/vault_withdraw_test.js
     /// @param tokenId Token id
     /// @param to Token receive address
     /// @param amount Amount of tokens to transfer
@@ -115,18 +116,22 @@ contract Vault is VaultStorage {
 
             uint256 withdrawNeeded = amount - balanceBefore;
             loss = IStrategy(strategy).withdraw(withdrawNeeded);
+            require(loss < withdrawNeeded, 'Vault: too large loss');
+
             uint256 balanceAfterStrategyWithdraw = _tokenBalance(tokenId);
-            // after withdraw from strategy, vault token amount added + loss must equal withdrawNeeded
-            require(withdrawNeeded == balanceAfterStrategyWithdraw.sub(balanceBefore).add(loss), 'Vault: strategy withdraw invalid state');
+            // after withdraw from strategy, vault token amount added + loss must bigger or equal than withdrawNeeded
+            require(withdrawNeeded <= balanceAfterStrategyWithdraw.sub(balanceBefore).add(loss), 'Vault: withdraw goal not completed');
             balanceBefore = balanceAfterStrategyWithdraw;
+            amount = amount.sub(loss);
         }
 
-        uint256 amountWithdraw = amount > balanceBefore ? balanceBefore : amount;
-        _safeTransferToken(tokenId, to, amountWithdraw);
+        _safeTransferToken(tokenId, to, amount);
         uint256 balanceAfter = _tokenBalance(tokenId);
         // debt decrease = balance decreased of vault + loss when withdraw from strategy
         uint256 debtDecrease = balanceBefore.sub(balanceAfter).add(loss);
         require(debtDecrease <= maxAmount, 'Vault: over maxAmount');
+        // total loss = loss + token transfer fees
+        loss = debtDecrease.sub(amount);
         require(loss.mul(MAX_BPS).div(debtDecrease) <= lossBip, 'Vault: over loss');
 
         // debt of vault decrease
