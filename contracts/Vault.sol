@@ -100,6 +100,8 @@ contract Vault is VaultStorage, IVault {
     /// @return uint256 Amount debt of vault decreased
     function withdraw(uint16 tokenId, address to, uint256 amount, uint256 maxAmount, uint256 lossBip) onlyZkSync external returns (uint256) {
         _validateToken(tokenId);
+        require(lossBip <= MAX_BPS, 'Vault: invalid lossBip');
+
         if (amount == 0) {
             return 0;
         }
