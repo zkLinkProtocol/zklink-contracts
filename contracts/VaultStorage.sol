@@ -8,7 +8,7 @@ import "./Governance.sol";
 /// @title zkLink vault storage contract
 /// @author ZkLink Labs
 contract VaultStorage {
-    enum StrategyStatus { NONE, ADDED, ACTIVE, PREPARE_UPGRADE }
+    enum StrategyStatus { NONE, ADDED, ACTIVE, PREPARE_UPGRADE, EXIT }
 
     struct TokenVault {
         uint16 reserveRatio; // vault must reserve some token to satisfy user withdraw

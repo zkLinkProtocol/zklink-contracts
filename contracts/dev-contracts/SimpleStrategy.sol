@@ -29,6 +29,8 @@ contract SimpleStrategy is IStrategy{
         return tokenId;
     }
 
+    function deposit() override external {}
+
     function withdraw(uint256 amountNeeded) override external returns (uint256) {
         uint256 loss = lossBip * amountNeeded / MAX_BPS;
         IERC20(token).transfer(vault, amountNeeded - loss);
@@ -38,7 +40,13 @@ contract SimpleStrategy is IStrategy{
         return loss;
     }
 
+    function harvest() override external {}
+
     function migrate(address _newStrategy) override external {
         IERC20(token).transfer(_newStrategy, wantNetValue());
     }
+
+    function onMigrate() override external {}
+
+    function emergencyExit() override external {}
 }

@@ -57,6 +57,8 @@ describe('Vault unit tests', function () {
         await expect(vault.revokeUpgradeStrategy(tokenAId)).to.be.revertedWith('1g');
         await expect(vault.transferToStrategy(tokenAId, 1)).to.be.revertedWith('1g');
         await expect(vault.settleReward(tokenAId)).to.be.revertedWith('1g');
+        await expect(vault.harvest(tokenAId)).to.be.revertedWith('1g');
+        await expect(vault.emergencyExit(tokenAId)).to.be.revertedWith('1g');
     });
 
     it('set reserve ratio should success', async () => {
@@ -213,6 +215,17 @@ describe('Vault unit tests', function () {
         expect(await vault.getNextStrategy(tokenAId)).to.equal(hardhat.ethers.constants.AddressZero);
     });
 
+    it('exit strategy should success', async () => {
+        await vault.buildActiveTest(tokenAId, strategyA.address);
+        await expect(vault.connect(governor).emergencyExit(tokenAId))
+            .to.emit(vault, 'StrategyExit')
+            .withArgs(tokenAId);
+        // after exit we can upgrade to new strategy
+        await expect(vault.connect(governor).upgradeStrategy(strategyB.address))
+            .to.emit(vault, 'StrategyUpgradePrepare')
+            .withArgs(tokenAId, strategyB.address);
+    });
+
     it('get transfer to strategy amount should success', async () => {
         expect(await vault.getStrategyAvailableTransferAmount(tokenAId)).to.equal(0);
         await vault.buildActiveTest(tokenAId, strategyA.address);
@@ -261,5 +274,16 @@ describe('Vault unit tests', function () {
         expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(3000);
         expect(await vault.totalAsset(0)).to.equal(3000);
         expect(await vault.totalDebt(0)).to.equal(3000);
+    });
+
+    it('strategy harvest should success', async () => {
+        await vault.buildActiveTest(tokenAId, strategyA.address);
+        await expect(vault.connect(governor).emergencyExit(tokenAId))
+            .to.emit(vault, 'StrategyExit')
+            .withArgs(tokenAId);
+        // after exit we can upgrade to new strategy
+        await expect(vault.connect(governor).upgradeStrategy(strategyB.address))
+            .to.emit(vault, 'StrategyUpgradePrepare')
+            .withArgs(tokenAId, strategyB.address);
     });
 });

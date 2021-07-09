@@ -8,10 +8,11 @@ import "./IERC20.sol";
 import "./ZkSync.sol";
 import "./Utils.sol";
 import "./VaultStorage.sol";
+import "./IVault.sol";
 
 /// @title zkLink vault contract. eth or erc20 token deposited from user will transfer to vault and vault use strategy to earn more token.
 /// @author ZkLink Labs
-contract Vault is VaultStorage {
+contract Vault is VaultStorage, IVault {
     using SafeMath for uint256;
 
     uint16 constant MAX_BPS = 10000;  // 100%, or 10k basis points
@@ -25,6 +26,7 @@ contract Vault is VaultStorage {
     event StrategyUpgradePrepare(uint16 tokenId, address strategy);
     event StrategyRevokeUpgrade(uint16 tokenId);
     event StrategyMigrate(uint16 tokenId);
+    event StrategyExit(uint16 tokenId);
     event TransferToStrategy(uint16 tokenId, address strategy, uint256 amount);
     event SettleReward(uint16 tokenId, address userRewardAddress, address protocolRewardAddress, uint256 userAmount, uint256 protocolAmount);
 
@@ -198,7 +200,7 @@ contract Vault is VaultStorage {
         TokenVault storage tv = tokenVaults[tokenId];
         require(tv.strategy != address(0), 'Vault: no strategy');
         require(tv.strategy != strategy, 'Vault: upgrade to self');
-        require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+        require(tv.status == StrategyStatus.ACTIVE || tv.status == StrategyStatus.EXIT, 'Vault: require active or exit');
         require(tv.nextStrategy == address(0), 'Vault: next version prepared');
 
         tv.nextStrategy = strategy;
@@ -226,16 +228,35 @@ contract Vault is VaultStorage {
     /// @param tokenId Token id
     function migrateStrategy(uint16 tokenId) onlyNetworkGovernor external {
         TokenVault storage tv = tokenVaults[tokenId];
-        require(tv.strategy != address(0), 'Vault: no strategy');
+        address strategy = tv.strategy;
+        address nextStrategy = tv.nextStrategy;
+        require(strategy != address(0), 'Vault: no strategy');
         require(tv.status == StrategyStatus.PREPARE_UPGRADE, 'Vault: require prepare upgrade');
-        require(tv.nextStrategy != address(0), 'Vault: no next version');
+        require(nextStrategy != address(0), 'Vault: no next version');
         require(block.timestamp >= tv.takeEffectTime, 'Vault: time not reach');
 
-        IStrategy(tv.strategy).migrate(tv.nextStrategy);
-        tv.strategy = tv.nextStrategy;
+        IStrategy(strategy).migrate(nextStrategy);
+        IStrategy(nextStrategy).onMigrate();
+        tv.strategy = nextStrategy;
         tv.nextStrategy = address(0);
         tv.status = StrategyStatus.ACTIVE;
         emit StrategyMigrate(tokenId);
+    }
+
+    /// @notice Emergency exit from strategy
+    /// @param tokenId Token id
+    function emergencyExit(uint16 tokenId) onlyNetworkGovernor external {
+        TokenVault memory tv = tokenVaults[tokenId];
+        address strategy = tv.strategy;
+        require(strategy != address(0), 'Vault: no strategy');
+        require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+
+        IStrategy(strategy).emergencyExit();
+
+        // set strategy status to exit, we can only upgrade strategy after emergency exit
+        tokenVaults[tokenId].status = StrategyStatus.EXIT;
+
+        emit StrategyExit(tokenId);
     }
 
     /// @notice Return the amount of token that can transfer to strategy if strategy is active
@@ -274,6 +295,7 @@ contract Vault is VaultStorage {
         amount = amount > maxTransfer ? maxTransfer : amount;
 
         _safeTransferToken(tokenId, strategy, amount);
+        IStrategy(strategy).deposit();
         emit TransferToStrategy(tokenId, strategy, amount);
         return amount;
     }
@@ -312,6 +334,23 @@ contract Vault is VaultStorage {
         }
         require(tokenVaults[tokenId].debt == asset, 'Vault: debt asset not match');
         emit SettleReward(tokenId, userRewardAddress, protocolRewardAddress, userReward, protocolReward);
+    }
+
+    /// @notice Harvest from strategy
+    /// @param tokenId Token id
+    function harvest(uint16 tokenId) onlyNetworkGovernor external {
+        TokenVault memory tv = tokenVaults[tokenId];
+        address strategy = tv.strategy;
+        require(strategy != address(0), 'Vault: no strategy');
+        require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+
+        IStrategy(strategy).harvest();
+    }
+
+    function wantToken(uint16 wantId) override external view returns (address) {
+        address token = governance.tokenAddresses(wantId);
+        governance.validateTokenAddress(token);
+        return token;
     }
 
     /// @notice Return amount of token in this vault
