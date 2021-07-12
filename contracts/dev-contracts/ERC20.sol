@@ -24,16 +24,20 @@ contract ERC20 is IERC20 {
         _mint(msg.sender, amount);
     }
 
+    function mintTo(address account, uint256 amount) external {
+        _mint(account, amount);
+    }
+
+    function burnFrom(address account, uint256 amount) external {
+        _burn(account, amount);
+    }
+
     function name() public view virtual returns (string memory) {
         return _name;
     }
 
     function symbol() public view virtual returns (string memory) {
         return _symbol;
-    }
-
-    function decimals() public view virtual returns (uint8) {
-        return 18;
     }
 
     function totalSupply() public view virtual override returns (uint256) {

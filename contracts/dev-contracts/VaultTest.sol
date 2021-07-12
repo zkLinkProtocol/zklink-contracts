@@ -50,4 +50,14 @@ contract VaultTest is Vault {
     function getNextStrategy(uint16 tokenId) external view returns (address) {
         return tokenVaults[tokenId].nextStrategy;
     }
+
+    function recordDepositTest(uint16 tokenId, uint256 amount) external {
+        tokenVaults[tokenId].debt = tokenVaults[tokenId].debt.add(amount);
+    }
+
+    function withdrawFromStrategyTest(uint16 tokenId, uint256 amount) external {
+        TokenVault memory tv = tokenVaults[tokenId];
+        address strategy = tv.strategy;
+        IStrategy(strategy).withdraw(amount);
+    }
 }
