@@ -6,14 +6,32 @@ import "../strategy/YearnStrategy.sol";
 
 contract YearnStrategyTest is YearnStrategy {
 
-    constructor(uint16 _want, IYearn _yearn) YearnStrategy(_want, _yearn) {
+    address public vaultAddress;
+    address public wethAddress;
+
+    constructor(uint16 _want, IYearn _yearn, address _vault, address _weth) YearnStrategy(_want, _yearn) {
+        vaultAddress = _vault;
+        wethAddress = _weth;
     }
 
-    function vault() public override pure returns (address) {
-        return address(0xFD6D23eE2b6b136E34572fc80cbCd33E9787705e);
+    function initWant(uint16 _want) override internal {
+        want = _want;
     }
 
-    function weth() public override pure returns (address) {
-        return address(0x1D13fF25b10C9a6741DFdce229073bed652197c7);
+    function initYearn(IYearn _yearn) override internal {
+        yearn = _yearn;
+    }
+
+    function vault() public override view returns (address) {
+        return vaultAddress;
+    }
+
+    function weth() public override view returns (address) {
+        return wethAddress;
+    }
+
+    function initWantToken() external {
+        super.initWant(want);
+        super.initYearn(yearn);
     }
 }

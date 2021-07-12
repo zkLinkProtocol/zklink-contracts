@@ -12,7 +12,8 @@ describe('YearnStrategy unit tests', function () {
     let usdtYearnBorrower;
     let strategyFactory;
     let ethStrategy, wethStrategy, usdtStrategy;
-    before(async () => {
+
+    beforeEach(async () => {
         [deployer, governor, alice] = await hardhat.ethers.getSigners();
         // governance, governor is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
@@ -23,7 +24,6 @@ describe('YearnStrategy unit tests', function () {
         // vault
         const contractFactory = await hardhat.ethers.getContractFactory('VaultTest');
         vault = await contractFactory.deploy();
-        expect(vault.address).to.equal('0xFD6D23eE2b6b136E34572fc80cbCd33E9787705e');
         await vault.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'],
                 [governance.address])
@@ -31,7 +31,6 @@ describe('YearnStrategy unit tests', function () {
         // weth
         const wethFactory = await hardhat.ethers.getContractFactory('WETH');
         weth = await wethFactory.deploy();
-        expect(weth.address).to.equal('0x1D13fF25b10C9a6741DFdce229073bed652197c7');
         await governance.connect(governor).addToken(weth.address);
         wethId = await governance.validateTokenAddress(weth.address);
         // usdt
@@ -39,20 +38,20 @@ describe('YearnStrategy unit tests', function () {
         usdt = await erc20Factory.deploy(0);
         await governance.connect(governor).addToken(usdt.address);
         usdtId = await governance.validateTokenAddress(usdt.address);
-    });
-
-    beforeEach(async () => {
         // yearn
         const yearnFactory = await hardhat.ethers.getContractFactory('MockYearn');
-        wethYearn = await yearnFactory.deploy(weth.address, 0);
-        usdtYearn = await yearnFactory.deploy(usdt.address, 0);
+        wethYearn = await yearnFactory.deploy(weth.address, weth.address);
+        usdtYearn = await yearnFactory.deploy(usdt.address, weth.address);
         const yearnBorrowerFactory = await hardhat.ethers.getContractFactory('MockYearnBorrower');
         usdtYearnBorrower = yearnBorrowerFactory.attach(await usdtYearn.borrower());
         // yearn strategy
         strategyFactory = await hardhat.ethers.getContractFactory('YearnStrategyTest');
-        ethStrategy = await strategyFactory.deploy(ethId, wethYearn.address);
-        wethStrategy = await strategyFactory.deploy(wethId, wethYearn.address);
-        usdtStrategy = await strategyFactory.deploy(usdtId, usdtYearn.address);
+        ethStrategy = await strategyFactory.deploy(ethId, wethYearn.address, vault.address, weth.address);
+        await ethStrategy.initWantToken();
+        wethStrategy = await strategyFactory.deploy(wethId, wethYearn.address, vault.address, weth.address);
+        await wethStrategy.initWantToken();
+        usdtStrategy = await strategyFactory.deploy(usdtId, usdtYearn.address, vault.address, weth.address);
+        await usdtStrategy.initWantToken();
         // add strategy to vault
         await vault.buildActiveTest(ethId, ethStrategy.address); // eth -> weth strategy
         await vault.buildActiveTest(wethId, wethStrategy.address); // weth -> weth strategy
@@ -252,7 +251,8 @@ describe('YearnStrategy unit tests', function () {
         const shareBalance = await usdtYearn.balanceOf(usdtStrategy.address);
         const usdtBalance = await usdt.balanceOf(usdtStrategy.address);
         // create a same usdt strategy with usdt yearn
-        const usdtStrategy2 = await strategyFactory.deploy(usdtId, usdtYearn.address);
+        const usdtStrategy2 = await strategyFactory.deploy(usdtId, usdtYearn.address, vault.address, weth.address);
+        await usdtStrategy2.initWantToken();
         await vault.buildMigrateTest(usdtId, usdtStrategy.address, usdtStrategy2.address);
         // yearn strategy will migrate all shares and want token to new strategy
         // new yearn strategy will deposit all want token to yearn and get more shares

@@ -14,9 +14,9 @@ contract MockYearn is IYearn, ERC20{
     address public override token;
     MockYearnBorrower public borrower;
 
-    constructor(address _token, uint256 amount) ERC20(amount) {
+    constructor(address _token, address _weth) ERC20(0) {
         token = _token;
-        borrower = new MockYearnBorrower(_token);
+        borrower = new MockYearnBorrower(_token, _weth);
     }
 
     function pricePerShare() external override view returns (uint256) {

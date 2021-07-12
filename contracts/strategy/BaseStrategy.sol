@@ -28,6 +28,10 @@ abstract contract BaseStrategy is IStrategy {
     }
 
     constructor(uint16 _want) {
+        initWant(_want);
+    }
+
+    function initWant(uint16 _want) virtual internal {
         want = _want;
         if (want == 0) {
             wantToken = weth();
@@ -39,12 +43,12 @@ abstract contract BaseStrategy is IStrategy {
     /// @notice receive platform token
     receive() external payable {}
 
-    function vault() public virtual override pure returns (address) {
+    function vault() public virtual override view returns (address) {
         return VAULT_ADDRESS;
     }
 
     /// @notice Return wrapped platform token address:WETH, WBNB, WHT
-    function weth() public virtual pure returns (address);
+    function weth() public virtual view returns (address);
 
     /// @notice transfer want token to vault
     function safeTransferWantTokenToVault(uint256 amount) internal {

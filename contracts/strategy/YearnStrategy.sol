@@ -21,13 +21,17 @@ contract YearnStrategy is BaseStrategy {
     IYearn public yearn; // each want token has a yearn vault
 
     constructor(uint16 _want, IYearn _yearn) BaseStrategy(_want) {
+        initYearn(_yearn);
+    }
+
+    function initYearn(IYearn _yearn) virtual internal {
         yearn = _yearn;
         require(wantToken == yearn.token(), 'YearnStrategy: unmatched token');
     }
 
     /// @notice yearn strategy run in eth main net
     /// https://etherscan.io/token/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
-    function weth() public override virtual pure returns (address) {
+    function weth() public override virtual view returns (address) {
         return address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     }
 

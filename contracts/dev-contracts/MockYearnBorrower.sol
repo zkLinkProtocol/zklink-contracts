@@ -8,13 +8,11 @@ import "./ERC20.sol";
 contract MockYearnBorrower {
 
     address public token;
+    address public weth;
 
-    constructor (address _token) {
+    constructor (address _token, address _weth) {
         token = _token;
-    }
-
-    function weth() public pure returns (address) {
-        return address(0x1D13fF25b10C9a6741DFdce229073bed652197c7);
+        weth = _weth;
     }
 
     /// @notice use the balance to represent nominal asset of borrower
@@ -56,7 +54,7 @@ contract MockYearnBorrower {
     ///     then yearn balance = 499, borrower nominal balance = 497
     ///     then total shares = 500, transfer to withdrawer amount < 500
     function withdraw(uint256 amountNeeded) external returns (uint256) {
-        if (token == weth()) {
+        if (token == weth) {
             ERC20(token).transfer(msg.sender, amountNeeded);
             return 0;
         } else {
