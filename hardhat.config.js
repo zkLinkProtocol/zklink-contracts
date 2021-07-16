@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require("adhusson-hardhat-solpp");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig

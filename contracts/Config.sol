@@ -34,7 +34,7 @@ contract Config {
     uint32 constant MAX_ACCOUNT_ID = (2**24) - 1;
 
     /// @dev Expected average period of block creation
-    uint256 constant BLOCK_PERIOD = 15 seconds;
+    uint256 constant BLOCK_PERIOD = $(defined(BLOCK_PERIOD) ? BLOCK_PERIOD : 15 seconds);
 
     /// @dev ETH blocks verification expectation
     /// @dev Blocks can be reverted if they are not verified for at least EXPECT_VERIFICATION_IN.
@@ -79,7 +79,11 @@ contract Config {
     /// @dev Notice period before activation preparation status of upgrade mode (in seconds)
     /// @dev NOTE: we must reserve for users enough time to send full exit operation, wait maximum time for processing this operation and withdraw funds from it.
     uint256 constant UPGRADE_NOTICE_PERIOD =
-        MASS_FULL_EXIT_PERIOD + PRIORITY_EXPIRATION_PERIOD + TIME_TO_WITHDRAW_FUNDS_FROM_FULL_EXIT;
+        $(
+            defined(UPGRADE_NOTICE_PERIOD)
+            ? UPGRADE_NOTICE_PERIOD
+            : MASS_FULL_EXIT_PERIOD + PRIORITY_EXPIRATION_PERIOD + TIME_TO_WITHDRAW_FUNDS_FROM_FULL_EXIT
+        );
 
     /// @dev Timestamp - seconds since unix epoch
     uint256 constant COMMIT_TIMESTAMP_NOT_OLDER = 24 hours;
