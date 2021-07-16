@@ -34,7 +34,7 @@ contract Config {
     uint32 constant MAX_ACCOUNT_ID = (2**24) - 1;
 
     /// @dev Expected average period of block creation
-    uint256 constant BLOCK_PERIOD = $(defined(BLOCK_PERIOD) ? BLOCK_PERIOD : 15 seconds);
+    uint256 constant BLOCK_PERIOD = $(defined(BLOCK_PERIOD) ? BLOCK_PERIOD : 15);
 
     /// @dev ETH blocks verification expectation
     /// @dev Blocks can be reverted if they are not verified for at least EXPECT_VERIFICATION_IN.

@@ -16,7 +16,7 @@ contract Vault is VaultStorage, IVault {
     using SafeMath for uint256;
 
     uint16 constant MAX_BPS = 10000;  // 100%, or 10k basis points
-    uint256 constant STRATEGY_ACTIVE_WAIT = $(defined(STRATEGY_ACTIVE_WAIT) ? STRATEGY_ACTIVE_WAIT : 7 days);  // new strategy must wait one week to take effect
+    uint256 constant STRATEGY_ACTIVE_WAIT = $(defined(STRATEGY_ACTIVE_WAIT) ? STRATEGY_ACTIVE_WAIT : 604800);  // new strategy must wait one week to take effect, default is 7 days
 
     event ReserveRatioUpdate(uint16 tokenId, uint16 ratio);
     event RewardConfigUpdate(address userRewardAddress, address protocolRewardAddress, uint16 protocolRewardRatio);
