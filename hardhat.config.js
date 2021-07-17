@@ -1,5 +1,39 @@
 require("@nomiclabs/hardhat-waffle");
 require("adhusson-hardhat-solpp");
+require("@nomiclabs/hardhat-etherscan");
+require("./deploy");
+
+const vaultAddress = process.env.VAULT_ADDRESS === undefined ? 'address(0)' : process.env.VAULT_ADDRESS;
+
+const ethConfig = {
+  BLOCK_PERIOD: '15 seconds',
+  // UPGRADE_NOTICE_PERIOD: 0,
+  STRATEGY_ACTIVE_WAIT: '7 days',
+  VAULT_ADDRESS: vaultAddress
+};
+
+const bscConfig = {
+  BLOCK_PERIOD: '3 seconds',
+  // UPGRADE_NOTICE_PERIOD: 0,
+  STRATEGY_ACTIVE_WAIT: '7 days',
+  VAULT_ADDRESS: vaultAddress
+};
+
+const testConfig = {
+  BLOCK_PERIOD: '3 seconds',
+  UPGRADE_NOTICE_PERIOD: 0,
+  STRATEGY_ACTIVE_WAIT: '0 days',
+  VAULT_ADDRESS: vaultAddress
+};
+
+const macroConfig = {
+  ETH: ethConfig,
+  BSC: bscConfig,
+  HECO: bscConfig, // heco block period is same with bsc
+  TEST: testConfig
+}
+
+const macroDefs = process.env.MACRO === undefined ? macroConfig["ETH"] : macroConfig[process.env.MACRO];
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -27,5 +61,18 @@ module.exports = {
       }
     ],
   },
+  networks: {
+    hardhat: {
+    },
+    custom: {
+      url: process.env.NETWORK_URL === undefined ? '' : process.env.NETWORK_URL
+    }
+  },
+  solpp:{
+    defs: macroDefs
+  },
+  etherscan: {
+    apiKey: process.env.SCAN_API_KEY === undefined ? '' : process.env.SCAN_API_KEY
+  }
 };
 

@@ -14,8 +14,7 @@ abstract contract BaseStrategy is IStrategy {
     event Harvest(uint256 want, address rewardToken, uint256 amount);
 
     /// @notice Vault is a proxy address and will be not changed after upgrade
-    /// fixme this value will be set after ZkLink Vault contract deployed to main net
-    address public constant VAULT_ADDRESS = address(0);
+    address public constant VAULT_ADDRESS = $(VAULT_ADDRESS);
 
     /// @notice want token id
     uint16 public override want;
