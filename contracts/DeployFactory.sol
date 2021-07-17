@@ -8,6 +8,7 @@ import "./UpgradeGatekeeper.sol";
 import "./ZkSync.sol";
 import "./Verifier.sol";
 import "./TokenInit.sol";
+import "./Vault.sol";
 import "./uniswap/interfaces/IUniswapV2Factory.sol";
 
 contract DeployFactory is TokenDeployInit {

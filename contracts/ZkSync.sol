@@ -79,7 +79,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         governance = Governance(_governanceAddress);
         zkSyncBlock = _zkSyncBlock;
         pairManager = IUniswapV2Factory(_pairManagerAddress);
-        vault = Vault(_vaultAddress);
+        vault = IVault(_vaultAddress);
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
@@ -170,7 +170,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         requireActive();
         registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
         vault.recordDeposit(0, msg.value);
-        address(vault).transfer(msg.value);
+        payable(address(vault)).transfer(msg.value);
     }
 
     /// @notice Deposit ETH to Layer 2(can only call from vault) - register deposit

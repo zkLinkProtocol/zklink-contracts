@@ -9,16 +9,16 @@ import "../SafeCast.sol";
 contract SimpleZkSync {
 
     Governance public governance;
-    Vault public vault;
+    IVault public vault;
 
     constructor(address _governance, address payable _vault) {
         governance = Governance(_governance);
-        vault = Vault(_vault);
+        vault = IVault(_vault);
     }
 
     function depositETH(address /*_zkSyncAddress*/) external payable {
         vault.recordDeposit(0, msg.value);
-        address(vault).transfer(msg.value);
+        payable(address(vault)).transfer(msg.value);
     }
 
     function depositERC20(
