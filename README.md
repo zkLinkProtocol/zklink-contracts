@@ -75,3 +75,8 @@ MACRO=HECO NETWORK_URL=https://http-mainnet.hecochain.com SCAN_API_KEY=YOUR_ETHE
 ```shell
 MACRO=TEST NETWORK_URL=https://data-seed-prebsc-1-s1.binance.org:8545 SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --genesis-root GENESIS_ROOT_HASH
 ```
+###Deploy Strategy
+
+```shell
+VAULT_ADDRESS=DEPLOYED_VAULT_ADDRESS NETWORK_URL=WEB3J_URL SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy_strategy --key DEPLOYER_ADDRESS_PRIVATE_KEY --strategy BscCoinwindStrategy --params '0 3'
+```

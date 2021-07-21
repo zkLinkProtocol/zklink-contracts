@@ -167,3 +167,36 @@ task("deploy", "Deploy zklink")
             ]
         });
 });
+
+task("deploy_strategy", "Deploy strategy")
+    .addParam("key", "The deployer key", undefined, types.string, true)
+    .addParam("strategy", "The strategy contract name")
+    .addParam("params", "The strategy deploy params")
+    .setAction(async (taskArgs) => {
+        const hardhat = require("hardhat");
+        let deployer;
+        const key = taskArgs.key;
+        if (key === undefined) {
+            [deployer] = await hardhat.ethers.getSigners();
+        } else {
+            deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        }
+        const strategy = taskArgs.strategy;
+        const params = taskArgs.params;
+        console.log('deployer', deployer.address);
+        console.log('strategy', strategy);
+        console.log('params', params);
+        const args = params.split(' ');
+
+        const balance = await deployer.getBalance();
+        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
+
+        const strategyFactory = await hardhat.ethers.getContractFactory(strategy);
+        const strategyContract = await strategyFactory.connect(deployer).deploy(...args);
+        await strategyContract.deployed();
+        console.log('strategy address', strategyContract.address);
+        await hardhat.run("verify:verify", {
+            address: strategyContract.address,
+            constructorArguments: args
+        });
+    });
