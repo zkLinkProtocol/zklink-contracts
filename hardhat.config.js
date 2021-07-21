@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("adhusson-hardhat-solpp");
 require("@nomiclabs/hardhat-etherscan");
 require("./deploy");
+require("./interact");
 
 const vaultAddress = process.env.VAULT_ADDRESS === undefined ? 'address(0)' : process.env.VAULT_ADDRESS;
 
