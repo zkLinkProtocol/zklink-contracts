@@ -19,7 +19,7 @@ contract VaultStorage {
         StrategyStatus status; // strategy status
     }
     /// @dev token(valid by governance) vault
-    mapping(uint16 => TokenVault) tokenVaults;
+    mapping(uint16 => TokenVault) public tokenVaults;
 
     /// @dev zkSync contract
     ZkSync public zkSync;
