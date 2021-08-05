@@ -100,4 +100,7 @@ contract Config {
 
     /// @dev Number of cross chains, this will be changed when add more cross chain
     uint256 constant CROSS_CHAIN_NUM = 2;
+
+    /// @dev Chain id
+    uint8 constant CHAIN_ID = $(CHAIN_ID);
 }

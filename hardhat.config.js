@@ -10,27 +10,38 @@ const ethConfig = {
   BLOCK_PERIOD: '15 seconds',
   // UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '7 days',
-  VAULT_ADDRESS: vaultAddress
+  VAULT_ADDRESS: vaultAddress,
+  CHAIN_ID: 0
 };
 
 const bscConfig = {
   BLOCK_PERIOD: '3 seconds',
   // UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '7 days',
-  VAULT_ADDRESS: vaultAddress
+  VAULT_ADDRESS: vaultAddress,
+  CHAIN_ID: 1
+};
+
+const hecoConfig = {
+  BLOCK_PERIOD: '3 seconds',
+  // UPGRADE_NOTICE_PERIOD: 0,
+  STRATEGY_ACTIVE_WAIT: '7 days',
+  VAULT_ADDRESS: vaultAddress,
+  CHAIN_ID: 2
 };
 
 const testConfig = {
   BLOCK_PERIOD: '3 seconds',
   UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '0 days',
-  VAULT_ADDRESS: vaultAddress
+  VAULT_ADDRESS: vaultAddress,
+  CHAIN_ID: 0
 };
 
 const macroConfig = {
   ETH: ethConfig,
   BSC: bscConfig,
-  HECO: bscConfig, // heco block period is same with bsc
+  HECO: hecoConfig, // heco block period is same with bsc
   TEST: testConfig
 }
 
