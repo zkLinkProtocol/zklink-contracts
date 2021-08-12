@@ -122,4 +122,9 @@ contract Storage {
     mapping(address => mapping(uint32 => uint256)) internal authFactsResetTimer;
 
     address public zkSyncBlock;
+
+    /// @dev Accept infos of fast withdraw
+    /// @dev Key is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce))
+    /// @dev Value is the accepter address
+    mapping(bytes32 => address) public accepts;
 }

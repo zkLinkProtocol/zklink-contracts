@@ -1,5 +1,10 @@
 const hardhat = require('hardhat');
-const {getDepositPubdata, getPartialExitPubdata, getFullExitPubdata, getChangePubkeyPubdata, getCreatePairPubdata} = require('./utils');
+const {getDepositPubdata,
+    getPartialExitPubdata,
+    getFullExitPubdata,
+    getChangePubkeyPubdata,
+    getCreatePairPubdata,
+    getQuickSwapPubdata} = require('./utils');
 
 describe('Operations unit tests', function () {
     let testContract;
@@ -99,5 +104,39 @@ describe('Operations unit tests', function () {
 
         const example = { accountId, tokenAId, tokenBId, tokenPairId, pair };
         await testContract.testWriteCreatePairPubdata(example);
+    });
+
+    // QuickSwap
+    it('Correctly Parse QuickSwap pubdata', async () => {
+        const fromChainId = '0x00';
+        const toChainId = '0x01';
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const fromTokenId = '0x0102';
+        const amountIn = '0x101112131415161718191a1b1c1d1e1f';
+        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const toTokenId = '0x0103';
+        const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
+        const withdrawFee = '0x0001';
+        const nonce = '0x01020304';
+
+        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce };
+        const pubdata = getQuickSwapPubdata(example);
+        await testContract.testQuickSwapPubdata(example, pubdata);
+    });
+
+    it('Correctly Write QuickSwap pubdata', async () => {
+        const fromChainId = '0x00';
+        const toChainId = '0x01';
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const fromTokenId = '0x0102';
+        const amountIn = '0x101112131415161718191a1b1c1d1e1f';
+        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const toTokenId = '0x0103';
+        const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
+        const withdrawFee = '0x0001';
+        const nonce = '0x01020304';
+
+        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce };
+        await testContract.testWriteQuickSwapPubdata(example);
     });
 });

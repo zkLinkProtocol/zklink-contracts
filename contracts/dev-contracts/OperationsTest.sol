@@ -73,4 +73,33 @@ contract OperationsTest {
         require(_example.tokenPairId == parsed.tokenPairId, "tP");
         require(_example.pair == parsed.pair, "p");
     }
+
+    function testQuickSwapPubdata(Operations.QuickSwap calldata _example, bytes calldata _pubdata) external pure {
+        Operations.QuickSwap memory parsed = Operations.readQuickSwapPubdata(_pubdata);
+        require(_example.fromChainId == parsed.fromChainId, "fromChainId");
+        require(_example.toChainId == parsed.toChainId, "toChainId");
+        require(_example.owner == parsed.owner, "owner");
+        require(_example.fromTokenId == parsed.fromTokenId, "fromTokenId");
+        require(_example.amountIn == parsed.amountIn, "amountIn");
+        require(_example.to == parsed.to, "to");
+        require(_example.toTokenId == parsed.toTokenId, "toTokenId");
+        require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
+        require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
+        require(_example.nonce == parsed.nonce, "nonce");
+    }
+
+    function testWriteQuickSwapPubdata(Operations.QuickSwap calldata _example) external pure {
+        bytes memory pubdata = Operations.writeQuickSwapPubdataForPriorityQueue(_example);
+        Operations.QuickSwap memory parsed = Operations.readQuickSwapPubdata(pubdata);
+        require(_example.fromChainId == parsed.fromChainId, "fromChainId");
+        require(_example.toChainId == parsed.toChainId, "toChainId");
+        require(_example.owner == parsed.owner, "owner");
+        require(_example.fromTokenId == parsed.fromTokenId, "fromTokenId");
+        require(_example.amountIn == parsed.amountIn, "amountIn");
+        require(_example.to == parsed.to, "to");
+        require(_example.toTokenId == parsed.toTokenId, "toTokenId");
+        require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
+        require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
+        require(_example.nonce == parsed.nonce, "nonce");
+    }
 }

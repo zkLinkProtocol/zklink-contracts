@@ -149,14 +149,24 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(toProcess > 0, "9"); // no deposits to process
         uint64 currentDepositIdx = 0;
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
-            if (priorityRequests[id].opType == Operations.OpType.Deposit) {
+            if (priorityRequests[id].opType == Operations.OpType.Deposit ||
+                priorityRequests[id].opType == Operations.OpType.QuickSwap) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
                 ++currentDepositIdx;
 
-                Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
-                bytes22 packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                pendingBalances[packedBalanceKey].balanceToWithdraw += op.amount;
+                bytes22 packedBalanceKey;
+                uint128 amount;
+                if (priorityRequests[id].opType == Operations.OpType.Deposit) {
+                    Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
+                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
+                    amount = op.amount;
+                } else {
+                    Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
+                    packedBalanceKey = packAddressAndTokenId(op.owner, op.fromTokenId);
+                    amount = op.amountIn;
+                }
+                pendingBalances[packedBalanceKey].balanceToWithdraw += amount;
             }
             delete priorityRequests[id];
         }
@@ -168,6 +178,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _zkSyncAddress The receiver Layer 2 address
     function depositETH(address _zkSyncAddress) external payable {
         requireActive();
+        require(msg.value > 0, 'ZkSync: deposit amount');
+
         registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
         vault.recordDeposit(0, msg.value);
         payable(address(vault)).transfer(msg.value);
@@ -179,6 +191,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     function depositETHFromVault(address _zkSyncAddress, uint256 _amount) external {
         require(msg.sender == address(vault), 'dev0');
         requireActive();
+        require(_amount > 0, 'ZkSync: deposit amount');
+
         registerDeposit(0, SafeCast.toUint128(_amount), _zkSyncAddress);
         vault.recordDeposit(0, _amount);
     }
@@ -193,6 +207,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         address _zkSyncAddress
     ) external nonReentrant {
         requireActive();
+        require(_amount > 0, 'ZkSync: deposit amount');
 
         // Get token id by its address
         uint16 lpTokenId = tokenIds[address(_token)];
@@ -210,11 +225,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
             pairManager.burn(address(_token), msg.sender, _amount);
             registerDeposit(lpTokenId, _amount, _zkSyncAddress);
         } else {
-            // Note: deposit amount must get through balance diff
-            uint256 balanceBefore = _token.balanceOf(address(vault));
-            require(Utils.transferFromERC20(_token, msg.sender, address(vault), SafeCast.toUint128(_amount)), "c"); // token transfer failed deposit
-            uint256 balanceAfter = _token.balanceOf(address(vault));
-            uint128 depositAmount = SafeCast.toUint128(balanceAfter.sub(balanceBefore));
+            uint128 depositAmount = depositTokenToVault(_token, _amount);
 
             registerDeposit(tokenId, depositAmount, _zkSyncAddress);
             vault.recordDeposit(tokenId, depositAmount);
@@ -225,8 +236,51 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(msg.sender == address(vault), 'dev1');
         requireActive();
         require(governance.tokenAddresses(_tokenId) != address(0), 'dev2');
+        require(_amount > 0, 'ZkSync: deposit amount');
+
         registerDeposit(_tokenId, SafeCast.toUint128(_amount), _zkSyncAddress);
         vault.recordDeposit(_tokenId, _amount);
+    }
+
+    /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
+    /// @param _amountIn Swap amount of from token
+    /// @param _amountOutMin Minimum swap out amount of to token
+    /// @param _withdrawFee Withdraw fee, 100 means 1%
+    /// @param _fromToken Swap token from
+    /// @param _toChainId Chain id of to token
+    /// @param _toTokenId Swap token to
+    /// @param _to To token received address
+    /// @param _nonce Used to produce unique accept info
+    function swapExactTokensForTokens(uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external {
+        requireActive();
+        require(_amountIn > 0, 'ZkSync: deposit amount');
+        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
+
+        // Only support non lp token
+        uint16 fromTokenId = governance.validateTokenAddress(address(_fromToken));
+        require(!governance.pausedTokens(fromTokenId), "ZkSync: fromToken"); // token deposits are paused
+
+        uint128 depositAmount = depositTokenToVault(_fromToken, _amountIn);
+
+        registerQuickSwap(depositAmount, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+        vault.recordDeposit(fromTokenId, depositAmount);
+    }
+
+    /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
+    /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
+    /// @param _withdrawFee Withdraw fee, 100 means 1%
+    /// @param _toChainId Chain id of to token
+    /// @param _toTokenId Swap token to
+    /// @param _to To token received address
+    /// @param _nonce Used to produce unique accept info
+    function swapExactETHForTokens(uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
+        requireActive();
+        require(msg.value > 0, 'Zksync: Deposit amount');
+        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
+
+        registerQuickSwap(SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
+        vault.recordDeposit(0, msg.value);
+        payable(address(vault)).transfer(msg.value);
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
@@ -307,6 +361,15 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         pendingBalances[packedBalanceKey].gasReserveValue = FILLED_GAS_RESERVE_VALUE;
     }
 
+    /// @notice Deposit token to vault and return really deposited amount
+    function depositTokenToVault(IERC20 token, uint104 amount) internal returns (uint128) {
+        // Note: deposit amount must get through balance diff
+        uint256 balanceBefore = token.balanceOf(address(vault));
+        require(Utils.transferFromERC20(token, msg.sender, address(vault), SafeCast.toUint128(amount)), "c"); // token transfer failed deposit
+        uint256 balanceAfter = token.balanceOf(address(vault));
+        return SafeCast.toUint128(balanceAfter.sub(balanceBefore));
+    }
+
     /// @notice Register create pair request - pack pubdata, add priority request and emit CreatePair event
     /// @param _tokenAId Token A by id
     /// @param _tokenBId Token B by id
@@ -347,6 +410,36 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         bytes memory pubData = Operations.writeDepositPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.Deposit, pubData);
         emit Deposit(_tokenId, _amount);
+    }
+
+    /// @notice Register swap request - pack pubdata, add priority request and emit OnchainQuickSwap event
+    function registerQuickSwap(
+        uint128 _amountIn,
+        uint128 _amountOutMin,
+        uint16 _withdrawFee,
+        uint16 _fromTokenId,
+        uint8 _toChainId,
+        uint16 _toTokenId,
+        address _to,
+        uint32 _nonce
+    ) internal {
+        // Priority Queue request
+        Operations.QuickSwap memory op =
+            Operations.QuickSwap({
+                fromChainId: CHAIN_ID,
+                toChainId: _toChainId,
+                owner: msg.sender,
+                fromTokenId: _fromTokenId,
+                amountIn: _amountIn,
+                to: _to,
+                toTokenId: _toTokenId,
+                amountOutMin: _amountOutMin,
+                withdrawFee: _withdrawFee,
+                nonce: _nonce
+            });
+        bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
+        addPriorityRequest(Operations.OpType.QuickSwap, pubData);
+        emit QuickSwap(msg.sender, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
     }
 
     /// @notice Register withdrawal - update user balance and emit OnchainWithdrawal event

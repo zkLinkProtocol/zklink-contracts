@@ -22,16 +22,18 @@ library Operations {
         FullExit,
         ChangePubKey,
         ForcedExit,
-        TransferFrom,
         CreatePair,
         AddLiquidity,
         RemoveLiquidity,
-        Swap
+        Swap,
+        QuickSwap
     }
 
     // Byte lengths
 
     uint8 constant OP_TYPE_BYTES = 1;
+
+    uint8 constant CHAIN_BYTES = 1;
 
     uint8 constant TOKEN_BYTES = 2;
 
@@ -238,5 +240,63 @@ library Operations {
     /// @notice Write create pair pubdata for priority queue check.
     function checkCreatePairInPriorityQueue(CreatePair memory op, bytes20 hashedPubdata) internal pure returns (bool) {
         return Utils.hashBytesToBytes20(writeCreatePairPubdataForPriorityQueue(op)) == hashedPubdata;
+    }
+
+    // QuickSwap pubdata
+    struct QuickSwap {
+        // uint8 opType
+        uint8 fromChainId;
+        uint8 toChainId;
+        address owner;
+        uint16 fromTokenId;
+        uint128 amountIn;
+        address to;
+        uint16 toTokenId;
+        uint128 amountOutMin;
+        uint16 withdrawFee;
+        uint32 nonce;
+    }
+
+    uint256 public constant PACKED_QUICK_SWAP_PUBDATA_BYTES =
+    OP_TYPE_BYTES + 2 * (CHAIN_BYTES + AMOUNT_BYTES + TOKEN_BYTES + ADDRESS_BYTES) + FEE_BYTES + NONCE_BYTES;
+
+    /// Deserialize quick swap pubdata
+    function readQuickSwapPubdata(bytes memory _data) internal pure returns (QuickSwap memory parsed) {
+        // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.fromChainId) = Bytes.readUint8(_data, offset); // fromChainId
+        (offset, parsed.toChainId) = Bytes.readUint8(_data, offset); // toChainId
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
+        (offset, parsed.fromTokenId) = Bytes.readUInt16(_data, offset); // fromTokenId
+        (offset, parsed.amountIn) = Bytes.readUInt128(_data, offset); // amountIn
+        (offset, parsed.to) = Bytes.readAddress(_data, offset); // to
+        (offset, parsed.toTokenId) = Bytes.readUInt16(_data, offset); // toTokenId
+        (offset, parsed.amountOutMin) = Bytes.readUInt128(_data, offset); // amountOutMin
+        (offset, parsed.withdrawFee) = Bytes.readUInt16(_data, offset); // withdrawAmountOutMin
+        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
+
+        require(offset == PACKED_QUICK_SWAP_PUBDATA_BYTES, "Operations: Read QuickSwap"); // reading invalid quick swap pubdata size
+    }
+
+    /// Serialize quick swap pubdata
+    function writeQuickSwapPubdataForPriorityQueue(QuickSwap memory op) internal pure returns (bytes memory buf) {
+        buf = abi.encodePacked(
+            uint8(OpType.QuickSwap),
+            op.fromChainId,
+            op.toChainId,
+            op.owner,
+            op.fromTokenId,
+            op.amountIn,
+            op.to,
+            op.toTokenId,
+            op.amountOutMin,
+            op.withdrawFee,
+            op.nonce
+        );
+    }
+
+    /// @notice Write quick swap pubdata for priority queue check.
+    function checkQuickSwapInPriorityQueue(QuickSwap memory op, bytes20 hashedPubdata) internal pure returns (bool) {
+        return Utils.hashBytesToBytes20(writeQuickSwapPubdataForPriorityQueue(op)) == hashedPubdata;
     }
 }

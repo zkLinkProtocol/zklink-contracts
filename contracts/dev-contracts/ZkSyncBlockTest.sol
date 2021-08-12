@@ -55,4 +55,8 @@ contract ZkSyncBlockTest is ZkSyncBlock {
             increaseBalanceToWithdraw(packedBalanceKey, _amount);
         }
     }
+
+    function testAccepterWithdraw(bytes calldata _pubdata) external {
+        accepterWithdraw(_pubdata);
+    }
 }

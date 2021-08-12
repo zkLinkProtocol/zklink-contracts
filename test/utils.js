@@ -63,6 +63,22 @@ function getCreatePairPubdata({ accountId, tokenAId, tokenBId, tokenPairId, pair
     ]);
 }
 
+function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce }) {
+    return ethers.utils.concat([
+        ethers.utils.arrayify('0x0d'),
+        ethers.utils.arrayify(fromChainId),
+        ethers.utils.arrayify(toChainId),
+        ethers.utils.arrayify(owner),
+        ethers.utils.arrayify(fromTokenId),
+        ethers.utils.arrayify(amountIn),
+        ethers.utils.arrayify(to),
+        ethers.utils.arrayify(toTokenId),
+        ethers.utils.arrayify(amountOutMin),
+        ethers.utils.arrayify(withdrawFee),
+        ethers.utils.arrayify(nonce)
+    ]);
+}
+
 async function calFee(tx) {
     let gasPrice = tx.gasPrice;
     let txr = await ethers.provider.getTransactionReceipt(tx.hash);
@@ -77,5 +93,6 @@ module.exports = {
     getFullExitPubdata,
     getChangePubkeyPubdata,
     getCreatePairPubdata,
+    getQuickSwapPubdata,
     calFee
 };

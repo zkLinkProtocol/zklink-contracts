@@ -231,6 +231,41 @@ contract ZkSyncBlock is ZkSyncBase {
         }
     }
 
+    /// @notice Accepter accept a fast withdraw, accepter will get a fee of (amount - amountOutMin)
+    /// @param accepter Accepter
+    /// @param receiver User receive token from accepter
+    /// @param tokenId Token id, only non lp token supported
+    /// @param amount Fast withdraw amount
+    /// @param withdrawFee Fast withdraw fee taken by accepter
+    /// @param nonce Used to produce unique accept info
+    function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable {
+        uint128 fee = amount * withdrawFee / MAX_WITHDRAW_FEE;
+        uint128 amountReceive = amount - fee;
+        require(amountReceive > 0 && amountReceive <= amount, 'ZkSyncBlock: amountReceive');
+
+        bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
+        require(accepts[hash] == address(0), 'ZkSyncBlock: accepted');
+
+        accepts[hash] = accepter;
+
+        // send token to receiver from msg.sender
+        if (tokenId == 0) {
+            // accepter should transfer at least amountReceive platform token to this contract
+            require(msg.value >= amountReceive, 'ZkSyncBlock: msg value');
+            payable(receiver).transfer(amountReceive);
+            // if there are any left return back to accepter
+            if (msg.value > amountReceive) {
+                payable(msg.sender).transfer(msg.value - amountReceive);
+            }
+        } else {
+            address tokenAddress = governance.tokenAddresses(tokenId);
+            governance.validateTokenAddress(tokenAddress);
+            // transfer erc20 token from accepter to receiver directly
+            Utils.transferFromERC20(IERC20(tokenAddress), msg.sender, receiver, amountReceive);
+        }
+        emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
+    }
+
     /// @dev Process one block commit using previous block StoredBlockInfo,
     /// @dev returns new block StoredBlockInfo
     /// @dev NOTE: Does not change storage (except events, so we can't mark it view)
@@ -331,6 +366,8 @@ contract ZkSyncBlock is ZkSyncBase {
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.owner, op.amount);
+            } else if (opType == Operations.OpType.QuickSwap) {
+                accepterWithdraw(pubData);
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -401,6 +438,18 @@ contract ZkSyncBlock is ZkSyncBase {
 
                 checkPriorityOperation(createPairData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
                 priorityOperationsProcessed++;
+            } else if (opType == Operations.OpType.QuickSwap) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
+                Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
+                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkSyncBlock: chain id');
+                // fromChainId and toChainId may be the same
+                if (quickSwapData.fromChainId == CHAIN_ID) {
+                    checkPriorityOperation(quickSwapData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    priorityOperationsProcessed++;
+                }
+                if (quickSwapData.toChainId == CHAIN_ID) {
+                    processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
+                }
             } else {
                 bytes memory opPubData;
 
@@ -586,6 +635,17 @@ contract ZkSyncBlock is ZkSyncBase {
         require(Operations.checkDepositInPriorityQueue(_deposit, hashedPubdata), "I");
     }
 
+    /// @notice Checks that quick swap is same as operation in priority queue
+    /// @param _quickSwap Quick swap data
+    /// @param _priorityRequestId Operation's id in priority queue
+    function checkPriorityOperation(Operations.QuickSwap memory _quickSwap, uint64 _priorityRequestId) internal view {
+        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
+        require(priorReqType == Operations.OpType.QuickSwap, "ZkSyncBlock: QuickSwap Op Type"); // incorrect priority op type
+
+        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
+        require(Operations.checkQuickSwapInPriorityQueue(_quickSwap, hashedPubdata), "ZkSyncBlock: QuickSwap Hash");
+    }
+
     /// @notice Checks that FullExit is same as operation in priority queue
     /// @param _fullExit FullExit data
     /// @param _priorityRequestId Operation's id in priority queue
@@ -611,5 +671,19 @@ contract ZkSyncBlock is ZkSyncBase {
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
         uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
+    }
+
+    function accepterWithdraw(bytes memory pubData) internal {
+        Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
+        bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOutMin, op.withdrawFee, op.nonce));
+        address accepter = accepts[hash];
+        if (accepter == address(0)) {
+            // receiver act as a accepter
+            accepts[hash] = op.to;
+            withdrawOrStore(op.toTokenId, op.to, op.amountOutMin);
+        } else {
+            // accepter profit is (amountOutMin - fee)
+            withdrawOrStore(op.toTokenId, accepter, op.amountOutMin);
+        }
     }
 }

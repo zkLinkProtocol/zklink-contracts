@@ -43,6 +43,7 @@ contract Config {
 
     uint256 constant NOOP_BYTES = 1 * CHUNK_BYTES;
     uint256 constant DEPOSIT_BYTES = 6 * CHUNK_BYTES;
+    uint256 constant QUICK_SWAP_BYTES = 10 * CHUNK_BYTES;
     uint256 constant TRANSFER_TO_NEW_BYTES = 6 * CHUNK_BYTES;
     uint256 constant PARTIAL_EXIT_BYTES = 6 * CHUNK_BYTES;
     uint256 constant TRANSFER_BYTES = 2 * CHUNK_BYTES;
@@ -98,8 +99,8 @@ contract Config {
     /// @dev Auth fact reset timelock
     uint256 constant AUTH_FACT_RESET_TIMELOCK = 1 days;
 
-    /// @dev Number of cross chains, this will be changed when add more cross chain
-    uint256 constant CROSS_CHAIN_NUM = 2;
+    /// @dev When set fee = 100, it means 1%
+    uint16 MAX_WITHDRAW_FEE = 10000;
 
     /// @dev Chain id
     uint8 constant CHAIN_ID = $(CHAIN_ID);

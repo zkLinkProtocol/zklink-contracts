@@ -23,6 +23,20 @@ interface Events {
     /// @notice Event emitted when user funds are deposited to the zkSync contract
     event Deposit(uint16 indexed tokenId, uint128 amount);
 
+    /// @notice Event emitted when user funds are deposited and swap to the zkSync contract
+    event QuickSwap(address indexed sender,
+        uint128 amountIn,
+        uint128 amountOutMin,
+        uint16 withdrawFee,
+        uint16 indexed fromTokenId,
+        uint8 toChainId,
+        uint16 toTokenId,
+        address to,
+        uint32 nonce);
+
+    /// @notice Event emitted when accepter accept a fast withdraw
+    event Accept(address indexed accepter, address indexed receiver, uint16 indexed tokenId, uint128 amount, uint128 fee, uint32 nonce);
+
     /// @notice Event emitted when user sends a authentication fact (e.g. pub-key hash)
     event FactAuth(address indexed sender, uint32 nonce, bytes fact);
 
