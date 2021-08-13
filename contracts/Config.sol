@@ -28,7 +28,7 @@ contract Config {
     uint8 constant SUCCESS_FLAG_BYTES = 1;
 
     /// @dev Max amount of tokens registered in the network (excluding ETH, which is hardcoded as tokenId = 0)
-    uint16 constant MAX_AMOUNT_OF_REGISTERED_TOKENS = 127;
+    uint16 constant MAX_AMOUNT_OF_REGISTERED_TOKENS = $(MAX_AMOUNT_OF_REGISTERED_TOKENS);
 
     /// @dev Max account id that could be registered in the network
     uint32 constant MAX_ACCOUNT_ID = (2**24) - 1;
@@ -64,7 +64,7 @@ contract Config {
 
     /// @dev Expiration delta for priority request to be satisfied (in ETH blocks)
     uint256 constant PRIORITY_EXPIRATION =
-        PRIORITY_EXPIRATION_PERIOD / BLOCK_PERIOD;
+        $(defined(PRIORITY_EXPIRATION) ? PRIORITY_EXPIRATION : PRIORITY_EXPIRATION_PERIOD / BLOCK_PERIOD);
 
     /// @dev Maximum number of priority request to clear during verifying the block
     /// @dev Cause deleting storage slots cost 5k gas per each slot it's unprofitable to clear too many slots
@@ -94,7 +94,7 @@ contract Config {
     uint256 constant COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 15 minutes;
 
     /// @dev Bit mask to apply for verifier public input before verifying.
-    uint256 constant INPUT_MASK = 14474011154664524427946373126085988481658748083205070504932198000989141204991;
+    uint256 constant INPUT_MASK = $$(~uint256(0) >> 3);
 
     /// @dev Auth fact reset timelock
     uint256 constant AUTH_FACT_RESET_TIMELOCK = 1 days;

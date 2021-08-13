@@ -7,7 +7,7 @@ contract PairTokenManager {
     uint16 constant MAX_AMOUNT_OF_PAIR_TOKENS = 1920;
 
     // 0 is eth, 1-127 is erc20 token id
-    uint16 constant PAIR_TOKEN_START_ID = 128;
+    uint16 constant PAIR_TOKEN_START_ID = $(MAX_AMOUNT_OF_REGISTERED_TOKENS) + 1;
 
     /// @notice Total number of pair tokens registered in the network
     uint16 public totalPairTokens;

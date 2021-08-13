@@ -132,7 +132,7 @@ contract Vault is VaultStorage, IVault {
     }
 
     /// @notice Return the time of strategy take effective
-    function strategyActiveWaitTime() public pure returns (uint256) {
+    function strategyActiveWaitTime() virtual public pure returns (uint256) {
         return STRATEGY_ACTIVE_WAIT;
     }
 

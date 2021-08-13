@@ -7,6 +7,7 @@ require("./interact");
 const vaultAddress = process.env.VAULT_ADDRESS === undefined ? 'address(0)' : process.env.VAULT_ADDRESS;
 
 const ethConfig = {
+  MAX_AMOUNT_OF_REGISTERED_TOKENS: 127,
   BLOCK_PERIOD: '15 seconds',
   // UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '7 days',
@@ -15,6 +16,7 @@ const ethConfig = {
 };
 
 const bscConfig = {
+  MAX_AMOUNT_OF_REGISTERED_TOKENS: 127,
   BLOCK_PERIOD: '3 seconds',
   // UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '7 days',
@@ -23,6 +25,7 @@ const bscConfig = {
 };
 
 const hecoConfig = {
+  MAX_AMOUNT_OF_REGISTERED_TOKENS: 127,
   BLOCK_PERIOD: '3 seconds',
   // UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '7 days',
@@ -31,6 +34,7 @@ const hecoConfig = {
 };
 
 const testConfig = {
+  MAX_AMOUNT_OF_REGISTERED_TOKENS: 127,
   BLOCK_PERIOD: '3 seconds',
   UPGRADE_NOTICE_PERIOD: 0,
   STRATEGY_ACTIVE_WAIT: '0 days',

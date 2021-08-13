@@ -60,4 +60,8 @@ contract VaultTest is Vault {
         address strategy = tv.strategy;
         IStrategy(strategy).withdraw(amount);
     }
+
+    function strategyActiveWaitTime() override public pure returns (uint256) {
+        return 7 days;
+    }
 }
