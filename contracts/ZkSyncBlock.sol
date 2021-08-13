@@ -531,7 +531,7 @@ contract ZkSyncBlock is ZkSyncBase {
         keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n152",
-                "Register zkSync pubkey:\n\n",
+                "Register zkLink pubkey:\n\n",
                 Bytes.bytesToHexASCIIBytes(abi.encodePacked(_changePk.pubKeyHash)),
                 "\n",
                 "nonce: 0x",
