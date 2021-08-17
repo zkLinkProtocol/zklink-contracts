@@ -243,6 +243,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
+    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
     /// @param _amountIn Swap amount of from token
     /// @param _amountOutMin Minimum swap out amount of to token
     /// @param _withdrawFee Withdraw fee, 100 means 1%
@@ -251,7 +252,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
-    function swapExactTokensForTokens(uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external {
+    function swapExactTokensForTokens(address _zkSyncAddress, uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external {
         requireActive();
         require(_amountIn > 0, 'ZkSync: deposit amount');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
@@ -262,23 +263,24 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
 
         uint128 depositAmount = depositTokenToVault(_fromToken, _amountIn);
 
-        registerQuickSwap(depositAmount, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+        registerQuickSwap(_zkSyncAddress, depositAmount, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
         vault.recordDeposit(fromTokenId, depositAmount);
     }
 
     /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
+    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
     /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
     /// @param _withdrawFee Withdraw fee, 100 means 1%
     /// @param _toChainId Chain id of to token
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
-    function swapExactETHForTokens(uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
+    function swapExactETHForTokens(address _zkSyncAddress,uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
         requireActive();
         require(msg.value > 0, 'Zksync: Deposit amount');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
 
-        registerQuickSwap(SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
+        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
         vault.recordDeposit(0, msg.value);
         payable(address(vault)).transfer(msg.value);
     }
@@ -414,6 +416,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
 
     /// @notice Register swap request - pack pubdata, add priority request and emit OnchainQuickSwap event
     function registerQuickSwap(
+        address _owner,
         uint128 _amountIn,
         uint128 _amountOutMin,
         uint16 _withdrawFee,
@@ -428,7 +431,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
             Operations.QuickSwap({
                 fromChainId: CHAIN_ID,
                 toChainId: _toChainId,
-                owner: msg.sender,
+                owner: _owner,
                 fromTokenId: _fromTokenId,
                 amountIn: _amountIn,
                 to: _to,
@@ -439,7 +442,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
             });
         bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.QuickSwap, pubData);
-        emit QuickSwap(msg.sender, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+        emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
     }
 
     /// @notice Register withdrawal - update user balance and emit OnchainWithdrawal event

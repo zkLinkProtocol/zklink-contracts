@@ -252,6 +252,8 @@ library Operations {
         uint128 amountIn;
         address to;
         uint16 toTokenId;
+        // amountOutMin has two meanings, the first refers to swap slippage of the from chain
+        // and the second refers to the actual amountOut of the to chain
         uint128 amountOutMin;
         uint16 withdrawFee;
         uint32 nonce;

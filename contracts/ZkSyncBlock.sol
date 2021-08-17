@@ -367,7 +367,11 @@ contract ZkSyncBlock is ZkSyncBase {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.QuickSwap) {
-                accepterWithdraw(pubData);
+                Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
+                // only to chain need to process QuickSwap data in executeBlocks
+                if (op.toChainId == CHAIN_ID) {
+                    accepterWithdraw(op);
+                }
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -673,8 +677,11 @@ contract ZkSyncBlock is ZkSyncBase {
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
     }
 
-    function accepterWithdraw(bytes memory pubData) internal {
-        Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
+    function accepterWithdraw(Operations.QuickSwap memory op) internal {
+        // if amountOutMin is zero it means swap failed
+        if (op.amountOutMin == 0) {
+            return;
+        }
         bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOutMin, op.withdrawFee, op.nonce));
         address accepter = accepts[hash];
         if (accepter == address(0)) {

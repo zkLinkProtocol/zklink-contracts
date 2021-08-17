@@ -44,82 +44,82 @@ describe('Deposit swap unit tests', function () {
         await vault.setZkSyncAddress(zkSync.address);
     });
 
-    // it('should revert when exodusMode is active', async () => {
-    //     await zkSync.setExodusMode(true);
-    //     await expect(zkSync.swapExactETHForTokens(0, 0, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
-    //     await expect(zkSync.swapExactTokensForTokens(1, 0, 0, token.address, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
-    // });
-    //
-    // it('quick swap eth should success', async () => {
-    //     const amountIn = hardhat.ethers.utils.parseEther("1");
-    //     const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-    //     const withdrawFee = 3;
-    //     const toChainId = 1;
-    //     const toTokenId = 1;
-    //     const to = bob.address;
-    //     await zkSync.connect(bob).swapExactETHForTokens(amountOutMin, withdrawFee, toChainId, toTokenId, to, 0,{value:amountIn});
-    //     let contractBalance = await hardhat.ethers.provider.getBalance(vault.address);
-    //     expect(contractBalance).equal(amountIn);
-    // });
-    //
-    // it('quick swap non lp erc20 should success', async () => {
-    //     const amountIn = hardhat.ethers.utils.parseEther("1");
-    //     const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-    //     const withdrawFee = 3;
-    //     const toChainId = 1;
-    //     const toTokenId = 1;
-    //     const to = bob.address;
-    //     await token.connect(bob).mint(amountIn);
-    //     await token.connect(bob).approve(zkSync.address, amountIn);
-    //     await zkSync.connect(bob).swapExactTokensForTokens(amountIn, amountOutMin, withdrawFee, token.address, toChainId, toTokenId, to, 0);
-    //     expect(await token.balanceOf(vault.address)).equal(amountIn);
-    // });
-    //
-    // it('quick swap lp erc20 should fail', async () => {
-    //     const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
-    //     const tokenA = await erc20Factory.deploy(10000);
-    //     const tokenB = await erc20Factory.deploy(10000);
-    //     await governance.connect(alice).addToken(tokenA.address);
-    //     await governance.connect(alice).addToken(tokenB.address);
-    //     await zkSync.connect(alice).createPair(tokenA.address, tokenB.address); // the first lp token id = 128
-    //
-    //     const amountIn = hardhat.ethers.utils.parseEther("1");
-    //     const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-    //     const withdrawFee = 3;
-    //     const toChainId = 1;
-    //     const toTokenId = 1;
-    //     const to = bob.address;
-    //
-    //     let pairAddress = await uniswapV2.getPair(tokenA.address, tokenB.address);
-    //     await zkSync.pairMint(pairAddress, bob.address, amountIn);
-    //     const pairToken = erc20Factory.attach(pairAddress);
-    //     await pairToken.connect(bob).approve(zkSync.address, amountIn);
-    //     await expect(zkSync.connect(bob).swapExactTokensForTokens(amountIn, amountOutMin, withdrawFee, pairToken.address, toChainId, toTokenId, to, 0)).to.be.revertedWith("1i");
-    // });
-    //
-    // it('cancelOutstandingDepositsForExodusMode should success', async () => {
-    //     await zkSync.connect(bob).depositETH(bob.address, {value:30});
-    //     await zkSync.connect(bob).swapExactETHForTokens(0, 0, 1, 1, bob.address, 0,{value:20});
-    //
-    //     const tokenId = '0x0000';
-    //     const amount = '0x0000000000000000000000000000001e';
-    //     const owner = bob.address;
-    //     const pubdata0 = writeDepositPubdata({ tokenId, amount, owner });
-    //
-    //     const fromChainId = '0x00';
-    //     const toChainId = '0x01';
-    //     const toTokenId = '0x0001';
-    //     const amountIn = '0x00000000000000000000000000000014';
-    //     const amountOutMin = '0x00000000000000000000000000000000';
-    //     const withdrawFee = '0x0000';
-    //     const nonce = '0x00000000';
-    //     const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce});
-    //     await zkSync.setExodusMode(true);
-    //     await zkSync.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-    //     await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50, 0)).to
-    //         .emit(zkSync, 'Withdrawal')
-    //         .withArgs(0, 50);
-    // });
+    it('should revert when exodusMode is active', async () => {
+        await zkSync.setExodusMode(true);
+        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 0, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
+        await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, 0, token.address, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
+    });
+
+    it('quick swap eth should success', async () => {
+        const amountIn = hardhat.ethers.utils.parseEther("1");
+        const amountOutMin = hardhat.ethers.utils.parseEther("3000");
+        const withdrawFee = 3;
+        const toChainId = 1;
+        const toTokenId = 1;
+        const to = bob.address;
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amountOutMin, withdrawFee, toChainId, toTokenId, to, 0,{value:amountIn});
+        let contractBalance = await hardhat.ethers.provider.getBalance(vault.address);
+        expect(contractBalance).equal(amountIn);
+    });
+
+    it('quick swap non lp erc20 should success', async () => {
+        const amountIn = hardhat.ethers.utils.parseEther("1");
+        const amountOutMin = hardhat.ethers.utils.parseEther("3000");
+        const withdrawFee = 3;
+        const toChainId = 1;
+        const toTokenId = 1;
+        const to = bob.address;
+        await token.connect(bob).mint(amountIn);
+        await token.connect(bob).approve(zkSync.address, amountIn);
+        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amountIn, amountOutMin, withdrawFee, token.address, toChainId, toTokenId, to, 0);
+        expect(await token.balanceOf(vault.address)).equal(amountIn);
+    });
+
+    it('quick swap lp erc20 should fail', async () => {
+        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+        const tokenA = await erc20Factory.deploy(10000);
+        const tokenB = await erc20Factory.deploy(10000);
+        await governance.connect(alice).addToken(tokenA.address);
+        await governance.connect(alice).addToken(tokenB.address);
+        await zkSync.connect(alice).createPair(tokenA.address, tokenB.address); // the first lp token id = 128
+
+        const amountIn = hardhat.ethers.utils.parseEther("1");
+        const amountOutMin = hardhat.ethers.utils.parseEther("3000");
+        const withdrawFee = 3;
+        const toChainId = 1;
+        const toTokenId = 1;
+        const to = bob.address;
+
+        let pairAddress = await uniswapV2.getPair(tokenA.address, tokenB.address);
+        await zkSync.pairMint(pairAddress, bob.address, amountIn);
+        const pairToken = erc20Factory.attach(pairAddress);
+        await pairToken.connect(bob).approve(zkSync.address, amountIn);
+        await expect(zkSync.connect(bob).swapExactTokensForTokens(bob.address, amountIn, amountOutMin, withdrawFee, pairToken.address, toChainId, toTokenId, to, 0)).to.be.revertedWith("1i");
+    });
+
+    it('cancelOutstandingDepositsForExodusMode should success', async () => {
+        await zkSync.connect(bob).depositETH(bob.address, {value:30});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 0, 1, 1, bob.address, 0,{value:20});
+
+        const tokenId = '0x0000';
+        const amount = '0x0000000000000000000000000000001e';
+        const owner = bob.address;
+        const pubdata0 = writeDepositPubdata({ tokenId, amount, owner });
+
+        const fromChainId = '0x00';
+        const toChainId = '0x01';
+        const toTokenId = '0x0001';
+        const amountIn = '0x00000000000000000000000000000014';
+        const amountOutMin = '0x00000000000000000000000000000000';
+        const withdrawFee = '0x0000';
+        const nonce = '0x00000000';
+        const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce});
+        await zkSync.setExodusMode(true);
+        await zkSync.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
+        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50, 0)).to
+            .emit(zkSync, 'Withdrawal')
+            .withArgs(0, 50);
+    });
 
     it('accept eth should success', async () => {
         const opType = 13;
@@ -136,7 +136,7 @@ describe('Deposit swap unit tests', function () {
         let amount = hardhat.ethers.utils.parseEther("1");
         let withdrawFee = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("0.997");
-        await zkSync.connect(bob).swapExactETHForTokens(bobReceive, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, bobReceive, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
 
         await expect(zkSyncBlock.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSyncBlock: msg value");
         let aliceBalance0 = await alice.getBalance();
@@ -173,7 +173,7 @@ describe('Deposit swap unit tests', function () {
 
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
-        await zkSync.connect(bob).swapExactTokensForTokens(amount, amount, withdrawFee, token.address, toChainId, toTokenId, bob.address, nonce);
+        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amount, amount, withdrawFee, token.address, toChainId, toTokenId, bob.address, nonce);
 
         await token.connect(alice).mint(amount);
         let aliceBalance0 = await token.balanceOf(alice.address);
