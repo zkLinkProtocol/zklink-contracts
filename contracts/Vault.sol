@@ -141,6 +141,8 @@ contract Vault is VaultStorage, IVault {
     function addStrategy(address strategy) onlyNetworkGovernor external {
         require(strategy != address(0), 'Vault: zero strategy address');
 
+        require(IStrategy(strategy).vault() == address(this), 'Vault: invalid strategy vault address');
+
         uint16 tokenId = IStrategy(strategy).want();
         _validateToken(tokenId);
 
