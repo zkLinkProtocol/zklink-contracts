@@ -14,9 +14,6 @@ interface Events {
     /// @notice Event emitted when a block is verified
     event BlockVerification(uint32 indexed blockNumber);
 
-    /// @notice Event emitted when pair created from the zkSync contract
-    event CreatePair(uint16 indexed tokenAId, uint16 indexed tokenBId, uint16 indexed pairId, address pair);
-
     /// @notice Event emitted when user funds are withdrawn from the zkSync contract
     event Withdrawal(uint16 indexed tokenId, uint128 amount);
 

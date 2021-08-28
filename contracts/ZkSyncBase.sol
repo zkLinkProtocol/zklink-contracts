@@ -10,7 +10,7 @@ import "./PairTokenManager.sol";
 
 /// @title zkSync base contract
 /// @author ZkLink Labs
-contract ZkSyncBase is PairTokenManager, Storage, Config, Events, ReentrancyGuard {
+contract ZkSyncBase is Storage, Config, Events, ReentrancyGuard {
 
     /// @notice Checks that current state not is exodus mode
     function requireActive() internal view {

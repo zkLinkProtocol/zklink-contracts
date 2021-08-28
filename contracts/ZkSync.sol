@@ -72,13 +72,12 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     function initialize(bytes calldata initializationParameters) external {
         initializeReentrancyGuard();
 
-        (address _governanceAddress, address _verifierAddress, address _zkSyncBlock, address _pairManagerAddress, address payable _vaultAddress, bytes32 _genesisStateHash) =
-            abi.decode(initializationParameters, (address, address, address, address, address, bytes32));
+        (address _governanceAddress, address _verifierAddress, address _zkSyncBlock, address payable _vaultAddress, bytes32 _genesisStateHash) =
+            abi.decode(initializationParameters, (address, address, address, address, bytes32));
 
         verifier = Verifier(_verifierAddress);
         governance = Governance(_governanceAddress);
         zkSyncBlock = _zkSyncBlock;
-        pairManager = IUniswapV2Factory(_pairManagerAddress);
         vault = IVault(_vaultAddress);
 
         // We need initial state hash because it is used in the commitment of the next block
@@ -91,51 +90,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @notice zkSync contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {
-    }
-
-    /// @notice Create pair
-    /// @dev This function is used to creat pair
-    /// @param _tokenA Token A address
-    /// @param _tokenB Token B address
-    function createPair(address _tokenA, address _tokenB) external {
-        requireActive();
-        governance.requireGovernor(msg.sender);
-        // check _tokenA is registered or not
-        uint16 tokenAID = governance.validateTokenAddress(_tokenA);
-        // check _tokenB is registered or not
-        uint16 tokenBID = governance.validateTokenAddress(_tokenB);
-
-        // create pair
-        address pair = pairManager.createPair(_tokenA, _tokenB);
-        require(pair != address(0), "pair is invalid");
-
-        addPairToken(pair);
-
-        registerCreatePair(
-            tokenAID, tokenBID,
-            validatePairTokenAddress(pair),
-            pair);
-    }
-
-    /// @notice Create eth pair
-    /// @dev This function is used to creat eth pair
-    /// @param _tokenERC20 Token address
-    function createETHPair(address _tokenERC20) external {
-        requireActive();
-        governance.requireGovernor(msg.sender);
-        // check _tokenERC20 is registered or not
-        uint16 erc20ID = governance.validateTokenAddress(_tokenERC20);
-        // create pair
-        address pair = pairManager.createPair(address(0), _tokenERC20);
-        require(pair != address(0), "pair is invalid");
-
-        addPairToken(pair);
-
-        registerCreatePair(
-            0,
-            erc20ID,
-            validatePairTokenAddress(pair),
-            pair);
     }
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
@@ -210,26 +164,12 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(_amount > 0, 'ZkSync: deposit amount');
 
         // Get token id by its address
-        uint16 lpTokenId = tokenIds[address(_token)];
-        uint16 tokenId = 0;
-        if (lpTokenId == 0) {
-            // This means it is not a pair address
-            tokenId = governance.validateTokenAddress(address(_token));
-            require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
-        } else {
-            lpTokenId = validatePairTokenAddress(address(_token));
-        }
+        uint16 tokenId = governance.validateTokenAddress(address(_token));
+        require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
 
-        if (lpTokenId > 0) {
-            // Note: For lp token, main contract always has no money
-            pairManager.burn(address(_token), msg.sender, _amount);
-            registerDeposit(lpTokenId, _amount, _zkSyncAddress);
-        } else {
-            uint128 depositAmount = depositTokenToVault(_token, _amount);
-
-            registerDeposit(tokenId, depositAmount, _zkSyncAddress);
-            vault.recordDeposit(tokenId, depositAmount);
-        }
+        uint128 depositAmount = depositTokenToVault(_token, _amount);
+        registerDeposit(tokenId, depositAmount, _zkSyncAddress);
+        vault.recordDeposit(tokenId, depositAmount);
     }
 
     function depositERC20FromVault(uint16 _tokenId, address _zkSyncAddress, uint256 _amount) external {
@@ -310,26 +250,18 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         uint128 _amount,
         uint16 _lossBip
     ) external nonReentrant {
-        // lp token will not transfer to vault and withdraw by mint new token to owner
-        uint16 lpTokenId = tokenIds[_token];
-        if (lpTokenId > 0) {
-            validatePairTokenAddress(_token);
-            registerWithdrawal(lpTokenId, _amount, _owner);
-            pairManager.mint(_token, _owner, _amount);
-        } else {
-            // eth and non lp erc20 token is managed by vault and withdraw from vault
-            uint16 tokenId;
-            if (_token != address(0)) {
-                tokenId = governance.validateTokenAddress(_token);
-            }
-            bytes22 packedBalanceKey = packAddressAndTokenId(_owner, tokenId);
-            uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-            // We will allow withdrawals of `value` such that:
-            // `value` <= user pending balance
-            // `value` can be bigger then `_amount` requested if token takes fee from sender in addition to `_amount` requested
-            uint256 withdrawnAmount = vault.withdraw(tokenId, _owner, _amount, balance, _lossBip);
-            registerWithdrawal(tokenId, SafeCast.toUint128(withdrawnAmount), _owner);
+        // eth and non lp erc20 token is managed by vault and withdraw from vault
+        uint16 tokenId;
+        if (_token != address(0)) {
+            tokenId = governance.validateTokenAddress(_token);
         }
+        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, tokenId);
+        uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
+        // We will allow withdrawals of `value` such that:
+        // `value` <= user pending balance
+        // `value` can be bigger then `_amount` requested if token takes fee from sender in addition to `_amount` requested
+        uint256 withdrawnAmount = vault.withdraw(tokenId, _owner, _amount, balance, _lossBip);
+        registerWithdrawal(tokenId, SafeCast.toUint128(withdrawnAmount), _owner);
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request
@@ -370,26 +302,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(Utils.transferFromERC20(token, msg.sender, address(vault), SafeCast.toUint128(amount)), "c"); // token transfer failed deposit
         uint256 balanceAfter = token.balanceOf(address(vault));
         return SafeCast.toUint128(balanceAfter.sub(balanceBefore));
-    }
-
-    /// @notice Register create pair request - pack pubdata, add priority request and emit CreatePair event
-    /// @param _tokenAId Token A by id
-    /// @param _tokenBId Token B by id
-    /// @param _tokenPairId Pair token by id
-    /// @param _pair Pair address
-    function registerCreatePair(uint16 _tokenAId, uint16 _tokenBId, uint16 _tokenPairId, address _pair) internal {
-        // Priority Queue request
-        Operations.CreatePair memory op = Operations.CreatePair({
-            accountId: 0,  // unknown at this point
-            tokenAId: _tokenAId,
-            tokenBId: _tokenBId,
-            tokenPairId: _tokenPairId,
-            pair: _pair
-        });
-        bytes memory pubData = Operations.writeCreatePairPubdataForPriorityQueue(op);
-        addPriorityRequest(Operations.OpType.CreatePair, pubData);
-
-        emit CreatePair(_tokenAId, _tokenBId, _tokenPairId, _pair);
     }
 
     /// @notice Register deposit request - pack pubdata, add priority request and emit OnchainDeposit event
@@ -486,15 +398,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     }
 
     function getTokenId(address _token) internal view returns (uint16) {
-        uint16 lpTokenId = tokenIds[address(_token)];
-        uint16 tokenId = 0;
-        if (lpTokenId == 0) {
-            // This means it is not a pair address
-            tokenId = governance.validateTokenAddress(address(_token));
-        } else {
-            tokenId = validatePairTokenAddress(address(_token));
-        }
-        return tokenId;
+        return governance.validateTokenAddress(address(_token));
     }
 
     /// @notice Will run when no functions matches call data

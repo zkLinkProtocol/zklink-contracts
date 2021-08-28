@@ -9,7 +9,6 @@ import "./IERC20.sol";
 import "./Governance.sol";
 import "./Verifier.sol";
 import "./Operations.sol";
-import "./uniswap/interfaces/IUniswapV2Factory.sol";
 import "./IVault.sol";
 
 /// @title zkSync storage contract
@@ -28,9 +27,6 @@ contract Storage {
 
     /// @dev Governance contract. Contains the governor (the owner) of whole system, validators list, possible tokens list
     Governance public governance;
-
-    /// @dev UniswapV2Factory contract. Used to create pair
-    IUniswapV2Factory public pairManager;
 
     /// @dev Vault contract. Used to hold token user deposited to L1
     IVault public vault;

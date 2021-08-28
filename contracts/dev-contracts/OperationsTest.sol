@@ -55,25 +55,6 @@ contract OperationsTest {
         require(_example.nonce == parsed.nonce, "nnc");
     }
 
-    function testCreatePairPubdata(Operations.CreatePair calldata _example, bytes calldata _pubdata) external pure {
-        Operations.CreatePair memory parsed = Operations.readCreatePairPubdata(_pubdata);
-        require(_example.accountId == parsed.accountId, "tok");
-        require(_example.tokenAId == parsed.tokenAId, "tA");
-        require(_example.tokenBId == parsed.tokenBId, "tB");
-        require(_example.tokenPairId == parsed.tokenPairId, "tP");
-        require(_example.pair == parsed.pair, "p");
-    }
-
-    function testWriteCreatePairPubdata(Operations.CreatePair calldata _example) external pure {
-        bytes memory pubdata = Operations.writeCreatePairPubdataForPriorityQueue(_example);
-        Operations.CreatePair memory parsed = Operations.readCreatePairPubdata(pubdata);
-        require(0 == parsed.accountId, "acc");
-        require(_example.tokenAId == parsed.tokenAId, "tA");
-        require(_example.tokenBId == parsed.tokenBId, "tB");
-        require(_example.tokenPairId == parsed.tokenPairId, "tP");
-        require(_example.pair == parsed.pair, "p");
-    }
-
     function testQuickSwapPubdata(Operations.QuickSwap calldata _example, bytes calldata _pubdata) external pure {
         Operations.QuickSwap memory parsed = Operations.readQuickSwapPubdata(_pubdata);
         require(_example.fromChainId == parsed.fromChainId, "fromChainId");

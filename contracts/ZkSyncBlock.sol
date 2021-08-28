@@ -313,23 +313,12 @@ contract ZkSyncBlock is ZkSyncBase {
         bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
 
         bool sent = false;
-        // lp token will not transfer to vault and withdraw by mint new token to owner
-        if (_tokenId >= PAIR_TOKEN_START_ID) {
-            address _token = tokenAddresses[_tokenId];
-            validatePairTokenAddress(_token);
-            try pairManager.mint{gas: WITHDRAWAL_LP_GAS_LIMIT}(_token, _recipient, _amount) {
-                sent = true;
-            } catch {
-                sent = false;
-            }
-        } else {
-            // eth and non lp erc20 token is managed by vault and withdraw from vault
-            // set lossBip to zero to avoid loss
-            try vault.withdraw{gas: WITHDRAWAL_FROM_VAULT_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
-                sent = true;
-            } catch {
-                sent = false;
-            }
+        // eth and non lp erc20 token is managed by vault and withdraw from vault
+        // set lossBip to zero to avoid loss
+        try vault.withdraw{gas: WITHDRAWAL_FROM_VAULT_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
+            sent = true;
+        } catch {
+            sent = false;
         }
         if (sent) {
             emit Withdrawal(_tokenId, _amount);
@@ -435,13 +424,6 @@ contract ZkSyncBlock is ZkSyncBase {
                     bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
                     require(valid, "E"); // new pub key hash is not authenticated properly
                 }
-            } else if (opType == Operations.OpType.CreatePair) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CREATE_PAIR_BYTES);
-
-                Operations.CreatePair memory createPairData = Operations.readCreatePairPubdata(opPubData);
-
-                checkPriorityOperation(createPairData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
-                priorityOperationsProcessed++;
             } else if (opType == Operations.OpType.QuickSwap) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
                 Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
@@ -659,17 +641,6 @@ contract ZkSyncBlock is ZkSyncBase {
 
         bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
         require(Operations.checkFullExitInPriorityQueue(_fullExit, hashedPubdata), "K");
-    }
-
-    /// @notice Checks that create pair is same as operation in priority queue
-    /// @param _createPair Create pair data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.CreatePair memory _createPair, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.CreatePair, "CP0"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkCreatePairInPriorityQueue(_createPair, hashedPubdata), "CP1");
     }
 
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {

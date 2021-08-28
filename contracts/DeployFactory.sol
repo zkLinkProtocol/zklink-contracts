@@ -9,7 +9,6 @@ import "./ZkSync.sol";
 import "./Verifier.sol";
 import "./TokenInit.sol";
 import "./Vault.sol";
-import "./uniswap/interfaces/IUniswapV2Factory.sol";
 
 contract DeployFactory is TokenDeployInit {
     // Why do we deploy contracts in the constructor?
@@ -32,7 +31,6 @@ contract DeployFactory is TokenDeployInit {
         Governance _govTarget,
         Verifier _verifierTarget,
         address _zkSyncBlock,
-        IUniswapV2Factory _pairManagerTarget,
         Vault _vaultTarget,
         ZkSync _zkSyncTarget,
         bytes32 _genesisRoot,
@@ -45,18 +43,17 @@ contract DeployFactory is TokenDeployInit {
         require(_governor != address(0));
         require(_feeAccountAddress != address(0));
 
-        deployProxyContracts(_govTarget, _verifierTarget, _zkSyncBlock, _pairManagerTarget, _vaultTarget, _zkSyncTarget, _genesisRoot, _firstValidator, _governor);
+        deployProxyContracts(_govTarget, _verifierTarget, _zkSyncBlock, _vaultTarget, _zkSyncTarget, _genesisRoot, _firstValidator, _governor);
 
         selfdestruct(msg.sender);
     }
 
-    event Addresses(address governance, address zksync, address verifier, address pairManager, address vault, address gatekeeper);
+    event Addresses(address governance, address zksync, address verifier, address vault, address gatekeeper);
 
     function deployProxyContracts(
         Governance _governanceTarget,
         Verifier _verifierTarget,
         address _zkSyncBlock,
-        IUniswapV2Factory _pairManagerTarget,
         Vault _vaultTarget,
         ZkSync _zksyncTarget,
         bytes32 _genesisRoot,
@@ -66,13 +63,11 @@ contract DeployFactory is TokenDeployInit {
         Proxy governance = new Proxy(address(_governanceTarget), abi.encode(this));
         // set this contract as governor
         Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
-        Proxy pairManager = new Proxy(address(_pairManagerTarget), abi.encode());
         Proxy vault = new Proxy(address(_vaultTarget), abi.encode(address(governance)));
         Proxy zkSync =
-            new Proxy(address(_zksyncTarget), abi.encode(address(governance), address(verifier), _zkSyncBlock, address(pairManager), address(vault), _genesisRoot));
+            new Proxy(address(_zksyncTarget), abi.encode(address(governance), address(verifier), _zkSyncBlock, address(vault), _genesisRoot));
 
         // set zkSync address
-        IUniswapV2Factory(address(pairManager)).setZkSyncAddress(address(zkSync));
         Vault(address(vault)).setZkSyncAddress(address(zkSync));
 
         UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(zkSync);
@@ -83,9 +78,6 @@ contract DeployFactory is TokenDeployInit {
         verifier.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(verifier));
 
-        pairManager.transferMastership(address(upgradeGatekeeper));
-        upgradeGatekeeper.addUpgradeable(address(pairManager));
-
         vault.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(vault));
 
@@ -94,7 +86,7 @@ contract DeployFactory is TokenDeployInit {
 
         upgradeGatekeeper.transferMastership(_governor);
 
-        emit Addresses(address(governance), address(zkSync), address(verifier), address(pairManager), address(vault), address(upgradeGatekeeper));
+        emit Addresses(address(governance), address(zkSync), address(verifier), address(vault), address(upgradeGatekeeper));
 
         finalizeGovernance(Governance(address(governance)), _validator, _governor);
     }

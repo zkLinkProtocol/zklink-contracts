@@ -13,10 +13,6 @@ contract ZkSyncTest is ZkSync {
         exodusMode = _exodusMode;
     }
 
-    function pairMint(address _pairToken, address _to, uint _amount) external {
-        pairManager.mint(_pairToken, _to, SafeCast.toUint128(_amount));
-    }
-
     function setBalancesToWithdraw(address _account, uint16 _tokenId, uint _balance) external {
         bytes22 packedBalanceKey = packAddressAndTokenId(_account, _tokenId);
         pendingBalances[packedBalanceKey].balanceToWithdraw = SafeCast.toUint128(_balance);

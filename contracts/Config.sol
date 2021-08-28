@@ -5,8 +5,6 @@ pragma solidity ^0.7.0;
 /// @title zkSync configuration constants
 /// @author Matter Labs
 contract Config {
-    /// @dev LP token withdrawals gas limit, used only for complete withdrawals
-    uint256 constant WITHDRAWAL_LP_GAS_LIMIT = 100000;
     /// @dev None LP ERC20 tokens and ETH withdrawals gas limit, used only for complete withdrawals
     uint256 constant WITHDRAWAL_FROM_VAULT_GAS_LIMIT = 300000;
 
@@ -54,8 +52,6 @@ contract Config {
 
     /// @dev ChangePubKey operation length
     uint256 constant CHANGE_PUBKEY_BYTES = 6 * CHUNK_BYTES;
-
-    uint256 constant CREATE_PAIR_BYTES = 4 * CHUNK_BYTES;
 
     /// @dev Expiration delta for priority request to be satisfied (in seconds)
     /// @dev NOTE: Priority expiration should be > (EXPECT_VERIFICATION_IN * BLOCK_PERIOD)
