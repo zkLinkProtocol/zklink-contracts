@@ -100,7 +100,7 @@ contract Config {
     uint256 constant AUTH_FACT_RESET_TIMELOCK = 1 days;
 
     /// @dev When set fee = 100, it means 1%
-    uint16 MAX_WITHDRAW_FEE = 10000;
+    uint16 constant MAX_WITHDRAW_FEE = 10000;
 
     /// @dev Chain id
     uint8 constant CHAIN_ID = $(CHAIN_ID);
