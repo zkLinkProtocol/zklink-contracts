@@ -291,7 +291,7 @@ library Operations {
             op.amountIn,
             op.to,
             op.toTokenId,
-            op.amountOutMin,
+            0, // ignored
             op.withdrawFee,
             op.nonce
         );
