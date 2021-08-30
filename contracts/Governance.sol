@@ -60,7 +60,7 @@ contract Governance is Config {
         }
     }
 
-    /// @notice Add token to the list of networks tokens
+    /// @notice Add token to the list of networks tokens，token must not be taken fees when transfer
     /// @param _token Token address
     function addToken(address _token) external {
         requireGovernor(msg.sender);

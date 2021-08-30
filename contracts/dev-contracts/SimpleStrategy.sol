@@ -2,48 +2,24 @@
 
 pragma solidity ^0.7.0;
 
-import "../IStrategy.sol";
+import "../strategy/BaseStrategy.sol";
 import "../IERC20.sol";
 
-contract SimpleStrategy is IStrategy{
+contract SimpleStrategy is BaseStrategy{
 
-    uint256 constant MAX_BPS = 10000;
-
-    address public override vault;
-    address public token;
-    uint16 public tokenId;
-    uint256 public lossBip;
-
-    constructor(address _vault, address _token, uint16 _tokenId, uint256 _lossBip) {
-        vault = _vault;
-        token = _token;
-        tokenId = _tokenId;
-        lossBip = _lossBip;
-    }
-
-    function wantNetValue() override public view returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
-    }
-
-    function want() override public view returns (uint16) {
-        return tokenId;
+    constructor(address _vault, uint16 _want, address _wantToken) BaseStrategy(_vault, _want, _wantToken) {
     }
 
     function deposit() override external {}
 
-    function withdraw(uint256 amountNeeded) override external returns (uint256) {
-        uint256 loss = lossBip * amountNeeded / MAX_BPS;
-        IERC20(token).transfer(vault, amountNeeded - loss);
-        if (loss > 0) {
-            IERC20(token).transfer(address(0), loss);
-        }
-        return loss;
+    function withdraw(uint256 amountNeeded) override external {
+        IERC20(want).transfer(vault, amountNeeded);
     }
 
     function harvest() override external {}
 
     function migrate(address _newStrategy) override external {
-        IERC20(token).transfer(_newStrategy, wantNetValue());
+        IERC20(want).transfer(_newStrategy, IERC20(want).balanceOf(address(this)));
     }
 
     function onMigrate() override external {}

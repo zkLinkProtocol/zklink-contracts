@@ -7,23 +7,6 @@ import "../Vault.sol";
 contract VaultTest is Vault {
     using SafeMath for uint256;
 
-    /// @notice Return the total amount of token in this vault and strategy if exist
-    /// @param tokenId Token id
-    function totalAsset(uint16 tokenId) public view returns (uint256) {
-        address strategy = tokenVaults[tokenId].strategy;
-        if (strategy != address(0)) {
-            return _tokenBalance(tokenId).add(IStrategy(strategy).wantNetValue());
-        } else {
-            return _tokenBalance(tokenId);
-        }
-    }
-
-    /// @notice Return amount of debt owned by this vault
-    /// @param tokenId Token id
-    function totalDebt(uint16 tokenId) external view returns (uint256) {
-        return tokenVaults[tokenId].debt;
-    }
-
     function setStrategyTakeEffectTime(uint16 tokenId, uint256 time) external {
         tokenVaults[tokenId].takeEffectTime = time;
     }
@@ -49,10 +32,6 @@ contract VaultTest is Vault {
 
     function getNextStrategy(uint16 tokenId) external view returns (address) {
         return tokenVaults[tokenId].nextStrategy;
-    }
-
-    function recordDepositTest(uint16 tokenId, uint256 amount) external {
-        tokenVaults[tokenId].debt = tokenVaults[tokenId].debt.add(amount);
     }
 
     function withdrawFromStrategyTest(uint16 tokenId, uint256 amount) external {

@@ -8,15 +8,6 @@ pragma solidity ^0.7.0;
 interface IStrategy {
 
     /**
-     * @notice Returns the net value of want token in strategy
-     * There are three kinds of strategy:
-     * 1. want and reward token are the same, net value grows with time, no harvest
-     * 2. want and reward token are different, want net value keep constant and reward token are transferred to vault after harvest
-     * 3. want and reward token are different, want net value grows with time and reward token are transferred to vault after harvest
-     */
-    function wantNetValue() external view returns (uint256);
-
-    /**
      * @notice Returns vault contract address.
      */
     function vault() external view returns (address);
@@ -27,20 +18,23 @@ interface IStrategy {
     function want() external view returns (uint16);
 
     /**
+     * @notice Returns token strategy want to invest.
+     */
+    function wantToken() external view returns (address);
+
+    /**
     * @notice Response on vault deposit token to strategy
     */
     function deposit() external;
 
     /**
-     * @notice Withdraw `amountNeeded` token to vault(may produce some loss). Token amount return back from strategy may be a little more than
-     * amountNeeded. amountNeeded <= amountActuallyTransferredToVault + loss
+     * @notice Withdraw `amountNeeded` token to vault
      * @param amountNeeded amount need to withdraw from strategy
-     * @return loss that happened in withdraw
      */
-    function withdraw(uint256 amountNeeded) external returns (uint256);
+    function withdraw(uint256 amountNeeded) external;
 
     /**
-     * @notice Harvest reward tokens to vault.
+     * @notice Harvest reward tokens to pool.
      */
     function harvest() external;
 

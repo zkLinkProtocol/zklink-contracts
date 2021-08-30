@@ -134,21 +134,9 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         requireActive();
         require(msg.value > 0, 'ZkSync: deposit amount');
 
-        registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
-        vault.recordDeposit(0, msg.value);
         payable(address(vault)).transfer(msg.value);
-    }
-
-    /// @notice Deposit ETH to Layer 2(can only call from vault) - register deposit
-    /// @param _zkSyncAddress The receiver Layer 2 address
-    /// @param _amount Deposit amount to register
-    function depositETHFromVault(address _zkSyncAddress, uint256 _amount) external {
-        require(msg.sender == address(vault), 'dev0');
-        requireActive();
-        require(_amount > 0, 'ZkSync: deposit amount');
-
-        registerDeposit(0, SafeCast.toUint128(_amount), _zkSyncAddress);
-        vault.recordDeposit(0, _amount);
+        vault.recordDeposit(0);
+        registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
     }
 
     /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
@@ -167,19 +155,28 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
 
-        uint128 depositAmount = depositTokenToVault(_token, _amount);
-        registerDeposit(tokenId, depositAmount, _zkSyncAddress);
-        vault.recordDeposit(tokenId, depositAmount);
+        // token must not be taken fees when transfer
+        require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
+        vault.recordDeposit(tokenId);
+        registerDeposit(tokenId, _amount, _zkSyncAddress);
     }
 
-    function depositERC20FromVault(uint16 _tokenId, address _zkSyncAddress, uint256 _amount) external {
-        require(msg.sender == address(vault), 'dev1');
+    /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
+    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
+    /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
+    /// @param _withdrawFee Withdraw fee, 100 means 1%
+    /// @param _toChainId Chain id of to token
+    /// @param _toTokenId Swap token to
+    /// @param _to To token received address
+    /// @param _nonce Used to produce unique accept info
+    function swapExactETHForTokens(address _zkSyncAddress,uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
         requireActive();
-        require(governance.tokenAddresses(_tokenId) != address(0), 'dev2');
-        require(_amount > 0, 'ZkSync: deposit amount');
+        require(msg.value > 0, 'ZkSync: amountIn');
+        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
 
-        registerDeposit(_tokenId, SafeCast.toUint128(_amount), _zkSyncAddress);
-        vault.recordDeposit(_tokenId, _amount);
+        payable(address(vault)).transfer(msg.value);
+        vault.recordDeposit(0);
+        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
@@ -194,47 +191,28 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _nonce Used to produce unique accept info
     function swapExactTokensForTokens(address _zkSyncAddress, uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external {
         requireActive();
-        require(_amountIn > 0, 'ZkSync: deposit amount');
+        require(_amountIn > 0, 'ZkSync: amountIn');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
 
-        // Only support non lp token
+        // Get token id by its address
         uint16 fromTokenId = governance.validateTokenAddress(address(_fromToken));
-        require(!governance.pausedTokens(fromTokenId), "ZkSync: fromToken"); // token deposits are paused
+        require(!governance.pausedTokens(fromTokenId), "b"); // token deposits are paused
 
-        uint128 depositAmount = depositTokenToVault(_fromToken, _amountIn);
-
-        registerQuickSwap(_zkSyncAddress, depositAmount, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
-        vault.recordDeposit(fromTokenId, depositAmount);
-    }
-
-    /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
-    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
-    /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
-    /// @param _withdrawFee Withdraw fee, 100 means 1%
-    /// @param _toChainId Chain id of to token
-    /// @param _toTokenId Swap token to
-    /// @param _to To token received address
-    /// @param _nonce Used to produce unique accept info
-    function swapExactETHForTokens(address _zkSyncAddress,uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
-        requireActive();
-        require(msg.value > 0, 'Zksync: Deposit amount');
-        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
-
-        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
-        vault.recordDeposit(0, msg.value);
-        payable(address(vault)).transfer(msg.value);
+        // token must not be taken fees when transfer
+        require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit
+        vault.recordDeposit(fromTokenId);
+        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
     /// @param _address Address of the tokens owner
     /// @param _token Address of token, zero address is used for ETH
     function getPendingBalance(address _address, address _token) public view returns (uint128) {
+        uint16 tokenId = 0;
         if (_token != address(0)) {
-            uint16 tokenId = getTokenId(_token);
-            return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
-        } else {
-            return pendingBalances[packAddressAndTokenId(_address, 0)].balanceToWithdraw;
+            tokenId = governance.validateTokenAddress(_token);
         }
+        return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
     }
 
     /// @notice  Withdraws tokens from zkSync contract to the owner
@@ -243,12 +221,10 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _amount Amount to withdraw to request.
     ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkSync contract
     ///         balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    /// @param _lossBip Amount loss bip when withdraw
     function withdrawPendingBalance(
         address payable _owner,
         address _token,
-        uint128 _amount,
-        uint16 _lossBip
+        uint128 _amount
     ) external nonReentrant {
         // eth and non lp erc20 token is managed by vault and withdraw from vault
         uint16 tokenId;
@@ -257,11 +233,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         }
         bytes22 packedBalanceKey = packAddressAndTokenId(_owner, tokenId);
         uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-        // We will allow withdrawals of `value` such that:
-        // `value` <= user pending balance
-        // `value` can be bigger then `_amount` requested if token takes fee from sender in addition to `_amount` requested
-        uint256 withdrawnAmount = vault.withdraw(tokenId, _owner, _amount, balance, _lossBip);
-        registerWithdrawal(tokenId, SafeCast.toUint128(withdrawnAmount), _owner);
+        if (_amount > balance) {
+            _amount = balance;
+        }
+        require(_amount > 0, 'ZkSync: withdraw amount');
+
+        pendingBalances[packedBalanceKey].balanceToWithdraw = balance.sub(_amount);
+        vault.withdraw(tokenId, _owner, _amount);
+        emit Withdrawal(tokenId, _amount);
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request
@@ -271,11 +250,9 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         requireActive();
         require(_accountId <= MAX_ACCOUNT_ID, "e");
 
-        uint16 tokenId;
-        if (_token == address(0)) {
-            tokenId = 0;
-        } else {
-            tokenId = getTokenId(_token);
+        uint16 tokenId = 0;
+        if (_token != address(0)) {
+            tokenId = governance.validateTokenAddress(_token);
         }
 
         // Priority Queue request
@@ -293,15 +270,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         // In this case operator should just overwrite this slot during confirming withdrawal
         bytes22 packedBalanceKey = packAddressAndTokenId(msg.sender, tokenId);
         pendingBalances[packedBalanceKey].gasReserveValue = FILLED_GAS_RESERVE_VALUE;
-    }
-
-    /// @notice Deposit token to vault and return really deposited amount
-    function depositTokenToVault(IERC20 token, uint104 amount) internal returns (uint128) {
-        // Note: deposit amount must get through balance diff
-        uint256 balanceBefore = token.balanceOf(address(vault));
-        require(Utils.transferFromERC20(token, msg.sender, address(vault), SafeCast.toUint128(amount)), "c"); // token transfer failed deposit
-        uint256 balanceAfter = token.balanceOf(address(vault));
-        return SafeCast.toUint128(balanceAfter.sub(balanceBefore));
     }
 
     /// @notice Register deposit request - pack pubdata, add priority request and emit OnchainDeposit event
@@ -357,21 +325,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
     }
 
-    /// @notice Register withdrawal - update user balance and emit OnchainWithdrawal event
-    /// @param _token - token by id
-    /// @param _amount - token amount
-    /// @param _to - address to withdraw to
-    function registerWithdrawal(
-        uint16 _token,
-        uint128 _amount,
-        address payable _to
-    ) internal {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_to, _token);
-        uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-        pendingBalances[packedBalanceKey].balanceToWithdraw = balance.sub(_amount);
-        emit Withdrawal(_token, _amount);
-    }
-
     // Priority queue
 
     /// @notice Saves priority request in storage
@@ -395,10 +348,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         emit NewPriorityRequest(msg.sender, nextPriorityRequestId, _opType, _pubData, uint256(expirationBlock));
 
         totalOpenPriorityRequests++;
-    }
-
-    function getTokenId(address _token) internal view returns (uint16) {
-        return governance.validateTokenAddress(address(_token));
     }
 
     /// @notice Will run when no functions matches call data

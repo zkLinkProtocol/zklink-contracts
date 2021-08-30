@@ -15,6 +15,6 @@ contract ZkSyncUser {
     receive() external payable {}
 
     function withdrawETH(uint128 amount) external {
-        zkSync.withdrawPendingBalance(address(this), address(0), amount, 0);
+        zkSync.withdrawPendingBalance(address(this), address(0), amount);
     }
 }

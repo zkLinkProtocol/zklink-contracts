@@ -302,29 +302,14 @@ contract ZkSyncBlock is ZkSyncBase {
         );
     }
 
-    /// @dev 1. Try to send token to _recipients
-    /// @dev 2. On failure: Increment _recipients balance to withdraw.
-    /// @dev 3. Set lossBip to zero
-    function withdrawOrStore(
+    /// @dev Increment _recipients balance to withdraw.
+    function storePendingBalance(
         uint16 _tokenId,
         address _recipient,
         uint128 _amount
     ) internal {
         bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
-
-        bool sent = false;
-        // eth and non lp erc20 token is managed by vault and withdraw from vault
-        // set lossBip to zero to avoid loss
-        try vault.withdraw{gas: WITHDRAWAL_FROM_VAULT_GAS_LIMIT}(_tokenId, _recipient, _amount, _amount, 0) {
-            sent = true;
-        } catch {
-            sent = false;
-        }
-        if (sent) {
-            emit Withdrawal(_tokenId, _amount);
-        } else {
-            increaseBalanceToWithdraw(packedBalanceKey, _amount);
-        }
+        increaseBalanceToWithdraw(packedBalanceKey, _amount);
     }
 
     /// @dev Executes one block
@@ -348,13 +333,13 @@ contract ZkSyncBlock is ZkSyncBase {
 
             if (opType == Operations.OpType.PartialExit) {
                 Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
-                withdrawOrStore(op.tokenId, op.owner, op.amount);
+                storePendingBalance(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                withdrawOrStore(op.tokenId, op.target, op.amount);
+                storePendingBalance(op.tokenId, op.target, op.amount);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                withdrawOrStore(op.tokenId, op.owner, op.amount);
+                storePendingBalance(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.QuickSwap) {
                 Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
                 // only to chain need to process QuickSwap data in executeBlocks
@@ -658,10 +643,10 @@ contract ZkSyncBlock is ZkSyncBase {
         if (accepter == address(0)) {
             // receiver act as a accepter
             accepts[hash] = op.to;
-            withdrawOrStore(op.toTokenId, op.to, op.amountOutMin);
+            storePendingBalance(op.toTokenId, op.to, op.amountOutMin);
         } else {
             // accepter profit is (amountOutMin - fee)
-            withdrawOrStore(op.toTokenId, accepter, op.amountOutMin);
+            storePendingBalance(op.toTokenId, accepter, op.amountOutMin);
         }
     }
 }

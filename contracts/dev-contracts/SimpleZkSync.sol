@@ -17,8 +17,8 @@ contract SimpleZkSync {
     }
 
     function depositETH(address /*_zkSyncAddress*/) external payable {
-        vault.recordDeposit(0, msg.value);
         payable(address(vault)).transfer(msg.value);
+        vault.recordDeposit(0);
     }
 
     function depositERC20(
@@ -28,30 +28,19 @@ contract SimpleZkSync {
     ) external {
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), SafeCast.toUint128(_amount)), "fd012"); // token transfer failed deposit
-        vault.recordDeposit(tokenId, _amount);
-    }
-
-    function depositETHFromVault(address /*_zkSyncAddress*/, uint256 _amount) external {
-        require(msg.sender == address(vault), 'dev0');
-        vault.recordDeposit(0, _amount);
-    }
-
-    function depositERC20FromVault(uint16 _tokenId, address /*_zkSyncAddress*/, uint256 _amount) external {
-        require(msg.sender == address(vault), 'dev1');
-        vault.recordDeposit(_tokenId, _amount);
+        vault.recordDeposit(tokenId);
     }
 
     function withdrawPendingBalance(
         address payable _owner,
         address _token,
-        uint128 _amount,
-        uint16 _lossBip
+        uint128 _amount
     ) external {
         if (_token == address(0)) {
-            vault.withdraw(0, _owner, _amount, _amount, _lossBip);
+            vault.withdraw(0, _owner, _amount);
         } else {
             uint16 tokenId = governance.validateTokenAddress(_token);
-            vault.withdraw(tokenId, _owner, _amount, _amount, _lossBip);
+            vault.withdraw(tokenId, _owner, _amount);
         }
     }
 }
