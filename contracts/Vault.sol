@@ -55,7 +55,15 @@ contract Vault is VaultStorage, IVault {
     }
 
     function recordDeposit(uint16 tokenId) override onlyZkSync external {
-        _transferToStrategy(tokenId);
+        TokenVault memory tv = tokenVaults[tokenId];
+        address strategy = tv.strategy;
+        // deposit token to strategy if strategy is active
+        if (strategy != address(0) && tv.status == StrategyStatus.ACTIVE) {
+            // deposit all balance to strategy
+            uint256 balance = _tokenBalance(tokenId);
+            _safeTransferToken(tokenId, strategy, balance);
+            IStrategy(strategy).deposit();
+        }
     }
 
     function withdraw(uint16 tokenId, address to, uint256 amount) override onlyZkSync external {
@@ -236,20 +244,6 @@ contract Vault is VaultStorage, IVault {
     function _validateToken(uint16 tokenId) internal view {
         if (tokenId > 0) {
             require(governance.tokenAddresses(tokenId) != address(0), 'Vault: token not exist');
-        }
-    }
-
-    /// @notice Transfer token to strategy for earning
-    /// @param tokenId Token id
-    function _transferToStrategy(uint16 tokenId) internal {
-        TokenVault memory tv = tokenVaults[tokenId];
-        address strategy = tv.strategy;
-        // deposit token to strategy if strategy is active
-        if (strategy != address(0) && tv.status == StrategyStatus.ACTIVE) {
-            // deposit all balance to strategy
-            uint256 balance = _tokenBalance(tokenId);
-            _safeTransferToken(tokenId, strategy, balance);
-            IStrategy(strategy).deposit();
         }
     }
 }
