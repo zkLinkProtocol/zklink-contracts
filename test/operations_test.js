@@ -3,8 +3,8 @@ const {getDepositPubdata,
     getPartialExitPubdata,
     getFullExitPubdata,
     getChangePubkeyPubdata,
-    getCreatePairPubdata,
-    getQuickSwapPubdata} = require('./utils');
+    getQuickSwapPubdata,
+    getMappingPubdata} = require('./utils');
 
 describe('Operations unit tests', function () {
     let testContract;
@@ -82,30 +82,6 @@ describe('Operations unit tests', function () {
         await testContract.testChangePubkeyPubdata(example, pubdata);
     });
 
-    // CreatePair
-    it('Correctly Parse CreatePair pubdata', async () => {
-        const accountId = '0x01020304';
-        const tokenAId = '0x0102';
-        const tokenBId = '0x0102';
-        const tokenPairId = '0x0102';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-
-        const example = { accountId, tokenAId, tokenBId, tokenPairId, pair };
-        const pubdata = getCreatePairPubdata(example);
-        await testContract.testCreatePairPubdata(example, pubdata);
-    });
-
-    it('Correctly Write CreatePair pubdata', async () => {
-        const accountId = '0x01020304';
-        const tokenAId = '0x0102';
-        const tokenBId = '0x0102';
-        const tokenPairId = '0x0102';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-
-        const example = { accountId, tokenAId, tokenBId, tokenPairId, pair };
-        await testContract.testWriteCreatePairPubdata(example);
-    });
-
     // QuickSwap
     it('Correctly Parse QuickSwap pubdata', async () => {
         const fromChainId = '0x00';
@@ -138,5 +114,31 @@ describe('Operations unit tests', function () {
 
         const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce };
         await testContract.testWriteQuickSwapPubdata(example);
+    });
+
+    // Mapping
+    it('Correctly Parse Mapping pubdata', async () => {
+        const fromChainId = '0x00';
+        const toChainId = '0x01';
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const tokenId = '0x0102';
+        const amount = '0x101112131415161718191a1b1c1d1e1f';
+        const fee = '0x0003';
+
+        const example = { fromChainId, toChainId, owner, tokenId, amount, fee };
+        const pubdata = getMappingPubdata(example);
+        await testContract.testCreateMappingPubdata(example, pubdata);
+    });
+
+    it('Correctly Write Mapping pubdata', async () => {
+        const fromChainId = '0x00';
+        const toChainId = '0x01';
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const tokenId = '0x0102';
+        const amount = '0x101112131415161718191a1b1c1d1e1f';
+        const fee = '0x0003';
+
+        const example = { fromChainId, toChainId, owner, tokenId, amount, fee };
+        await testContract.testWriteMappingPubdata(example);
     });
 });

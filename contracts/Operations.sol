@@ -25,7 +25,8 @@ library Operations {
         AddLiquidity,
         RemoveLiquidity,
         Swap,
-        QuickSwap
+        QuickSwap,
+        Mapping
     }
 
     // Byte lengths
@@ -245,7 +246,7 @@ library Operations {
             op.amountIn,
             op.to,
             op.toTokenId,
-            uint128(0), // ignored
+            uint128(0), // amountOutMin ignored
             op.withdrawFee,
             op.nonce
         );
@@ -254,5 +255,51 @@ library Operations {
     /// @notice Write quick swap pubdata for priority queue check.
     function checkQuickSwapInPriorityQueue(QuickSwap memory op, bytes20 hashedPubdata) internal pure returns (bool) {
         return Utils.hashBytesToBytes20(writeQuickSwapPubdataForPriorityQueue(op)) == hashedPubdata;
+    }
+
+    // Mapping pubdata
+    struct Mapping {
+        // uint8 opType
+        uint8 fromChainId;
+        uint8 toChainId;
+        address owner;
+        uint16 tokenId;
+        uint128 amount;
+        uint16 fee; // present in pubdata, ignored at serialization
+    }
+
+    uint256 public constant PACKED_MAPPING_PUBDATA_BYTES =
+    OP_TYPE_BYTES + 2 * CHAIN_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES;
+
+    /// Deserialize mapping pubdata
+    function readMappingPubdata(bytes memory _data) internal pure returns (Mapping memory parsed) {
+        // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.fromChainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.toChainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.fee) = Bytes.readUInt16(_data, offset);
+
+        require(offset == PACKED_MAPPING_PUBDATA_BYTES, "Operations: Read Mapping");
+    }
+
+    /// Serialize mapping pubdata
+    function writeMappingPubdataForPriorityQueue(Mapping memory op) internal pure returns (bytes memory buf) {
+        buf = abi.encodePacked(
+            uint8(OpType.Mapping),
+            op.fromChainId,
+            op.toChainId,
+            op.owner,
+            op.tokenId,
+            op.amount,
+            uint16(0) // fee (ignored)
+        );
+    }
+
+    /// @notice Write mapping pubdata for priority queue check.
+    function checkMappingInPriorityQueue(Mapping memory op, bytes20 hashedPubdata) internal pure returns (bool) {
+        return Utils.hashBytesToBytes20(writeMappingPubdataForPriorityQueue(op)) == hashedPubdata;
     }
 }

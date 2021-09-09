@@ -79,8 +79,29 @@ contract OperationsTest {
         require(_example.amountIn == parsed.amountIn, "amountIn");
         require(_example.to == parsed.to, "to");
         require(_example.toTokenId == parsed.toTokenId, "toTokenId");
-        require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
+        require(0 == parsed.amountOutMin, "amountOutMin");
         require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
         require(_example.nonce == parsed.nonce, "nonce");
+    }
+
+    function testCreateMappingPubdata(Operations.Mapping calldata _example, bytes calldata _pubdata) external pure {
+        Operations.Mapping memory parsed = Operations.readMappingPubdata(_pubdata);
+        require(_example.fromChainId == parsed.fromChainId);
+        require(_example.toChainId == parsed.toChainId);
+        require(_example.owner == parsed.owner);
+        require(_example.tokenId == parsed.tokenId);
+        require(_example.amount == parsed.amount);
+        require(_example.fee == parsed.fee);
+    }
+
+    function testWriteMappingPubdata(Operations.Mapping calldata _example) external pure {
+        bytes memory pubdata = Operations.writeMappingPubdataForPriorityQueue(_example);
+        Operations.Mapping memory parsed = Operations.readMappingPubdata(pubdata);
+        require(_example.fromChainId == parsed.fromChainId);
+        require(_example.toChainId == parsed.toChainId);
+        require(_example.owner == parsed.owner);
+        require(_example.tokenId == parsed.tokenId);
+        require(_example.amount == parsed.amount);
+        require(0 == parsed.fee);
     }
 }
