@@ -149,6 +149,35 @@ task("deploy", "Deploy zklink")
         });
 });
 
+task("deploy_zkl", "Deploy zkl")
+    .addParam("key", "The deployer key", undefined, types.string, true)
+    .addParam("cap", "The zkl cap(in ether)")
+    .setAction(async (taskArgs) => {
+        const hardhat = require("hardhat");
+        let deployer;
+        const key = taskArgs.key;
+        if (key === undefined) {
+            [deployer] = await hardhat.ethers.getSigners();
+        } else {
+            deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        }
+        const cap = hardhat.ethers.utils.parseEther(taskArgs.cap);
+        console.log('deployer', deployer.address);
+        console.log('cap', cap.toString());
+
+        const balance = await deployer.getBalance();
+        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
+
+        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
+        const zklContract = await zklFactory.connect(deployer).deploy("ZKLINK","ZKL",cap);
+        await zklContract.deployed();
+        console.log('zkl address', zklContract.address);
+        await hardhat.run("verify:verify", {
+            address: zklContract.address,
+            constructorArguments: ["ZKLINK","ZKL",cap]
+        });
+    });
+
 task("deploy_strategy", "Deploy strategy")
     .addParam("key", "The deployer key", undefined, types.string, true)
     .addParam("strategy", "The strategy contract name")
