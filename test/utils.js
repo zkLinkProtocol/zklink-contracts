@@ -23,7 +23,7 @@ function writeDepositPubdata({ tokenId, amount, owner }) {
 
 function getPartialExitPubdata({ accountId, tokenId, amount, fee, owner }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x01'),
+        ethers.utils.arrayify('0x03'),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
@@ -34,7 +34,7 @@ function getPartialExitPubdata({ accountId, tokenId, amount, fee, owner }) {
 
 function getFullExitPubdata({ accountId, owner, tokenId, amount}) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x01'),
+        ethers.utils.arrayify('0x06'),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(owner),
         ethers.utils.arrayify(tokenId),
@@ -44,7 +44,7 @@ function getFullExitPubdata({ accountId, owner, tokenId, amount}) {
 
 function getChangePubkeyPubdata({ accountId, pubKeyHash, owner, nonce}) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x01'),
+        ethers.utils.arrayify('0x07'),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(pubKeyHash),
         ethers.utils.arrayify(owner),
@@ -54,7 +54,7 @@ function getChangePubkeyPubdata({ accountId, pubKeyHash, owner, nonce}) {
 
 function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x0d'),
+        ethers.utils.arrayify('0x0c'),
         ethers.utils.arrayify(fromChainId),
         ethers.utils.arrayify(toChainId),
         ethers.utils.arrayify(owner),
@@ -68,12 +68,13 @@ function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amount
     ]);
 }
 
-function getMappingPubdata({ fromChainId, toChainId, owner, tokenId, amount, fee }) {
+function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount, fee }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x01'),
+        ethers.utils.arrayify('0x0d'),
         ethers.utils.arrayify(fromChainId),
         ethers.utils.arrayify(toChainId),
         ethers.utils.arrayify(owner),
+        ethers.utils.arrayify(to),
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
         ethers.utils.arrayify(fee)

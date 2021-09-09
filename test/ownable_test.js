@@ -7,7 +7,7 @@ describe('Ownable unit tests', function () {
     let wallet;
     before(async () => {
         [deployer, wallet] = await hardhat.ethers.getSigners();
-        const contractFactory = await hardhat.ethers.getContractFactory('Ownable');
+        const contractFactory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/Ownable.sol:Ownable');
         testContract = await contractFactory.deploy(deployer.address);
     });
 

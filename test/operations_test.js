@@ -121,11 +121,12 @@ describe('Operations unit tests', function () {
         const fromChainId = '0x00';
         const toChainId = '0x01';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x0003';
+        const fee = '0x101112131415161718191a1b1c1d1e1f';
 
-        const example = { fromChainId, toChainId, owner, tokenId, amount, fee };
+        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee };
         const pubdata = getMappingPubdata(example);
         await testContract.testCreateMappingPubdata(example, pubdata);
     });
@@ -134,11 +135,12 @@ describe('Operations unit tests', function () {
         const fromChainId = '0x00';
         const toChainId = '0x01';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x0003';
+        const fee = '0x101112131415161718191a1b1c1d1e1f';
 
-        const example = { fromChainId, toChainId, owner, tokenId, amount, fee };
+        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee };
         await testContract.testWriteMappingPubdata(example);
     });
 });

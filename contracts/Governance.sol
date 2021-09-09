@@ -18,6 +18,8 @@ contract Governance is Config {
 
     event TokenPausedUpdate(address indexed token, bool paused);
 
+    event TokenMappingUpdate(address indexed token, bool isMapping);
+
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
 
@@ -35,6 +37,9 @@ contract Governance is Config {
 
     /// @notice Paused tokens list, deposits are impossible to create for paused tokens
     mapping(uint16 => bool) public pausedTokens;
+
+    /// @notice Mapping tokens list
+    mapping(uint16 => bool) public mappingTokens;
 
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
@@ -85,6 +90,19 @@ contract Governance is Config {
         if (pausedTokens[tokenId] != _tokenPaused) {
             pausedTokens[tokenId] = _tokenPaused;
             emit TokenPausedUpdate(_tokenAddr, _tokenPaused);
+        }
+    }
+
+    /// @notice Set token mapping
+    /// @param _tokenAddr Token address
+    /// @param _tokenMapping Token mapping status
+    function setTokenMapping(address _tokenAddr, bool _tokenMapping) external {
+        requireGovernor(msg.sender);
+
+        uint16 tokenId = this.validateTokenAddress(_tokenAddr);
+        if (mappingTokens[tokenId] != _tokenMapping) {
+            mappingTokens[tokenId] = _tokenMapping;
+            emit TokenMappingUpdate(_tokenAddr, _tokenMapping);
         }
     }
 

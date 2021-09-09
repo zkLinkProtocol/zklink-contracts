@@ -52,6 +52,7 @@ contract Config {
 
     /// @dev ChangePubKey operation length
     uint256 constant CHANGE_PUBKEY_BYTES = 6 * CHUNK_BYTES;
+    uint256 constant MAPPING_BYTES = 7 * CHUNK_BYTES;
 
     /// @dev Expiration delta for priority request to be satisfied (in seconds)
     /// @dev NOTE: Priority expiration should be > (EXPECT_VERIFICATION_IN * BLOCK_PERIOD)

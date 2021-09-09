@@ -346,6 +346,17 @@ contract ZkSyncBlock is ZkSyncBase {
                 if (op.toChainId == CHAIN_ID) {
                     accepterWithdraw(op);
                 }
+            } else if (opType == Operations.OpType.Mapping) {
+                Operations.Mapping memory op = Operations.readMappingPubdata(pubData);
+                address tokenAddress = governance.tokenAddresses(op.tokenId);
+                uint128 burnAmount = op.amount.sub(op.fee);
+                if (op.fromChainId == CHAIN_ID) {
+                    // burn token from ZkSync
+                    IMappingToken(tokenAddress).burn(burnAmount);
+                } else {
+                    // mint to controller of token mapping
+                    IMappingToken(tokenAddress).mint(op.to, burnAmount);
+                }
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -421,6 +432,18 @@ contract ZkSyncBlock is ZkSyncBase {
                 if (quickSwapData.toChainId == CHAIN_ID) {
                     processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
                 }
+            } else if (opType == Operations.OpType.Mapping) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, MAPPING_BYTES);
+                Operations.Mapping memory mappingData = Operations.readMappingPubdata(opPubData);
+                // fromChainId and toChainId will not be the same
+                require(mappingData.fromChainId != mappingData.toChainId &&
+                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkSyncBlock: chain id');
+                if (mappingData.fromChainId == CHAIN_ID) {
+                    checkPriorityOperation(mappingData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    priorityOperationsProcessed++;
+                }
+                // fromChain and toChain both will handle TokenMapping in exec
+                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else {
                 bytes memory opPubData;
 
@@ -615,6 +638,17 @@ contract ZkSyncBlock is ZkSyncBase {
 
         bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
         require(Operations.checkQuickSwapInPriorityQueue(_quickSwap, hashedPubdata), "ZkSyncBlock: QuickSwap Hash");
+    }
+
+    /// @notice Checks that token mapping is same as operation in priority queue
+    /// @param _mapping Mapping data
+    /// @param _priorityRequestId Operation's id in priority queue
+    function checkPriorityOperation(Operations.Mapping memory _mapping, uint64 _priorityRequestId) internal view {
+        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
+        require(priorReqType == Operations.OpType.Mapping, "ZkSyncBlock: Mapping Op Type"); // incorrect priority op type
+
+        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
+        require(Operations.checkMappingInPriorityQueue(_mapping, hashedPubdata), "ZkSyncBlock: QuickSwap Hash");
     }
 
     /// @notice Checks that FullExit is same as operation in priority queue

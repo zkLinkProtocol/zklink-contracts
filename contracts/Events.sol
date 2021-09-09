@@ -31,6 +31,9 @@ interface Events {
         address to,
         uint32 nonce);
 
+    /// @notice Event emitted when user mapping token
+    event TokenMapping(uint16 indexed tokenId, uint128 amount, uint8 toChainId);
+
     /// @notice Event emitted when accepter accept a fast withdraw
     event Accept(address indexed accepter, address indexed receiver, uint16 indexed tokenId, uint128 amount, uint128 fee, uint32 nonce);
 

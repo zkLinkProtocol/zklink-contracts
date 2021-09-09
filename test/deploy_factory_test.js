@@ -15,9 +15,6 @@ describe('DeployFactory unit tests', function () {
         // zkSyncBlock
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
         const zkSyncBlock = await zkSyncBlockFactory.deploy();
-        // pairManager
-        const pairManagerFactory = await hardhat.ethers.getContractFactory('UniswapV2Factory');
-        const pairManager = await pairManagerFactory.deploy();
         // vault
         const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
         const vault = await vaultFactory.deploy();
@@ -33,7 +30,6 @@ describe('DeployFactory unit tests', function () {
             governance.address,
             verifier.address,
             zkSyncBlock.address,
-            pairManager.address,
             vault.address,
             zkSync.address,
             genesisRoot,
@@ -42,7 +38,7 @@ describe('DeployFactory unit tests', function () {
             feeAccount.address
         );
         const txr = await deployer.deployTransaction.wait();
-        const log = deployer.interface.parseLog(txr.logs[5]);
+        const log = deployer.interface.parseLog(txr.logs[4]);
         const zksyncAddr = log.args.zksync;
         const vaultAddr = log.args.vault;
         zkSyncProxy = zkSyncFactory.attach(zksyncAddr);

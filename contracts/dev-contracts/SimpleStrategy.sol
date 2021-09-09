@@ -13,13 +13,13 @@ contract SimpleStrategy is BaseStrategy{
     function deposit() override external {}
 
     function withdraw(uint256 amountNeeded) override external {
-        IERC20(want).transfer(vault, amountNeeded);
+        IERC20(wantToken).transfer(vault, amountNeeded);
     }
 
     function harvest() override external {}
 
     function migrate(address _newStrategy) override external {
-        IERC20(want).transfer(_newStrategy, IERC20(want).balanceOf(address(this)));
+        IERC20(wantToken).transfer(_newStrategy, IERC20(wantToken).balanceOf(address(this)));
     }
 
     function onMigrate() override external {}

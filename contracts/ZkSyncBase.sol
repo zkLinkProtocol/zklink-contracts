@@ -6,6 +6,7 @@ import "./ReentrancyGuard.sol";
 import "./Storage.sol";
 import "./Config.sol";
 import "./Events.sol";
+import "./IMappingToken.sol";
 
 /// @title zkSync base contract
 /// @author ZkLink Labs

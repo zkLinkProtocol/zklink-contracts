@@ -104,7 +104,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         uint64 currentDepositIdx = 0;
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
             if (priorityRequests[id].opType == Operations.OpType.Deposit ||
-                priorityRequests[id].opType == Operations.OpType.QuickSwap) {
+                priorityRequests[id].opType == Operations.OpType.QuickSwap ||
+                priorityRequests[id].opType == Operations.OpType.Mapping) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
                 ++currentDepositIdx;
@@ -115,10 +116,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
                     Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
                     packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
                     amount = op.amount;
-                } else {
+                } else if (priorityRequests[id].opType == Operations.OpType.QuickSwap) {
                     Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
                     packedBalanceKey = packAddressAndTokenId(op.owner, op.fromTokenId);
                     amount = op.amountIn;
+                } else {
+                    Operations.Mapping memory op = Operations.readMappingPubdata(depositPubdata);
+                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
+                    amount = op.amount;
                 }
                 pendingBalances[packedBalanceKey].balanceToWithdraw += amount;
             }
@@ -134,7 +139,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         requireActive();
         require(msg.value > 0, 'ZkSync: deposit amount');
 
-        payable(address(vault)).transfer(msg.value);
+        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
+        require(success, "ZkSync: eth transfer failed");
         vault.recordDeposit(0);
         registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
     }
@@ -169,12 +175,13 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
-    function swapExactETHForTokens(address _zkSyncAddress,uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
+    function swapExactETHForTokens(address _zkSyncAddress, uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
         requireActive();
         require(msg.value > 0, 'ZkSync: amountIn');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
 
-        payable(address(vault)).transfer(msg.value);
+        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
+        require(success, "ZkSync: eth transfer failed");
         vault.recordDeposit(0);
         registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
     }
@@ -202,6 +209,28 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit
         vault.recordDeposit(fromTokenId);
         registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+    }
+
+    /// @notice Mapping ERC20 from this chain to another chain - transfer ERC20 tokens from user into contract, validate it, register mapping
+    /// @param _zkSyncAddress Receiver Layer 2 address if mapping failed
+    /// @param _to Address in to chain to receive token
+    /// @param _amount Mapping amount of token
+    /// @param _token Mapping token
+    /// @param _toChainId Chain id of to token
+    function mappingToken(address _zkSyncAddress, address _to, uint104 _amount, IERC20 _token, uint8 _toChainId) external {
+        requireActive();
+        require(_amount > 0, 'ZkSync: amount');
+        require(_toChainId != CHAIN_ID, 'ZkSync: toChainId');
+
+        // Get token id by its address
+        uint16 tokenId = governance.validateTokenAddress(address(_token));
+        require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
+        require(governance.mappingTokens(tokenId), 'ZkSync: not mapping token');
+
+        // token must not be taken fees when transfer
+        require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
+        vault.recordDeposit(tokenId);
+        registerTokenMapping(_zkSyncAddress, _to, _amount, tokenId, _toChainId);
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
@@ -323,6 +352,31 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.QuickSwap, pubData);
         emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+    }
+
+    /// @notice Register mapping request - pack pubdata, add priority request and emit OnchainMapping event
+    function registerTokenMapping(
+        address _owner,
+        address _to,
+        uint128 _amount,
+        uint16 _tokenId,
+        uint8 _toChainId
+    ) internal {
+        // Priority Queue request
+        Operations.Mapping memory op =
+            Operations.Mapping({
+                fromChainId: CHAIN_ID,
+                toChainId: _toChainId,
+                owner: _owner,
+                to: _to,
+                tokenId: _tokenId,
+                amount: _amount,
+                fee: 0 // unknown at this point
+                }
+            );
+        bytes memory pubData = Operations.writeMappingPubdataForPriorityQueue(op);
+        addPriorityRequest(Operations.OpType.Mapping, pubData);
+        emit TokenMapping(_tokenId, _amount, _toChainId);
     }
 
     // Priority queue

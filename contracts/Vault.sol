@@ -208,17 +208,6 @@ contract Vault is VaultStorage, IVault {
         emit StrategyExit(tokenId);
     }
 
-    /// @notice Harvest from strategy
-    /// @param tokenId Token id
-    function harvest(uint16 tokenId) onlyNetworkGovernor external {
-        TokenVault memory tv = tokenVaults[tokenId];
-        address strategy = tv.strategy;
-        require(strategy != address(0), 'Vault: no strategy');
-        require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
-
-        IStrategy(strategy).harvest();
-    }
-
     /// @notice Return amount of token in this vault
     /// @param tokenId Token id
     function _tokenBalance(uint16 tokenId) internal view returns (uint256) {

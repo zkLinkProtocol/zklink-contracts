@@ -1,10 +1,9 @@
 const hardhat = require('hardhat');
-const { BigNumber } = require('ethers');
 const { expect } = require('chai');
 const {writeDepositPubdata, getQuickSwapPubdata, calFee} = require('./utils');
 
 describe('Deposit swap unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, uniswapV2, vault;
+    let token, zkSync, zkSyncBlock, governance, vault;
     let wallet,alice,bob;
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
@@ -22,9 +21,6 @@ describe('Deposit swap unit tests', function () {
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
         const verifier = await verifierFactory.deploy();
-        // UniswapV2Factory
-        const uniswapV2Factory = await hardhat.ethers.getContractFactory('UniswapV2Factory');
-        uniswapV2 = await uniswapV2Factory.deploy();
         // Vault
         const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
         vault = await vaultFactory.deploy();
@@ -37,10 +33,9 @@ describe('Deposit swap unit tests', function () {
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, uniswapV2.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
+                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
-        await uniswapV2.setZkSyncAddress(zkSync.address);
         await vault.setZkSyncAddress(zkSync.address);
     });
 
@@ -62,7 +57,7 @@ describe('Deposit swap unit tests', function () {
         expect(contractBalance).equal(amountIn);
     });
 
-    it('quick swap non lp erc20 should success', async () => {
+    it('quick swap erc20 should success', async () => {
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("3000");
         const withdrawFee = 3;
@@ -75,31 +70,9 @@ describe('Deposit swap unit tests', function () {
         expect(await token.balanceOf(vault.address)).equal(amountIn);
     });
 
-    it('quick swap lp erc20 should fail', async () => {
-        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
-        const tokenA = await erc20Factory.deploy(10000);
-        const tokenB = await erc20Factory.deploy(10000);
-        await governance.connect(alice).addToken(tokenA.address);
-        await governance.connect(alice).addToken(tokenB.address);
-        await zkSync.connect(alice).createPair(tokenA.address, tokenB.address); // the first lp token id = 128
-
-        const amountIn = hardhat.ethers.utils.parseEther("1");
-        const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-        const withdrawFee = 3;
-        const toChainId = 1;
-        const toTokenId = 1;
-        const to = bob.address;
-
-        let pairAddress = await uniswapV2.getPair(tokenA.address, tokenB.address);
-        await zkSync.pairMint(pairAddress, bob.address, amountIn);
-        const pairToken = erc20Factory.attach(pairAddress);
-        await pairToken.connect(bob).approve(zkSync.address, amountIn);
-        await expect(zkSync.connect(bob).swapExactTokensForTokens(bob.address, amountIn, amountOutMin, withdrawFee, pairToken.address, toChainId, toTokenId, to, 0)).to.be.revertedWith("1i");
-    });
-
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
         await zkSync.connect(bob).depositETH(bob.address, {value:30});
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 0, 1, 1, bob.address, 0,{value:20});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 0, 1, 1, bob.address, 0, {value:20});
 
         const tokenId = '0x0000';
         const amount = '0x0000000000000000000000000000001e';
@@ -116,13 +89,13 @@ describe('Deposit swap unit tests', function () {
         const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce});
         await zkSync.setExodusMode(true);
         await zkSync.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50, 0)).to
+        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
             .emit(zkSync, 'Withdrawal')
             .withArgs(0, 50);
     });
 
     it('accept eth should success', async () => {
-        const opType = 13;
+        const opType = 12;
         const fromChainId = 0;
         const toChainId = 1;
         const fromTokenId = 0;
@@ -136,7 +109,7 @@ describe('Deposit swap unit tests', function () {
         let amount = hardhat.ethers.utils.parseEther("1");
         let withdrawFee = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("0.997");
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, bobReceive, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amount, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
 
         await expect(zkSyncBlock.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSyncBlock: msg value");
         let aliceBalance0 = await alice.getBalance();
@@ -152,8 +125,8 @@ describe('Deposit swap unit tests', function () {
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testAccepterWithdraw(pubdata);
-        let aliceBalance2 = await alice.getBalance();
-        expect(aliceBalance2).to.eq(aliceBalance1.add(amount));
+        let alicePendingBalance = await zkSync.getPendingBalance(accepter, hardhat.ethers.constants.AddressZero);
+        expect(alicePendingBalance).to.eq(amount);
     });
 
     it('accept erc20 token should success', async () => {
@@ -193,7 +166,7 @@ describe('Deposit swap unit tests', function () {
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testAccepterWithdraw(pubdata);
-        let aliceBalance2 = await token.balanceOf(alice.address);
-        expect(aliceBalance2).to.eq(aliceBalance1.add(amount));
+        let alicePendingBalance = await zkSync.getPendingBalance(accepter, token.address);
+        expect(alicePendingBalance).to.eq(amount);
     });
 });

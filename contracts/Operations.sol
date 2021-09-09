@@ -263,13 +263,14 @@ library Operations {
         uint8 fromChainId;
         uint8 toChainId;
         address owner;
+        address to;
         uint16 tokenId;
         uint128 amount;
-        uint16 fee; // present in pubdata, ignored at serialization
+        uint128 fee; // present in pubdata, ignored at serialization
     }
 
     uint256 public constant PACKED_MAPPING_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * CHAIN_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES;
+    OP_TYPE_BYTES + 2 * CHAIN_BYTES + 2 * ADDRESS_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES;
 
     /// Deserialize mapping pubdata
     function readMappingPubdata(bytes memory _data) internal pure returns (Mapping memory parsed) {
@@ -278,9 +279,10 @@ library Operations {
         (offset, parsed.fromChainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.toChainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.to) = Bytes.readAddress(_data, offset);
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-        (offset, parsed.fee) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.fee) = Bytes.readUInt128(_data, offset);
 
         require(offset == PACKED_MAPPING_PUBDATA_BYTES, "Operations: Read Mapping");
     }
@@ -292,9 +294,10 @@ library Operations {
             op.fromChainId,
             op.toChainId,
             op.owner,
+            op.to,
             op.tokenId,
             op.amount,
-            uint16(0) // fee (ignored)
+            uint128(0) // fee (ignored)
         );
     }
 
