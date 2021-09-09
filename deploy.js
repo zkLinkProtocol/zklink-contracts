@@ -62,15 +62,6 @@ task("deploy", "Deploy zklink")
         await hardhat.run("verify:verify", {
             address: zkSyncBlockAddr
         });
-        // pairManager
-        const pairManagerFactory = await hardhat.ethers.getContractFactory('UniswapV2Factory');
-        const pairManager = await pairManagerFactory.connect(deployer).deploy();
-        await pairManager.deployed();
-        const pairManagerTarget = pairManager.address;
-        console.log('pairManager target', pairManagerTarget);
-        await hardhat.run("verify:verify", {
-            address: pairManagerTarget
-        });
         // vault
         const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
         const vault = await vaultFactory.connect(deployer).deploy();
@@ -96,7 +87,6 @@ task("deploy", "Deploy zklink")
             govTarget,
             verifierTarget,
             zkSyncBlockAddr,
-            pairManagerTarget,
             vaultTarget,
             zkSyncTarget,
             hardhat.ethers.utils.arrayify(genesisRoot),
@@ -114,13 +104,11 @@ task("deploy", "Deploy zklink")
         const governanceProxyAddr = event.args.governance;
         const zksyncProxyAddr = event.args.zksync;
         const verifierProxyAddr = event.args.verifier;
-        const pairManagerProxyAddr = event.args.pairManager;
         const vaultProxyAddr = event.args.vault;
         const gatekeeperAddr = event.args.gatekeeper;
         console.log('governanceProxyAddr', governanceProxyAddr);
         console.log('zksyncProxyAddr', zksyncProxyAddr);
         console.log('verifierProxyAddr', verifierProxyAddr);
-        console.log('pairManagerProxyAddr', pairManagerProxyAddr);
         console.log('vaultProxyAddr', vaultProxyAddr);
         console.log('gatekeeperAddr', gatekeeperAddr);
 
@@ -135,21 +123,14 @@ task("deploy", "Deploy zklink")
             address: zksyncProxyAddr,
             constructorArguments:[
                 zkSyncTarget,
-                hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
-                    [governanceProxyAddr, verifierProxyAddr, zkSyncBlockAddr, pairManagerProxyAddr, vaultProxyAddr, genesisRoot])
+                hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
+                    [governanceProxyAddr, verifierProxyAddr, zkSyncBlockAddr, vaultProxyAddr, genesisRoot])
             ]
         });
         await hardhat.run("verify:verify", {
             address: verifierProxyAddr,
             constructorArguments:[
                 verifierTarget,
-                hardhat.ethers.utils.defaultAbiCoder.encode([], []),
-            ]
-        });
-        await hardhat.run("verify:verify", {
-            address: pairManagerProxyAddr,
-            constructorArguments:[
-                pairManagerTarget,
                 hardhat.ethers.utils.defaultAbiCoder.encode([], []),
             ]
         });
