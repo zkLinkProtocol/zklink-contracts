@@ -18,10 +18,10 @@ contract ZKL is AccessControlEnumerable, ERC20Capped{
      *
      * See {ERC20-constructor}.
      */
-    constructor(string memory name_, string memory symbol_, uint256 cap) ERC20(name_, symbol_) ERC20Capped(cap) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+    constructor(string memory name_, string memory symbol_, uint256 cap, address networkGovernor, address zkLink) ERC20(name_, symbol_) ERC20Capped(cap) {
+        _setupRole(DEFAULT_ADMIN_ROLE, networkGovernor);
 
-        _setupRole(MINTER_ROLE, _msgSender());
+        _setupRole(MINTER_ROLE, zkLink);
     }
 
     /**
@@ -33,8 +33,7 @@ contract ZKL is AccessControlEnumerable, ERC20Capped{
      *
      * - the caller must have the `MINTER_ROLE`.
      */
-    function mint(address to, uint256 amount) public virtual {
-        require(hasRole(MINTER_ROLE, _msgSender()), "ZKL: must have minter role to mint");
+    function mint(address to, uint256 amount) public virtual onlyRole(MINTER_ROLE) {
         _mint(to, amount);
     }
 

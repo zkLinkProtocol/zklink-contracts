@@ -1,6 +1,7 @@
 node_modules
 
 contracts/KeysWithPlonkVerifier.sol
+hardhat.config.js
 
 #Hardhat files
 cache

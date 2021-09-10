@@ -7,29 +7,37 @@ You can swap token(eg. UNI) in Ethereum for token(eg. CAKE) in Binance Smart Cha
 
 `npm install`
 
-## Compile Contracts
+## Prepare
 
-Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to contracts directory
+Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to contracts directory.You need to copy `hardhat.config.example.js` and rename it to `hardhat.config.js` and then to set api key and etherscan key.
+
+## Compile Contracts
 
 `npx hardhat compile`
 
-or set macro definitions
+or
 
-`MACRO=TEST npx hardhat compile`
+`NET=ETH npx hardhat compile`
 
 ## Run Tests
 
 `npx hardhat test`
 
-## Deploy ZkLink
+## Deploy
 
-Before deploy you should complile contracts, and then set node environments for deploying to different blockchain.
+Before deploy you should complile contracts, and then set `NET` environment for deploying to different blockchain.
 
-| ENV Name     | Description                                              |
-| ------------ | -------------------------------------------------------- |
-| MACRO        | Macro definitions used to preprocess solidity            |
-| NETWORK_URL  | Web3j url to connect to                                  |
-| SCAN_API_KEY | Blockchain explorer api key used to verify contract code |
+| NET Name    | Description                  |
+| ----------- | ---------------------------- |
+| ETH         | Ethereum main net            |
+| BSC         | Binance smart chain main net |
+| HECO        | Heco chain main net          |
+| POLYGON     | Polygon main net             |
+| RINKEBY     | Ethereum rinkeby testnet     |
+| GOERLI      | Ethereum goerli testnet      |
+| BSCTEST     | Binance smart chain testnet  |
+| HECOTEST    | Heco chain testnet           |
+| POLYGONTEST | Polygon testnet              |
 
 We add a custom deploy task to hardhat environment
 
@@ -53,42 +61,8 @@ deploy: Deploy zklink
 For global options help run: hardhat help
 ```
 
-###Mainnet
-
-####ETH
+For example:
 
 ```shell
-MACRO=ETH NETWORK_URL=https://eth-mainnet.alchemyapi.io/v2/YOUK_API_KEY SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
-```
-
-####BSC
-
-```shell
-MACRO=BSC NETWORK_URL=https://bsc-dataseed2.binance.org SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
-```
-
-####HECO
-
-```shell
-MACRO=HECO NETWORK_URL=https://http-mainnet.hecochain.com SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
-```
-
-###Testnet
-
-####BSC
-
-```shell
-MACRO=TEST NETWORK_URL=https://data-seed-prebsc-1-s1.binance.org:8545 SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --genesis-root GENESIS_ROOT_HASH
-```
-
-#### Polygon
-
-```shell
-MACRO=TEST NETWORK_URL=https://matic-mumbai.chainstacklabs.com SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --genesis-root GENESIS_ROOT_HASH
-```
-
-###Deploy Strategy
-
-```shell
-VAULT_ADDRESS=DEPLOYED_VAULT_ADDRESS NETWORK_URL=WEB3J_URL SCAN_API_KEY=YOUR_ETHERSCAN_KEY npx hardhat --network custom deploy_strategy --key DEPLOYER_ADDRESS_PRIVATE_KEY --strategy BscCoinwindStrategy --params '0 3'
+NET=ETH npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
 ```
