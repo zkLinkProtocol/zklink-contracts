@@ -5,6 +5,7 @@ task("deploy", "Deploy zklink")
     .addParam("feeAccount", "The feeAccount address, default is same as deployer", undefined, types.string, true)
     .addParam("genesisRoot", "The genesis root hash")
     .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
+    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs) => {
         const hardhat = require("hardhat");
         const fs = require('fs');
@@ -32,6 +33,10 @@ task("deploy", "Deploy zklink")
         if (force === undefined) {
             force = false;
         }
+        let skipVerify = taskArgs.skipVerify;
+        if (skipVerify === undefined) {
+            skipVerify = false;
+        }
         const genesisRoot = taskArgs.genesisRoot;
         console.log('deployer', deployer.address);
         console.log('governor', governor);
@@ -39,6 +44,7 @@ task("deploy", "Deploy zklink")
         console.log('feeAccount', feeAccount);
         console.log('genesisRoot', genesisRoot);
         console.log('force redeploy all contracts?', force);
+        console.log('skip verify contracts?', skipVerify);
 
         const balance = await deployer.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
@@ -67,7 +73,7 @@ task("deploy", "Deploy zklink")
             govTarget = deployLog.governanceTarget;
         }
         console.log('governance target', govTarget);
-        if (!('governanceTargetVerified' in deployLog)) {
+        if (!('governanceTargetVerified' in deployLog) && !skipVerify) {
             console.log('verify governance target...');
             await hardhat.run("verify:verify", {
                     address: govTarget
@@ -90,7 +96,7 @@ task("deploy", "Deploy zklink")
             verifierTarget = deployLog.verifierTarget;
         }
         console.log('verifier target', verifierTarget);
-        if (!('verifierTargetVerified' in deployLog)) {
+        if (!('verifierTargetVerified' in deployLog) && !skipVerify) {
             console.log('verify verifier target...');
             await hardhat.run("verify:verify", {
                 address: verifierTarget
@@ -113,7 +119,7 @@ task("deploy", "Deploy zklink")
             zkSyncBlockAddr = deployLog.zkSyncBlock;
         }
         console.log('zkSyncBlock', zkSyncBlockAddr);
-        if (!('zkSyncBlockVerified' in deployLog)) {
+        if (!('zkSyncBlockVerified' in deployLog) && !skipVerify) {
             console.log('verify zkSyncBlock...');
             await hardhat.run("verify:verify", {
                 address: zkSyncBlockAddr
@@ -136,7 +142,7 @@ task("deploy", "Deploy zklink")
             vaultTarget = deployLog.vaultTarget;
         }
         console.log('vault target', vaultTarget);
-        if (!('vaultTargetVerified' in deployLog)) {
+        if (!('vaultTargetVerified' in deployLog) && !skipVerify) {
             console.log('verify vault target...');
             await hardhat.run("verify:verify", {
                 address: vaultTarget
@@ -159,7 +165,7 @@ task("deploy", "Deploy zklink")
             zkSyncTarget = deployLog.zkSyncTarget;
         }
         console.log('zkSync target', zkSyncTarget);
-        if (!('zkSyncTargetVerified' in deployLog)) {
+        if (!('zkSyncTargetVerified' in deployLog) && !skipVerify) {
             console.log('verify zkSync target...');
             await hardhat.run("verify:verify", {
                 address: zkSyncTarget
@@ -234,7 +240,7 @@ task("deploy", "Deploy zklink")
         console.log('vaultProxy', vaultProxyAddr);
         console.log('gatekeeper', gatekeeperAddr);
 
-        if (!('governanceProxyVerified' in deployLog)) {
+        if (!('governanceProxyVerified' in deployLog) && !skipVerify) {
             console.log('verify governance proxy...');
             await hardhat.run("verify:verify", {
                 address: governanceProxyAddr,
@@ -246,7 +252,7 @@ task("deploy", "Deploy zklink")
             deployLog.governanceProxyVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
-        if (!('zkSyncProxyVerified' in deployLog)) {
+        if (!('zkSyncProxyVerified' in deployLog) && !skipVerify) {
             console.log('verify zkSync proxy...');
             await hardhat.run("verify:verify", {
                 address: zkSyncProxyAddr,
@@ -259,7 +265,7 @@ task("deploy", "Deploy zklink")
             deployLog.zkSyncProxyVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
-        if (!('verifierProxyVerified' in deployLog)) {
+        if (!('verifierProxyVerified' in deployLog) && !skipVerify) {
             console.log('verify verifier proxy...');
             await hardhat.run("verify:verify", {
                 address: verifierProxyAddr,
@@ -271,7 +277,7 @@ task("deploy", "Deploy zklink")
             deployLog.verifierProxyVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
-        if (!('vaultProxyVerified' in deployLog)) {
+        if (!('vaultProxyVerified' in deployLog) && !skipVerify) {
             console.log('verify vault proxy...');
             await hardhat.run("verify:verify", {
                 address: vaultProxyAddr,
@@ -283,7 +289,7 @@ task("deploy", "Deploy zklink")
             deployLog.vaultProxyVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
-        if (!('gatekeeperVerified' in deployLog)) {
+        if (!('gatekeeperVerified' in deployLog) && !skipVerify) {
             console.log('verify gatekeeper...');
             await hardhat.run("verify:verify", {
                 address: gatekeeperAddr,
@@ -310,7 +316,7 @@ task("deploy", "Deploy zklink")
             zklContractAddr = deployLog.zkl;
         }
         console.log('zkl', zklContractAddr);
-        if (!('zklVerified' in deployLog)) {
+        if (!('zklVerified' in deployLog) && !skipVerify) {
             console.log('verify zkl...');
             await hardhat.run("verify:verify", {
                 address: zklContractAddr,
