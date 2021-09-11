@@ -1,8 +1,8 @@
-async function governanceAddToken(hardhat, governor, governanceAddr, tokenAddr) {
+async function governanceAddToken(hardhat, governor, governanceAddr, tokenAddr, mappable) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
     const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
     const governance = governanceFactory.attach(governanceAddr);
-    const tx = await governance.connect(governor).addToken(tokenAddr);
+    const tx = await governance.connect(governor).addToken(tokenAddr, mappable);
     console.log('tx hash: ', tx.hash);
     const receipt = await tx.wait();
     if (receipt.status) {
@@ -16,6 +16,7 @@ task("addToken", "Adds a new token with a given address")
     .addParam("key", "The network governor key", undefined, types.string, true)
     .addParam("governance", "The governance contract address, default get from deploy log", undefined, types.string, true)
     .addParam("token", "The token address")
+    .addParam("mappable", "The token is mappable? default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs) => {
         const hardhat = require("hardhat");
         const fs = require('fs');
@@ -23,6 +24,7 @@ task("addToken", "Adds a new token with a given address")
         const key = taskArgs.key;
         let governanceAddr = taskArgs.governance;
         const tokenAddr = taskArgs.token;
+        const mappable = taskArgs.mappable === undefined ? false : taskArgs.mappable;
         let governor;
         if (key === undefined) {
             [governor] = await hardhat.ethers.getSigners();
@@ -38,11 +40,12 @@ task("addToken", "Adds a new token with a given address")
         console.log('governor', governor.address);
         console.log('governance', governanceAddr);
         console.log('token', tokenAddr);
+        console.log('mappable', mappable);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        await governanceAddToken(hardhat, governor, governanceAddr, tokenAddr);
+        await governanceAddToken(hardhat, governor, governanceAddr, tokenAddr, mappable);
     });
 
 task("addMultipleToken", "Adds a multiple tokens for current network")
@@ -70,7 +73,7 @@ task("addMultipleToken", "Adds a multiple tokens for current network")
 
         const tokens = JSON.parse(fs.readFileSync(`etc/tokens/${process.env.NET}.json`, 'utf8'));
         for (const token of tokens) {
-            await governanceAddToken(hardhat, governor, governanceAddr, token.address);
+            await governanceAddToken(hardhat, governor, governanceAddr, token.address, token.mappable);
         }
     });
 

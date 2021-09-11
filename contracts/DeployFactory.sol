@@ -7,10 +7,9 @@ import "./Proxy.sol";
 import "./UpgradeGatekeeper.sol";
 import "./ZkSync.sol";
 import "./Verifier.sol";
-import "./TokenInit.sol";
 import "./Vault.sol";
 
-contract DeployFactory is TokenDeployInit {
+contract DeployFactory {
     // Why do we deploy contracts in the constructor?
     //
     // If we want to deploy Proxy and UpgradeGatekeeper (using new) we have to deploy their contract code with this contract
@@ -96,10 +95,6 @@ contract DeployFactory is TokenDeployInit {
         address _validator,
         address _finalGovernor
     ) internal {
-        address[] memory tokens = getTokens();
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            _governance.addToken(tokens[i]);
-        }
         _governance.setValidator(_validator, true);
         _governance.changeGovernor(_finalGovernor);
     }

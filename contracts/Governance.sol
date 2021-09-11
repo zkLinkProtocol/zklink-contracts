@@ -8,7 +8,7 @@ import "./Config.sol";
 /// @author Matter Labs
 contract Governance is Config {
     /// @notice Token added to Franklin net
-    event NewToken(address indexed token, uint16 indexed tokenId);
+    event NewToken(address indexed token, uint16 indexed tokenId, bool mappable);
 
     /// @notice Governor changed
     event NewGovernor(address newGovernor);
@@ -67,7 +67,8 @@ contract Governance is Config {
 
     /// @notice Add token to the list of networks tokens，token must not be taken fees when transfer
     /// @param _token Token address
-    function addToken(address _token) external {
+    /// @param _mappable Is token mappable
+    function addToken(address _token, bool _mappable) external {
         requireGovernor(msg.sender);
         require(tokenIds[_token] == 0, "1e"); // token exists
         require(totalTokens < MAX_AMOUNT_OF_REGISTERED_TOKENS, "1f"); // no free identifiers for tokens
@@ -77,7 +78,8 @@ contract Governance is Config {
 
         tokenAddresses[newTokenId] = _token;
         tokenIds[_token] = newTokenId;
-        emit NewToken(_token, newTokenId);
+        mappingTokens[newTokenId] = _mappable;
+        emit NewToken(_token, newTokenId, _mappable);
     }
 
     /// @notice Pause token deposits for the given token
