@@ -51,6 +51,10 @@ task("deploy", "Deploy zklink")
 
         const deployLogPath = `log/deploy_${process.env.NET}.log`;
         console.log('deploy log path', deployLogPath);
+        if (!fs.existsSync('log')) {
+            fs.mkdirSync('log', true);
+        }
+
         let deployLog = {};
         if (!force) {
             if (fs.existsSync(deployLogPath)) {

@@ -1,3 +1,79 @@
+async function governanceAddToken(hardhat, governor, governanceAddr, tokenAddr) {
+    console.log('Adding new ERC20 token to network: ', tokenAddr);
+    const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
+    const governance = governanceFactory.attach(governanceAddr);
+    const tx = await governance.connect(governor).addToken(tokenAddr);
+    console.log('tx hash: ', tx.hash);
+    const receipt = await tx.wait();
+    if (receipt.status) {
+        console.log('tx success');
+    } else {
+        throw new Error(`failed add token to the governance`);
+    }
+}
+
+task("addToken", "Adds a new token with a given address")
+    .addParam("key", "The network governor key", undefined, types.string, true)
+    .addParam("governance", "The governance contract address, default get from deploy log", undefined, types.string, true)
+    .addParam("token", "The token address")
+    .setAction(async (taskArgs) => {
+        const hardhat = require("hardhat");
+        const fs = require('fs');
+
+        const key = taskArgs.key;
+        let governanceAddr = taskArgs.governance;
+        const tokenAddr = taskArgs.token;
+        let governor;
+        if (key === undefined) {
+            [governor] = await hardhat.ethers.getSigners();
+        } else {
+            governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        }
+        if (governanceAddr === undefined) {
+            const deployLogPath = `log/deploy_${process.env.NET}.log`;
+            const data = fs.readFileSync(deployLogPath, 'utf8');
+            const deployLog = JSON.parse(data);
+            governanceAddr = deployLog.governanceProxy;
+        }
+        console.log('governor', governor.address);
+        console.log('governance', governanceAddr);
+        console.log('token', tokenAddr);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        await governanceAddToken(hardhat, governor, governanceAddr, tokenAddr);
+    });
+
+task("addMultipleToken", "Adds a multiple tokens for current network")
+    .addParam("key", "The network governor key", undefined, types.string, true)
+    .setAction(async (taskArgs) => {
+        const hardhat = require("hardhat");
+        const fs = require('fs');
+
+        const key = taskArgs.key;
+        let governor;
+        if (key === undefined) {
+            [governor] = await hardhat.ethers.getSigners();
+        } else {
+            governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        }
+        const deployLogPath = `log/deploy_${process.env.NET}.log`;
+        const data = fs.readFileSync(deployLogPath, 'utf8');
+        const deployLog = JSON.parse(data);
+        const governanceAddr = deployLog.governanceProxy;
+        console.log('governor', governor.address);
+        console.log('governance', governanceAddr);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const tokens = JSON.parse(fs.readFileSync(`etc/tokens/${process.env.NET}.json`, 'utf8'));
+        for (const token of tokens) {
+            await governanceAddToken(hardhat, governor, governanceAddr, token.address);
+        }
+    });
+
 task("depositETH", "Deposit eth to zksync")
     .addParam("key", "The sender key", undefined, types.string, true)
     .addParam("zksync", "The zksync proxy address")
