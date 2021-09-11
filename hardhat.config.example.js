@@ -49,7 +49,7 @@ const polygonConfig = {
     BLOCK_PERIOD: '2 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '7 days',
-    CHAIN_ID: 3
+    CHAIN_ID: 0
   },
   url: "https://matic-mainnet.chainstacklabs.com",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -62,7 +62,7 @@ const rinkebyConfig = {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: ethConfig.macro.CHAIN_ID
+    CHAIN_ID: 1
   },
   url: "https://eth-rinkeby.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -74,7 +74,7 @@ const goerliConfig = {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: ethConfig.macro.CHAIN_ID
+    CHAIN_ID: 3
   },
   url: "https://eth-goerli.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -86,7 +86,7 @@ const bscTestConfig = {
     BLOCK_PERIOD: bscConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: bscConfig.macro.CHAIN_ID
+    CHAIN_ID: 4
   },
   url: "https://data-seed-prebsc-1-s1.binance.org:8545",
   scan: bscConfig.scan
@@ -98,7 +98,7 @@ const hecoTestConfig = {
     BLOCK_PERIOD: hecoConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: hecoConfig.macro.CHAIN_ID
+    CHAIN_ID: 2
   },
   url: "https://http-testnet.hecochain.com",
   scan: hecoConfig.scan
@@ -110,7 +110,7 @@ const polygonTestConfig = {
     BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: polygonConfig.macro.CHAIN_ID
+    CHAIN_ID: 0
   },
   url: "https://matic-mumbai.chainstacklabs.com",
   scan: polygonConfig.scan

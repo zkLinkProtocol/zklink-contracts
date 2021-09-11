@@ -354,7 +354,7 @@ contract ZkSyncBlock is ZkSyncBase {
                     // burn token from ZkSync
                     IMappingToken(tokenAddress).burn(burnAmount);
                 } else {
-                    // mint to controller of token mapping
+                    // mint burn amount of token to `to` address
                     IMappingToken(tokenAddress).mint(op.to, burnAmount);
                 }
             } else {
