@@ -23,6 +23,8 @@ contract ZKL is AccessControlEnumerable, ERC20Capped, ERC20Permit{
         ERC20(name, symbol) ERC20Capped(cap) ERC20Permit(name) {
         _setupRole(DEFAULT_ADMIN_ROLE, networkGovernor);
 
+        // default networkGovernor and zkLink contract can mint zkl
+        _setupRole(MINTER_ROLE, networkGovernor);
         _setupRole(MINTER_ROLE, zkLink);
     }
 
