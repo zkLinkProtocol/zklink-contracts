@@ -11,7 +11,9 @@ describe('ZKL unit tests', function () {
 
     it('only address with MINTER_ROLE can mine', async () => {
         await expect(zkl.connect(alice).mint(alice.address, 100)).to.be.reverted;
-        await expect(zkl.connect(networkGovernor).mint(alice.address, 100)).to.be.reverted;
+        await expect(zkl.connect(networkGovernor).mint(alice.address, 100)).to.be
+            .emit(zkl, 'Transfer')
+            .withArgs('0x0000000000000000000000000000000000000000', alice.address, 100);
         await expect(zkl.connect(zkLink).mint(alice.address, 100)).to.be
             .emit(zkl, 'Transfer')
             .withArgs('0x0000000000000000000000000000000000000000', alice.address, 100);

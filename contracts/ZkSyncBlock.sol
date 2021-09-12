@@ -352,6 +352,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 uint128 burnAmount = op.amount.sub(op.fee);
                 if (op.fromChainId == CHAIN_ID) {
                     // burn token from ZkSync
+                    vault.withdraw(op.tokenId, address(this), burnAmount);
                     IMappingToken(tokenAddress).burn(burnAmount);
                 } else {
                     // mint burn amount of token to `to` address
