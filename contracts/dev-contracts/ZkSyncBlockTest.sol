@@ -21,4 +21,8 @@ contract ZkSyncBlockTest is ZkSyncBlock {
         Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(_pubdata);
         accepterWithdraw(op);
     }
+
+    function testExecMappingToken(bytes calldata _pubdata) external {
+        execMappingToken(_pubdata);
+    }
 }

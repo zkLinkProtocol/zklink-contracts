@@ -125,7 +125,8 @@ const allConfig = {
   GOERLI: goerliConfig,
   BSCTEST: bscTestConfig,
   HECOTEST: hecoTestConfig,
-  POLYGONTEST: polygonTestConfig
+  POLYGONTEST: polygonTestConfig,
+  UNITTEST: polygonTestConfig
 }
 
 const config = process.env.NET === undefined ? allConfig["ETH"] : allConfig[process.env.NET];

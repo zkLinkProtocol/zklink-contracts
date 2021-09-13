@@ -21,7 +21,7 @@ or
 
 ## Run Tests
 
-`npx hardhat test`
+`NET=UNITTEST npx hardhat test`
 
 ## Deploy
 

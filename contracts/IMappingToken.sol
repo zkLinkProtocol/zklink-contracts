@@ -7,8 +7,8 @@ pragma solidity ^0.7.0;
 interface IMappingToken {
 
     /// @notice mint amount of token to receiver
-    function mint(address receiver, uint256 amount) external returns (bool);
+    function mint(address receiver, uint256 amount) external;
 
     /// @notice burn amount of token from msg.sender
-    function burn(uint256 amount) external returns (bool);
+    function burn(uint256 amount) external;
 }

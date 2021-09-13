@@ -347,17 +347,7 @@ contract ZkSyncBlock is ZkSyncBase {
                     accepterWithdraw(op);
                 }
             } else if (opType == Operations.OpType.Mapping) {
-                Operations.Mapping memory op = Operations.readMappingPubdata(pubData);
-                address tokenAddress = governance.tokenAddresses(op.tokenId);
-                uint128 burnAmount = op.amount.sub(op.fee);
-                if (op.fromChainId == CHAIN_ID) {
-                    // burn token from ZkSync
-                    vault.withdraw(op.tokenId, address(this), burnAmount);
-                    IMappingToken(tokenAddress).burn(burnAmount);
-                } else {
-                    // mint burn amount of token to `to` address
-                    IMappingToken(tokenAddress).mint(op.to, burnAmount);
-                }
+                execMappingToken(pubData);
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -682,6 +672,20 @@ contract ZkSyncBlock is ZkSyncBase {
         } else {
             // accepter profit is (amountOutMin - fee)
             storePendingBalance(op.toTokenId, accepter, op.amountOutMin);
+        }
+    }
+
+    function execMappingToken(bytes memory pubData) internal {
+        Operations.Mapping memory op = Operations.readMappingPubdata(pubData);
+        address tokenAddress = governance.tokenAddresses(op.tokenId);
+        uint128 burnAmount = op.amount.sub(op.fee);
+        if (op.fromChainId == CHAIN_ID) {
+            // burn token from ZkSync
+            vault.withdraw(op.tokenId, address(this), burnAmount);
+            IMappingToken(tokenAddress).burn(burnAmount);
+        } else {
+            // mint burn amount of token to `to` address
+            IMappingToken(tokenAddress).mint(op.to, burnAmount);
         }
     }
 }
