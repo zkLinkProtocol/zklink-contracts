@@ -56,4 +56,13 @@ describe('Governance unit tests', function () {
             .to.emit(testContract, 'TokenMappingUpdate')
             .withArgs(token, true);
     });
+
+    it('Change nft should success', async () => {
+        const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+        const newNft = await nftFactory.deploy(hardhat.ethers.constants.AddressZero);
+
+        await expect(testContract.connect(bob).changeNft(newNft.address)).to
+            .emit(testContract, 'NftUpdate')
+            .withArgs(newNft.address);
+    });
 });

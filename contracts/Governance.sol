@@ -3,6 +3,7 @@
 pragma solidity ^0.7.0;
 
 import "./Config.sol";
+import "./IZKLinkNFT.sol";
 
 /// @title Governance Contract
 /// @author Matter Labs
@@ -19,6 +20,9 @@ contract Governance is Config {
     event TokenPausedUpdate(address indexed token, bool paused);
 
     event TokenMappingUpdate(address indexed token, bool isMapping);
+
+    /// @notice Nft address changed
+    event NftUpdate(address indexed nft);
 
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
@@ -40,6 +44,9 @@ contract Governance is Config {
 
     /// @notice Mapping tokens list
     mapping(uint16 => bool) public mappingTokens;
+
+    // @notice ZKLinkNFT mint to user when add liquidity
+    IZKLinkNFT public nft;
 
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
@@ -116,6 +123,18 @@ contract Governance is Config {
         if (validators[_validator] != _active) {
             validators[_validator] = _active;
             emit ValidatorStatusUpdate(_validator, _active);
+        }
+    }
+
+    /// @notice Change nft
+    /// @param _newNft ZKLinkNFT address
+    function changeNft(address _newNft) external {
+        requireGovernor(msg.sender);
+        require(_newNft != address(0), "Governance: zero address");
+
+        if (_newNft != address(nft)) {
+            nft = IZKLinkNFT(_newNft);
+            emit NftUpdate(_newNft);
         }
     }
 
