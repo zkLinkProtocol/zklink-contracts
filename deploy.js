@@ -329,6 +329,41 @@ task("deploy", "Deploy zklink")
             deployLog.zklVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
+
+        // nft
+        let nftContractAddr;
+        let proxyRegistryAddress = hardhat.ethers.constants.AddressZero;
+        // only eth mainnet or rinkeby has opeansea proxyRegistryAddress
+        if (process.env.NET === 'ETH') {
+            proxyRegistryAddress = "0xa5409ec958c83c3f309868babaca7c86dcb077c1";
+        } else if (process.env.NET === 'RINKEBY') {
+            proxyRegistryAddress = "0xf57b2c51ded3a29e6891aba85459d600256cf317";
+        }
+        console.log('nft proxyRegistryAddress', proxyRegistryAddress);
+        if (!('nft' in deployLog)) {
+            console.log('deploy nft...');
+            const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+            const nftContract = await nftFactory.connect(deployer).deploy(proxyRegistryAddress);
+            await nftContract.deployed();
+            nftContractAddr = nftContract.address;
+            deployLog.nft = nftContractAddr;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            // set ZkSync Proxy as the owner of nft
+            console.log('transfer nft ownership to zkSyncProxy...');
+            await nftContract.connect(deployer).transferOwnership(zkSyncProxyAddr);
+        } else {
+            nftContractAddr = deployLog.nft;
+        }
+        console.log('nft', nftContractAddr);
+        if (!('nftVerified' in deployLog) && !skipVerify) {
+            console.log('verify nft...');
+            await hardhat.run("verify:verify", {
+                address: nftContractAddr,
+                constructorArguments: [proxyRegistryAddress]
+            });
+            deployLog.nftVerified = true;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        }
 });
 
 task("deploy_strategy", "Deploy strategy")
