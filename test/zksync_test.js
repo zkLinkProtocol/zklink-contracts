@@ -13,7 +13,7 @@ describe('ZkSync unit tests', function () {
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
         // tokenD
-        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+        const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         tokenD = await erc20Factory.deploy(10000);
         // governance, alice is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
@@ -21,9 +21,9 @@ describe('ZkSync unit tests', function () {
         await governance.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
         );
-        await governance.connect(alice).addToken(tokenA); // tokenId = 1
-        await governance.connect(alice).addToken(tokenB); // tokenId = 2
-        await governance.connect(alice).addToken(tokenD.address); // tokenId = 3
+        await governance.connect(alice).addToken(tokenA, false); // tokenId = 1
+        await governance.connect(alice).addToken(tokenB, false); // tokenId = 2
+        await governance.connect(alice).addToken(tokenD.address, false); // tokenId = 3
         await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');

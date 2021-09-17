@@ -29,9 +29,9 @@ describe('Vault unit tests', function () {
         zkSync = await zkSyncFactory.deploy(governance.address, vault.address);
         await vault.setZkSyncAddress(zkSync.address);
         // tokenA
-        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+        const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         tokenA = await erc20Factory.deploy(10000);
-        await governance.connect(governor).addToken(tokenA.address);
+        await governance.connect(governor).addToken(tokenA.address, false);
         tokenAId = await governance.validateTokenAddress(tokenA.address);
         // strategyA
         const strategyFactory = await hardhat.ethers.getContractFactory('SimpleStrategy');

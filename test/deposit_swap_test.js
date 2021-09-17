@@ -8,7 +8,7 @@ describe('Deposit swap unit tests', function () {
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
         // token
-        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+        const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         token = await erc20Factory.deploy(10000);
         // governance, alice is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
@@ -16,7 +16,7 @@ describe('Deposit swap unit tests', function () {
         await governance.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
         );
-        await governance.connect(alice).addToken(token.address); // tokenId = 1
+        await governance.connect(alice).addToken(token.address, false); // tokenId = 1
         await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
@@ -96,8 +96,8 @@ describe('Deposit swap unit tests', function () {
 
     it('accept eth should success', async () => {
         const opType = 12;
-        const fromChainId = 0;
-        const toChainId = 1;
+        const fromChainId = 1;
+        const toChainId = 0;
         const fromTokenId = 0;
         const toTokenId = 0;
         const accepter = alice.address;
@@ -130,9 +130,9 @@ describe('Deposit swap unit tests', function () {
     });
 
     it('accept erc20 token should success', async () => {
-        const opType = 13;
-        const fromChainId = 0;
-        const toChainId = 1;
+        const opType = 12;
+        const fromChainId = 1;
+        const toChainId = 0;
         const fromTokenId = 1;
         const toTokenId = 1;
         const accepter = alice.address;
