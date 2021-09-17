@@ -105,7 +105,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
             if (priorityRequests[id].opType == Operations.OpType.Deposit ||
                 priorityRequests[id].opType == Operations.OpType.QuickSwap ||
-                priorityRequests[id].opType == Operations.OpType.Mapping) {
+                priorityRequests[id].opType == Operations.OpType.Mapping ||
+                priorityRequests[id].opType == Operations.OpType.L1AddLQ) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
                 ++currentDepositIdx;
@@ -120,10 +121,16 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
                     Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
                     packedBalanceKey = packAddressAndTokenId(op.owner, op.fromTokenId);
                     amount = op.amountIn;
-                } else {
+                } else if (priorityRequests[id].opType == Operations.OpType.Mapping) {
                     Operations.Mapping memory op = Operations.readMappingPubdata(depositPubdata);
                     packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
                     amount = op.amount;
+                } else {
+                    Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(depositPubdata);
+                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
+                    amount = op.amount;
+                    // revoke nft
+                    governance.nft().revokeAddLq(op.nftTokenId);
                 }
                 pendingBalances[packedBalanceKey].balanceToWithdraw += amount;
             }
@@ -231,6 +238,30 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
         vault.recordDeposit(tokenId);
         registerTokenMapping(_zkSyncAddress, _to, _amount, tokenId, _toChainId);
+    }
+
+    /// @notice Add token to l2 cross chain pair
+    /// @param _zkSyncAddress Receiver Layer 2 address if add liquidity failed
+    /// @param _token Token added
+    /// @param _amount Amount of token
+    /// @param _pair L2 cross chain pair address
+    /// @param _minLpAmount L2 lp token amount min received
+    function addLiquidity(address _zkSyncAddress, IERC20 _token, uint104 _amount, address _pair, uint104 _minLpAmount) external {
+        requireActive();
+        require(_amount > 0, 'ZkSync: amount');
+
+        // Get token id by its address
+        uint16 tokenId = governance.validateTokenAddress(address(_token));
+        require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
+        // nft must exist
+        require(address(governance.nft()) != address(0), 'ZkSync: nft not exist');
+
+        // token must not be taken fees when transfer
+        require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
+        vault.recordDeposit(tokenId);
+        // mint a pending nft to user
+        uint32 nftTokenId = governance.nft().addLq(_zkSyncAddress, tokenId, _amount, _pair);
+        registerAddLiquidity(_zkSyncAddress, tokenId, _amount, _pair, _minLpAmount, nftTokenId);
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
@@ -377,6 +408,32 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         bytes memory pubData = Operations.writeMappingPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.Mapping, pubData);
         emit TokenMapping(_tokenId, _amount, _toChainId);
+    }
+
+    /// @notice Register add liquidity request - pack pubdata, add priority request and emit OnchainAddLiquidity event
+    function registerAddLiquidity(
+        address _owner,
+        uint16 _tokenId,
+        uint128 _amount,
+        address _pair,
+        uint128 _minLpAmount,
+        uint32 _nftTokenId
+    ) internal {
+        // Priority Queue request
+        Operations.L1AddLQ memory op =
+        Operations.L1AddLQ({
+                owner: _owner,
+                chainId: CHAIN_ID,
+                tokenId: _tokenId,
+                amount: _amount,
+                pair: _pair,
+                lpAmount: _minLpAmount,
+                nftTokenId: _nftTokenId
+            }
+        );
+        bytes memory pubData = Operations.writeL1AddLQPubdataForPriorityQueue(op);
+        addPriorityRequest(Operations.OpType.L1AddLQ, pubData);
+        emit AddLiquidity(_pair, _tokenId, _amount);
     }
 
     // Priority queue
