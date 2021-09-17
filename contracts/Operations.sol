@@ -13,20 +13,22 @@ library Operations {
 
     /// @notice zkSync circuit operation type
     enum OpType {
-        Noop,
-        Deposit,
-        TransferToNew,
-        PartialExit,
-        _CloseAccount, // used for correct op id offset
-        Transfer,
-        FullExit,
-        ChangePubKey,
-        ForcedExit,
-        AddLiquidity,
-        RemoveLiquidity,
-        Swap,
-        QuickSwap,
-        Mapping
+        Noop, // 0
+        Deposit, // 1 L1 Op
+        TransferToNew, // 2 L2 Op
+        PartialExit, // 3 L2 Op
+        _CloseAccount, // 4 used for correct op id offset
+        Transfer, // 5 L2 Op
+        FullExit, // 6 L1 Op
+        ChangePubKey, // 7 L2 Op
+        ForcedExit, // 8 L2 Op
+        AddLiquidity, // 9 L2 Op
+        RemoveLiquidity, // 10 L2 Op
+        Swap, // 11 L2 Op
+        QuickSwap, // 12 L1 Op
+        Mapping, // 13 L1 Op
+        L1AddLQ, // 14 L1 Op
+        L1RemoveLQ // 15 L1 Op
     }
 
     // Byte lengths
@@ -55,6 +57,8 @@ library Operations {
 
     /// @dev Signature (for example full exit signature) bytes length
     uint8 constant SIGNATURE_BYTES = 64;
+
+    uint8 constant NFT_TOKEN_BYTES = 4;
 
     // Deposit pubdata
     struct Deposit {
@@ -304,5 +308,57 @@ library Operations {
     /// @notice Write mapping pubdata for priority queue check.
     function checkMappingInPriorityQueue(Mapping memory op, bytes20 hashedPubdata) internal pure returns (bool) {
         return Utils.hashBytesToBytes20(writeMappingPubdataForPriorityQueue(op)) == hashedPubdata;
+    }
+
+    // L1AddLQ pubdata
+    struct L1AddLQ {
+        // uint8 opType
+        address owner;
+        uint8 chainId;
+        uint16 tokenId;
+        uint128 amount;
+        address pair; // l2 pair address
+        // lpAmount has two meanings:
+        // l2 lp amount min received when add liquidity from l1 to l2
+        // l2 pair lp amount really produced from l2 to l1, if lp amount is zero it means add liquidity failed
+        uint128 lpAmount;
+        uint32 nftTokenId;
+    }
+
+    uint256 public constant PACKED_L1ADDLQ_PUBDATA_BYTES =
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+
+    /// Deserialize pubdata
+    function readL1AddLQPubdata(bytes memory _data) internal pure returns (L1AddLQ memory parsed) {
+        // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.pair) = Bytes.readAddress(_data, offset);
+        (offset, parsed.lpAmount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.nftTokenId) = Bytes.readUInt32(_data, offset);
+
+        require(offset == PACKED_L1ADDLQ_PUBDATA_BYTES, "Operations: Read L1AddLQ");
+    }
+
+    /// Serialize pubdata
+    function writeL1AddLQPubdataForPriorityQueue(L1AddLQ memory op) internal pure returns (bytes memory buf) {
+        buf = abi.encodePacked(
+            uint8(OpType.L1AddLQ),
+            op.owner,
+            op.chainId,
+            op.tokenId,
+            op.amount,
+            op.pair,
+            uint128(0), // lp amount ignored
+            op.nftTokenId
+        );
+    }
+
+    /// @notice Write pubdata for priority queue check.
+    function checkL1AddLQInPriorityQueue(L1AddLQ memory op, bytes20 hashedPubdata) internal pure returns (bool) {
+        return Utils.hashBytesToBytes20(writeL1AddLQPubdataForPriorityQueue(op)) == hashedPubdata;
     }
 }

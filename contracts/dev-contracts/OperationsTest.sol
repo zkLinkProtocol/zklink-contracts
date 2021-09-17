@@ -104,4 +104,27 @@ contract OperationsTest {
         require(_example.amount == parsed.amount);
         require(0 == parsed.fee);
     }
+
+    function testCreateL1AddLQPubdata(Operations.L1AddLQ calldata _example, bytes calldata _pubdata) external pure {
+        Operations.L1AddLQ memory parsed = Operations.readL1AddLQPubdata(_pubdata);
+        require(_example.owner == parsed.owner);
+        require(_example.chainId == parsed.chainId);
+        require(_example.tokenId == parsed.tokenId);
+        require(_example.amount == parsed.amount);
+        require(_example.pair == parsed.pair);
+        require(_example.lpAmount == parsed.lpAmount);
+        require(_example.nftTokenId == parsed.nftTokenId);
+    }
+
+    function testWriteL1AddLQPubdata(Operations.L1AddLQ calldata _example) external pure {
+        bytes memory pubdata = Operations.writeL1AddLQPubdataForPriorityQueue(_example);
+        Operations.L1AddLQ memory parsed = Operations.readL1AddLQPubdata(pubdata);
+        require(_example.owner == parsed.owner);
+        require(_example.chainId == parsed.chainId);
+        require(_example.tokenId == parsed.tokenId);
+        require(_example.amount == parsed.amount);
+        require(_example.pair == parsed.pair);
+        require(0 == parsed.lpAmount);
+        require(_example.nftTokenId == parsed.nftTokenId);
+    }
 }
