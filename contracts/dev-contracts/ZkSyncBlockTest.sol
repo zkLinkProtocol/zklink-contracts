@@ -28,4 +28,8 @@ contract ZkSyncBlockTest is ZkSyncBlock {
     function testExecL1AddLQ(bytes calldata _pubdata) external {
         execL1AddLQ(_pubdata);
     }
+
+    function testExecL1RemoveLQ(bytes calldata _pubdata) external {
+        execL1RemoveLQ(_pubdata);
+    }
 }

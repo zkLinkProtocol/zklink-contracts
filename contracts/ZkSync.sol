@@ -264,6 +264,22 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         registerAddLiquidity(_zkSyncAddress, tokenId, _amount, _pair, _minLpAmount, nftTokenId);
     }
 
+    /// @notice Remove liquidity from l1 and get token back from l2 cross chain pair
+    /// @param _zkSyncAddress Receiver Layer 2 address if remove liquidity success
+    /// @param _nftTokenId Nft token that contains info about the liquidity
+    /// @param _minAmount Token amount min received
+    function removeLiquidity(address _zkSyncAddress, uint32 _nftTokenId, uint104 _minAmount) external {
+        requireActive();
+        // nft must exist
+        require(address(governance.nft()) != address(0), 'ZkSync: nft not exist');
+        require(governance.nft().ownerOf(_nftTokenId) == msg.sender, 'ZkSync: not nft owner');
+        // update nft status
+        governance.nft().removeLq(_nftTokenId);
+        // register request
+        IZKLinkNFT.Lq memory lq = governance.nft().tokenLq(_nftTokenId);
+        registerRemoveLiquidity(_zkSyncAddress, lq.tokenId, _minAmount, lq.pair, lq.lpTokenAmount, _nftTokenId);
+    }
+
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
     /// @param _address Address of the tokens owner
     /// @param _token Address of token, zero address is used for ETH
@@ -434,6 +450,32 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         bytes memory pubData = Operations.writeL1AddLQPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.L1AddLQ, pubData);
         emit AddLiquidity(_pair, _tokenId, _amount);
+    }
+
+    /// @notice Register remove liquidity request - pack pubdata, add priority request and emit OnchainAddLiquidity event
+    function registerRemoveLiquidity(
+        address _owner,
+        uint16 _tokenId,
+        uint128 _minAmount,
+        address _pair,
+        uint128 _lpAmount,
+        uint32 _nftTokenId
+    ) internal {
+        // Priority Queue request
+        Operations.L1RemoveLQ memory op =
+        Operations.L1RemoveLQ({
+        owner: _owner,
+        chainId: CHAIN_ID,
+        tokenId: _tokenId,
+        amount: _minAmount,
+        pair: _pair,
+        lpAmount: _lpAmount,
+        nftTokenId: _nftTokenId
+        }
+        );
+        bytes memory pubData = Operations.writeL1RemoveLQPubdataForPriorityQueue(op);
+        addPriorityRequest(Operations.OpType.L1RemoveLQ, pubData);
+        emit RemoveLiquidity(_pair, _tokenId, _lpAmount);
     }
 
     // Priority queue

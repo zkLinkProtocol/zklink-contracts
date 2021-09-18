@@ -5,7 +5,8 @@ const {getDepositPubdata,
     getChangePubkeyPubdata,
     getQuickSwapPubdata,
     getMappingPubdata,
-    getL1AddLQPubdata} = require('./utils');
+    getL1AddLQPubdata,
+    getL1RemoveLQPubdata} = require('./utils');
 
 describe('Operations unit tests', function () {
     let testContract;
@@ -169,5 +170,31 @@ describe('Operations unit tests', function () {
         const nftTokenId = '0x01020304';
         const example = { owner, chainId, tokenId, amount, pair, lpAmount, nftTokenId };
         await testContract.testWriteL1AddLQPubdata(example);
+    });
+
+    // L1RemoveLQ
+    it('Correctly Parse L1RemoveLQ pubdata', async () => {
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const chainId = '0x00';
+        const tokenId = '0x0102';
+        const amount = '0x101112131415161718191a1b1c1d1e1f';
+        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
+        const nftTokenId = '0x01020304';
+        const example = { owner, chainId, tokenId, amount, pair, lpAmount, nftTokenId };
+        const pubdata = getL1RemoveLQPubdata(example);
+        await testContract.testCreateL1RemoveLQPubdata(example, pubdata);
+    });
+
+    it('Correctly Write L1RemoveLQ pubdata', async () => {
+        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const chainId = '0x00';
+        const tokenId = '0x0102';
+        const amount = '0x101112131415161718191a1b1c1d1e1f';
+        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
+        const nftTokenId = '0x01020304';
+        const example = { owner, chainId, tokenId, amount, pair, lpAmount, nftTokenId };
+        await testContract.testWriteL1RemoveLQPubdata(example);
     });
 });

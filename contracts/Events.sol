@@ -37,6 +37,9 @@ interface Events {
     /// @notice Event emitted when user add liquidity
     event AddLiquidity(address indexed pair, uint16 indexed tokenId, uint128 amount);
 
+    /// @notice Event emitted when user remove liquidity
+    event RemoveLiquidity(address indexed pair, uint16 indexed tokenId, uint128 lpAmount);
+
     /// @notice Event emitted when accepter accept a fast withdraw
     event Accept(address indexed accepter, address indexed receiver, uint16 indexed tokenId, uint128 amount, uint128 fee, uint32 nonce);
 

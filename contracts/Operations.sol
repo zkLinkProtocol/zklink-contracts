@@ -361,4 +361,56 @@ library Operations {
     function checkL1AddLQInPriorityQueue(L1AddLQ memory op, bytes20 hashedPubdata) internal pure returns (bool) {
         return Utils.hashBytesToBytes20(writeL1AddLQPubdataForPriorityQueue(op)) == hashedPubdata;
     }
+
+    // L1RemoveLQ pubdata
+    struct L1RemoveLQ {
+        // uint8 opType
+        address owner; // token receiver after remove liquidity
+        uint8 chainId;
+        uint16 tokenId;
+        // amount has two meanings:
+        // l2 token amount min received when remove liquidity from l1 to l2
+        // l2 token amount really return back from l2 to l1, if amount is zero it means remove liquidity failed
+        uint128 amount;
+        address pair; // l2 pair address
+        uint128 lpAmount;
+        uint32 nftTokenId;
+    }
+
+    uint256 public constant PACKED_L1REMOVELQ_PUBDATA_BYTES =
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+
+    /// Deserialize pubdata
+    function readL1RemoveLQPubdata(bytes memory _data) internal pure returns (L1RemoveLQ memory parsed) {
+        // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.pair) = Bytes.readAddress(_data, offset);
+        (offset, parsed.lpAmount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.nftTokenId) = Bytes.readUInt32(_data, offset);
+
+        require(offset == PACKED_L1REMOVELQ_PUBDATA_BYTES, "Operations: Read L1RemoveLQ");
+    }
+
+    /// Serialize pubdata
+    function writeL1RemoveLQPubdataForPriorityQueue(L1RemoveLQ memory op) internal pure returns (bytes memory buf) {
+        buf = abi.encodePacked(
+            uint8(OpType.L1RemoveLQ),
+            op.owner,
+            op.chainId,
+            op.tokenId,
+            uint128(0),  // amount ignored
+            op.pair,
+            op.lpAmount,
+            op.nftTokenId
+        );
+    }
+
+    /// @notice Write pubdata for priority queue check.
+    function checkL1RemoveLQInPriorityQueue(L1RemoveLQ memory op, bytes20 hashedPubdata) internal pure returns (bool) {
+        return Utils.hashBytesToBytes20(writeL1RemoveLQPubdataForPriorityQueue(op)) == hashedPubdata;
+    }
 }

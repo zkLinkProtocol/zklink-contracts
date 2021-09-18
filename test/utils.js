@@ -94,6 +94,19 @@ function getL1AddLQPubdata({ owner, chainId, tokenId, amount, pair, lpAmount, nf
     ]);
 }
 
+function getL1RemoveLQPubdata({ owner, chainId, tokenId, amount, pair, lpAmount, nftTokenId }) {
+    return ethers.utils.concat([
+        ethers.utils.arrayify('0x0f'),
+        ethers.utils.arrayify(owner),
+        ethers.utils.arrayify(chainId),
+        ethers.utils.arrayify(tokenId),
+        ethers.utils.arrayify(amount),
+        ethers.utils.arrayify(pair),
+        ethers.utils.arrayify(lpAmount),
+        ethers.utils.arrayify(nftTokenId)
+    ]);
+}
+
 async function calFee(tx) {
     let gasPrice = tx.gasPrice;
     let txr = await ethers.provider.getTransactionReceipt(tx.hash);
@@ -110,5 +123,6 @@ module.exports = {
     getQuickSwapPubdata,
     getMappingPubdata,
     getL1AddLQPubdata,
+    getL1RemoveLQPubdata,
     calFee
 };

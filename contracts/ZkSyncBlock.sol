@@ -346,6 +346,8 @@ contract ZkSyncBlock is ZkSyncBase {
                 execMappingToken(pubData);
             } else if (opType == Operations.OpType.L1AddLQ) {
                 concatHash = execL1AddLQ(pubData);
+            } else if (opType == Operations.OpType.L1RemoveLQ) {
+                concatHash = execL1RemoveLQ(pubData);
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -440,6 +442,14 @@ contract ZkSyncBlock is ZkSyncBase {
                 Operations.L1AddLQ memory l1AddLQData = Operations.readL1AddLQPubdata(opPubData);
                 if (l1AddLQData.chainId == CHAIN_ID) {
                     checkPriorityOperation(l1AddLQData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    priorityOperationsProcessed++;
+                    processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
+                }
+            } else if (opType == Operations.OpType.L1RemoveLQ) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1REMOVELQ_BYTES);
+                Operations.L1RemoveLQ memory l1RemoveLQData = Operations.readL1RemoveLQPubdata(opPubData);
+                if (l1RemoveLQData.chainId == CHAIN_ID) {
+                    checkPriorityOperation(l1RemoveLQData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
                     priorityOperationsProcessed++;
                     processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
                 }
@@ -672,6 +682,17 @@ contract ZkSyncBlock is ZkSyncBase {
         require(Operations.checkL1AddLQInPriorityQueue(_l1AddLQ, hashedPubdata), "ZkSyncBlock: L1AddLQ Hash");
     }
 
+    /// @notice Checks that l1RemoveLQ is same as operation in priority queue
+    /// @param _l1RemoveLQ L1RemoveLQ data
+    /// @param _priorityRequestId Operation's id in priority queue
+    function checkPriorityOperation(Operations.L1RemoveLQ memory _l1RemoveLQ, uint64 _priorityRequestId) internal view {
+        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
+        require(priorReqType == Operations.OpType.L1RemoveLQ, "ZkSyncBlock: L1RemoveLQ Op Type"); // incorrect priority op type
+
+        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
+        require(Operations.checkL1RemoveLQInPriorityQueue(_l1RemoveLQ, hashedPubdata), "ZkSyncBlock: L1AddLQ Hash");
+    }
+
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
         uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
@@ -723,6 +744,22 @@ contract ZkSyncBlock is ZkSyncBase {
             governance.nft().confirmAddLq(op.nftTokenId, op.lpAmount);
         } else {
             governance.nft().revokeAddLq(op.nftTokenId);
+        }
+        return true;
+    }
+
+    function execL1RemoveLQ(bytes memory pubData) internal returns (bool) {
+        Operations.L1RemoveLQ memory op = Operations.readL1RemoveLQPubdata(pubData);
+        if (op.chainId != CHAIN_ID) {
+            return false;
+        }
+        // token amount is zero means remove liquidity fail
+        if (op.amount > 0) {
+            governance.nft().confirmRemoveLq(op.nftTokenId);
+            // add token amount to owner's pending balance
+            storePendingBalance(op.tokenId, op.owner, op.amount);
+        } else {
+            governance.nft().revokeRemoveLq(op.nftTokenId);
         }
         return true;
     }
