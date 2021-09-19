@@ -366,6 +366,190 @@ task("deploy", "Deploy zklink")
         }
 });
 
+task("upgrade", "Upgrade zklink on testnet")
+    .addParam("key", "The deployer key", undefined, types.string, true)
+    .addParam("upgradeGovernance", "Upgrade governance, default is false", undefined, types.boolean, true)
+    .addParam("upgradeVerifier", "Upgrade verifier, default is false", undefined, types.boolean, true)
+    .addParam("upgradeVault", "Upgrade vault, default is false", undefined, types.boolean, true)
+    .addParam("upgradeZksync", "Upgrade zksync, default is false", undefined, types.boolean, true)
+    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .setAction(async (taskArgs) => {
+        const hardhat = require("hardhat");
+        const fs = require('fs');
+
+        let deployer;
+        const key = taskArgs.key;
+        if (key === undefined) {
+            [deployer] = await hardhat.ethers.getSigners();
+        } else {
+            deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        }
+        let upgradeGovernance = taskArgs.upgradeGovernance === undefined ? false : taskArgs.upgradeGovernance;
+        let upgradeVerifier = taskArgs.upgradeVerifier === undefined ? false : taskArgs.upgradeVerifier;
+        let upgradeVault = taskArgs.upgradeVault === undefined ? false : taskArgs.upgradeVault;
+        let upgradeZksync = taskArgs.upgradeZksync === undefined ? false : taskArgs.upgradeZksync;
+        let skipVerify = taskArgs.skipVerify === undefined ? false : taskArgs.skipVerify;
+        console.log('deployer', deployer.address);
+        console.log('upgrade governance?', upgradeGovernance);
+        console.log('upgrade verifier?', upgradeVerifier);
+        console.log('upgrade vault?', upgradeVault);
+        console.log('upgrade zksync?', upgradeZksync);
+        console.log('skip verify contracts?', skipVerify);
+        if (!upgradeGovernance && !upgradeVerifier && !upgradeVault && !upgradeZksync) {
+            console.log('no need upgrade');
+            return;
+        }
+
+        // deploy log must exist
+        const deployLogPath = `log/deploy_${process.env.NET}.log`;
+        console.log('deploy log path', deployLogPath);
+        if (!fs.existsSync(deployLogPath)) {
+            console.log('deploy log not exist')
+            return;
+        }
+        const data = fs.readFileSync(deployLogPath, 'utf8');
+        let deployLog = JSON.parse(data);
+
+        // check if upgrade at testnet
+        let zkSyncProxyAddr = deployLog.zkSyncProxy;
+        if (zkSyncProxyAddr === undefined) {
+            console.log('ZkSync proxy address not exist');
+            return;
+        }
+        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+        let zkSyncProxy = await zkSyncFactory.attach(zkSyncProxyAddr);
+        const noticePeriod = await zkSyncProxy.connect(deployer).getNoticePeriod();
+        if (noticePeriod > 0) {
+            console.log('Notice period is not zero, can not exec this task in main net');
+            return;
+        }
+
+        // attach upgrade gatekeeper
+        const gatekeeperAddr = deployLog.gatekeeper;
+        if (gatekeeperAddr === undefined) {
+            console.log('Gatekeeper address not exist');
+            return;
+        }
+        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
+        const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
+
+        // log deployer balance
+        const balance = await deployer.getBalance();
+        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
+
+        const upgradeTargets = [hardhat.ethers.constants.AddressZero,
+            hardhat.ethers.constants.AddressZero,
+            hardhat.ethers.constants.AddressZero,
+            hardhat.ethers.constants.AddressZero];
+        const upgradeParameters = [[],[],[],[]];
+
+        // governance
+        if (upgradeGovernance) {
+            console.log('deploy governance target...');
+            const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
+            const governance = await governanceFactory.connect(deployer).deploy();
+            await governance.deployed();
+            deployLog.governanceTarget = governance.address;
+            upgradeTargets[0] = deployLog.governanceTarget;
+            console.log('governance target', deployLog.governanceTarget);
+            if (!skipVerify) {
+                console.log('verify governance target...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.governanceTarget
+                });
+                deployLog.governanceTargetVerified = true;
+            }
+        }
+
+        // verifier
+        if (upgradeVerifier) {
+            console.log('deploy verifier target...');
+            const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+            const verifier = await verifierFactory.connect(deployer).deploy();
+            await verifier.deployed();
+            deployLog.verifierTarget = verifier.address;
+            upgradeTargets[1] = deployLog.verifierTarget;
+            console.log('verifier target', deployLog.verifierTarget);
+            if (!skipVerify) {
+                console.log('verify verifier target...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.verifierTarget
+                });
+                deployLog.verifierTargetVerified = true;
+            }
+        }
+
+        // vault
+        if (upgradeVault) {
+            console.log('deploy vault target...');
+            const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
+            const vault = await vaultFactory.connect(deployer).deploy();
+            await vault.deployed();
+            deployLog.vaultTarget = vault.address;
+            upgradeTargets[2] = deployLog.vaultTarget;
+            console.log('vault target', deployLog.vaultTarget);
+            if (!skipVerify) {
+                console.log('verify vault target...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.vaultTarget
+                });
+                deployLog.vaultTargetVerified = true;
+            }
+        }
+
+        // zkSync
+        if (upgradeZksync) {
+            console.log('deploy zkSyncBlock...');
+            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+            const zkSyncBlock = await zkSyncBlockFactory.connect(deployer).deploy();
+            await zkSyncBlock.deployed();
+            deployLog.zkSyncBlock = zkSyncBlock.address;
+            console.log('zkSyncBlock', deployLog.zkSyncBlock);
+
+            if (!skipVerify) {
+                console.log('verify zkSyncBlock...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.zkSyncBlock
+                });
+                deployLog.zkSyncBlockVerified = true;
+            }
+
+            console.log('deploy zkSync target...');
+            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+            const zkSync = await zkSyncFactory.connect(deployer).deploy();
+            await zkSync.deployed();
+            deployLog.zkSyncTarget = zkSync.address;
+            upgradeTargets[3] = deployLog.zkSyncTarget;
+            upgradeParameters[3] = hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [deployLog.zkSyncBlock]);
+            console.log('zkSync target', deployLog.zkSyncTarget);
+
+            if (!skipVerify) {
+                console.log('verify zkSync target...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.zkSyncTarget
+                });
+                deployLog.zkSyncTargetVerified = true;
+            }
+        }
+
+        console.log('start upgrade...');
+        const startUpgradeTx = await gatekeeper.connect(deployer).startUpgrade(upgradeTargets);
+        console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
+        await startUpgradeTx.wait();
+
+        console.log('start preparation...');
+        const startPreparationUpgradeTx = await gatekeeper.connect(deployer).startPreparation();
+        console.info(`upgrade preparation tx: ${startPreparationUpgradeTx.hash}`);
+        await startPreparationUpgradeTx.wait();
+
+        const finishUpgradeTx = await gatekeeper.connect(deployer).finishUpgrade(upgradeParameters);
+        console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
+        await finishUpgradeTx.wait();
+
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        console.info('upgrade successful');
+    });
+
 task("deploy_strategy", "Deploy strategy")
     .addParam("key", "The deployer key", undefined, types.string, true)
     .addParam("strategy", "The strategy contract name")

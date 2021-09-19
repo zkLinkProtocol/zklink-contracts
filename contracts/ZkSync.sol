@@ -90,6 +90,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @notice zkSync contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {
+        (address _zkSyncBlock) = abi.decode(upgradeParameters, (address));
+        zkSyncBlock = _zkSyncBlock;
     }
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
