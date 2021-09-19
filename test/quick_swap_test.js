@@ -2,7 +2,7 @@ const hardhat = require('hardhat');
 const { expect } = require('chai');
 const {writeDepositPubdata, getQuickSwapPubdata, calFee} = require('./utils');
 
-describe('Deposit swap unit tests', function () {
+describe('Quick swap unit tests', function () {
     let token, zkSync, zkSyncBlock, governance, vault;
     let wallet,alice,bob;
     beforeEach(async () => {
@@ -124,7 +124,7 @@ describe('Deposit swap unit tests', function () {
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
-        await zkSyncBlock.testAccepterWithdraw(pubdata);
+        await zkSyncBlock.testExecQuickSwap(pubdata);
         let alicePendingBalance = await zkSync.getPendingBalance(accepter, hardhat.ethers.constants.AddressZero);
         expect(alicePendingBalance).to.eq(amount);
     });
@@ -165,7 +165,7 @@ describe('Deposit swap unit tests', function () {
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
-        await zkSyncBlock.testAccepterWithdraw(pubdata);
+        await zkSyncBlock.testExecQuickSwap(pubdata);
         let alicePendingBalance = await zkSync.getPendingBalance(accepter, token.address);
         expect(alicePendingBalance).to.eq(amount);
     });

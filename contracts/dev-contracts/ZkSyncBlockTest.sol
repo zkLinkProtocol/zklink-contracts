@@ -17,8 +17,8 @@ contract ZkSyncBlockTest is ZkSyncBlock {
         return createBlockCommitment(_previousBlock, _newBlockData, _offsetCommitment);
     }
 
-    function testAccepterWithdraw(bytes calldata _pubdata) external {
-        accepterWithdraw(_pubdata);
+    function testExecQuickSwap(bytes calldata _pubdata) external {
+        execQuickSwap(_pubdata);
     }
 
     function testExecMappingToken(bytes calldata _pubdata) external {
@@ -31,5 +31,9 @@ contract ZkSyncBlockTest is ZkSyncBlock {
 
     function testExecL1RemoveLQ(bytes calldata _pubdata) external {
         execL1RemoveLQ(_pubdata);
+    }
+
+    function testExecPartialExit(bytes calldata _pubdata) external {
+        execPartialExit(_pubdata);
     }
 }

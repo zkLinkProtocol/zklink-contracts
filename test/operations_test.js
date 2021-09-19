@@ -43,8 +43,11 @@ describe('Operations unit tests', function () {
         const amount = '0x101112131415161718191a1b1c1d1e1f';
         const fee = '0x0102';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
+        const nonce = '0x00000001';
+        const isFastWithdraw = '0x01';
+        const fastWithdrawFee = '0x0102';
 
-        const example = { accountId, tokenId, amount, fee, owner };
+        const example = { accountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFee };
         const pubdata = getPartialExitPubdata(example);
         await testContract.testPartialExitPubdata(example, pubdata);
     });

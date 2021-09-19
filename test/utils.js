@@ -21,14 +21,17 @@ function writeDepositPubdata({ tokenId, amount, owner }) {
     ]);
 }
 
-function getPartialExitPubdata({ accountId, tokenId, amount, fee, owner }) {
+function getPartialExitPubdata({ accountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFee }) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x03'),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
         ethers.utils.arrayify(fee),
-        ethers.utils.arrayify(owner)
+        ethers.utils.arrayify(owner),
+        ethers.utils.arrayify(nonce),
+        ethers.utils.arrayify(isFastWithdraw),
+        ethers.utils.arrayify(fastWithdrawFee)
     ]);
 }
 

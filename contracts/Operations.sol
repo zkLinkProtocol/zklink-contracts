@@ -147,7 +147,13 @@ library Operations {
         uint128 amount;
         //uint16 fee; -- present in pubdata, ignored at serialization
         address owner;
+        uint32 nonce;
+        bool isFastWithdraw;
+        uint16 fastWithdrawFee;
     }
+
+    uint256 public constant PACKED_PARTIAL_EXIT_PUBDATA_BYTES =
+    OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES;
 
     function readPartialExitPubdata(bytes memory _data) internal pure returns (PartialExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -156,6 +162,11 @@ library Operations {
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
         offset += FEE_BYTES; // fee (ignored)
         (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
+        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
+        (offset, parsed.isFastWithdraw) = Bytes.readBool(_data, offset); // isFastWithdraw
+        (offset, parsed.fastWithdrawFee) = Bytes.readUInt16(_data, offset); // fastWithdrawFee
+
+        require(offset == PACKED_PARTIAL_EXIT_PUBDATA_BYTES, "Operations: Read PartialExit");
     }
 
     // ForcedExit pubdata

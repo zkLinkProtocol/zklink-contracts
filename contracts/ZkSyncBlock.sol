@@ -332,8 +332,7 @@ contract ZkSyncBlock is ZkSyncBase {
             Operations.OpType opType = Operations.OpType(uint8(pubData[0]));
             bool concatHash = true;
             if (opType == Operations.OpType.PartialExit) {
-                Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
-                storePendingBalance(op.tokenId, op.owner, op.amount);
+                execPartialExit(pubData);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
                 storePendingBalance(op.tokenId, op.target, op.amount);
@@ -341,7 +340,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 storePendingBalance(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.QuickSwap) {
-                concatHash = accepterWithdraw(pubData);
+                concatHash = execQuickSwap(pubData);
             } else if (opType == Operations.OpType.Mapping) {
                 execMappingToken(pubData);
             } else if (opType == Operations.OpType.L1AddLQ) {
@@ -698,7 +697,7 @@ contract ZkSyncBlock is ZkSyncBase {
         pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
     }
 
-    function accepterWithdraw(bytes memory pubData) internal returns (bool) {
+    function execQuickSwap(bytes memory pubData) internal returns (bool) {
         Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
         // only to chain need to process QuickSwap data in executeBlocks
         if (op.toChainId != CHAIN_ID) {
@@ -706,18 +705,31 @@ contract ZkSyncBlock is ZkSyncBase {
         }
         // if amountOutMin is zero it means swap failed
         if (op.amountOutMin > 0) {
-            bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOutMin, op.withdrawFee, op.nonce));
-            address accepter = accepts[hash];
-            if (accepter == address(0)) {
-                // receiver act as a accepter
-                accepts[hash] = op.to;
-                storePendingBalance(op.toTokenId, op.to, op.amountOutMin);
-            } else {
-                // accepter profit is (amountOutMin - fee)
-                storePendingBalance(op.toTokenId, accepter, op.amountOutMin);
-            }
+            withdrawToAccepter(op.to, op.toTokenId, op.amountOutMin, op.withdrawFee, op.nonce);
         }
         return true;
+    }
+
+    function execPartialExit(bytes memory pubData) internal {
+        Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
+        if (op.isFastWithdraw) {
+            withdrawToAccepter(op.owner, op.tokenId, op.amount, op.fastWithdrawFee, op.nonce);
+        } else {
+            storePendingBalance(op.tokenId, op.owner, op.amount);
+        }
+    }
+
+    function withdrawToAccepter(address to, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) internal {
+        bytes32 hash = keccak256(abi.encodePacked(to, tokenId, amount, withdrawFee, nonce));
+        address accepter = accepts[hash];
+        if (accepter == address(0)) {
+            // receiver act as a accepter
+            accepts[hash] = to;
+            storePendingBalance(tokenId, to, amount);
+        } else {
+            // accepter profit is (amountOutMin - fee)
+            storePendingBalance(tokenId, accepter, amount);
+        }
     }
 
     function execMappingToken(bytes memory pubData) internal {
