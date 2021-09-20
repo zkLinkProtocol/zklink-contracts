@@ -92,6 +92,8 @@ contract OperationsTest {
         require(_example.tokenId == parsed.tokenId);
         require(_example.amount == parsed.amount);
         require(_example.fee == parsed.fee);
+        require(_example.nonce == parsed.nonce);
+        require(_example.withdrawFee == parsed.withdrawFee);
     }
 
     function testWriteMappingPubdata(Operations.Mapping calldata _example) external pure {
@@ -103,6 +105,8 @@ contract OperationsTest {
         require(_example.tokenId == parsed.tokenId);
         require(_example.amount == parsed.amount);
         require(0 == parsed.fee);
+        require(_example.nonce == parsed.nonce);
+        require(_example.withdrawFee == parsed.withdrawFee);
     }
 
     function testCreateL1AddLQPubdata(Operations.L1AddLQ calldata _example, bytes calldata _pubdata) external pure {

@@ -71,7 +71,7 @@ function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amount
     ]);
 }
 
-function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount, fee }) {
+function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee }) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x0d'),
         ethers.utils.arrayify(fromChainId),
@@ -80,7 +80,9 @@ function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount,
         ethers.utils.arrayify(to),
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
-        ethers.utils.arrayify(fee)
+        ethers.utils.arrayify(fee),
+        ethers.utils.arrayify(nonce),
+        ethers.utils.arrayify(withdrawFee)
     ]);
 }
 

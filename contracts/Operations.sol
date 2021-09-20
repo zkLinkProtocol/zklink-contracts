@@ -282,10 +282,12 @@ library Operations {
         uint16 tokenId;
         uint128 amount;
         uint128 fee; // present in pubdata, ignored at serialization
+        uint32 nonce; // accept nonce
+        uint16 withdrawFee; // accept withdraw fee ratio
     }
 
     uint256 public constant PACKED_MAPPING_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * CHAIN_BYTES + 2 * ADDRESS_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES;
+    OP_TYPE_BYTES + 2 * CHAIN_BYTES + 2 * ADDRESS_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NONCE_BYTES + FEE_BYTES;
 
     /// Deserialize mapping pubdata
     function readMappingPubdata(bytes memory _data) internal pure returns (Mapping memory parsed) {
@@ -298,6 +300,8 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.fee) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.withdrawFee) = Bytes.readUInt16(_data, offset);
 
         require(offset == PACKED_MAPPING_PUBDATA_BYTES, "Operations: Read Mapping");
     }
@@ -312,7 +316,9 @@ library Operations {
             op.to,
             op.tokenId,
             op.amount,
-            uint128(0) // fee (ignored)
+            uint128(0), // fee (ignored)
+            op.nonce,
+            op.withdrawFee
         );
     }
 

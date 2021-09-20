@@ -130,8 +130,10 @@ describe('Operations unit tests', function () {
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
         const fee = '0x101112131415161718191a1b1c1d1e1f';
+        const nonce = '0x01020304';
+        const withdrawFee = '0x0001';
 
-        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee };
+        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee };
         const pubdata = getMappingPubdata(example);
         await testContract.testCreateMappingPubdata(example, pubdata);
     });
@@ -144,8 +146,10 @@ describe('Operations unit tests', function () {
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
         const fee = '0x101112131415161718191a1b1c1d1e1f';
+        const nonce = '0x01020304';
+        const withdrawFee = '0x0001';
 
-        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee };
+        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee };
         await testContract.testWriteMappingPubdata(example);
     });
 

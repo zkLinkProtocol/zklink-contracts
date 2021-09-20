@@ -45,7 +45,7 @@ describe('Token mapping unit tests', function () {
 
     it('should revert when exodusMode is active', async () => {
         await zkSync.setExodusMode(true);
-        await expect(zkSync.mappingToken(wallet.address, alice.address, 0, token.address, 1)).to.be.revertedWith("L");
+        await expect(zkSync.mappingToken(wallet.address, alice.address, 0, token.address, 1, 1, 100)).to.be.revertedWith("L");
     });
 
     it('token mapping should success', async () => {
@@ -55,11 +55,11 @@ describe('Token mapping unit tests', function () {
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
 
-        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 0)).to.be.revertedWith("ZkSync: toChainId");
-        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 1)).to.be.revertedWith("ZkSync: not mapping token");
+        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 0, 1, 100)).to.be.revertedWith("ZkSync: toChainId");
+        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 1, 1, 100)).to.be.revertedWith("ZkSync: not mapping token");
 
         await governance.connect(alice).setTokenMapping(token.address, true);
-        await zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, toChainId);
+        await zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, toChainId, 1, 100);
         expect(await token.balanceOf(vault.address)).equal(amount);
     });
 
@@ -68,9 +68,17 @@ describe('Token mapping unit tests', function () {
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
         await governance.connect(alice).setTokenMapping(token.address, true);
-        await zkSync.connect(bob).mappingToken(bob.address, bob.address, amount, token.address, 1);
+        await zkSync.connect(bob).mappingToken(bob.address, bob.address, amount, token.address, 1, 1, 1);
 
-        const pubdata = getMappingPubdata({ fromChainId:'0x00', toChainId:'0x01', owner:bob.address, to:bob.address, tokenId:'0x0001', amount:'0x00000000000000000000000000000014', fee:'0x00000000000000000000000000000000' });
+        const pubdata = getMappingPubdata({ fromChainId:'0x00',
+            toChainId:'0x01',
+            owner:bob.address,
+            to:bob.address,
+            tokenId:'0x0001',
+            amount:'0x00000000000000000000000000000014',
+            fee:'0x00000000000000000000000000000000',
+            nonce:'0x00000001',
+            withdrawFee:'0x0001' });
         await zkSync.setExodusMode(true);
         await zkSync.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
@@ -81,14 +89,30 @@ describe('Token mapping unit tests', function () {
     it('burn in from chain should success', async () => {
         const amount = 20;
         await zkl.connect(alice).mint(vault.address, amount);
-        const pubdata = getMappingPubdata({ fromChainId:'0x00', toChainId:'0x01', owner:bob.address, to:bob.address, tokenId:'0x0002', amount:'0x00000000000000000000000000000014', fee:'0x00000000000000000000000000000001' });
+        const pubdata = getMappingPubdata({ fromChainId:'0x00',
+            toChainId:'0x01',
+            owner:bob.address,
+            to:bob.address,
+            tokenId:'0x0002',
+            amount:'0x00000000000000000000000000000014',
+            fee:'0x00000000000000000000000000000001',
+            nonce:'0x00000001',
+            withdrawFee:'0x0001' });
         await zkSyncBlock.testExecMappingToken(pubdata);
         expect(await zkl.balanceOf(vault.address)).to.be.equal(1);
     });
 
     it('mint in to chain should success', async () => {
-        const pubdata = getMappingPubdata({ fromChainId:'0x01', toChainId:'0x00', owner:bob.address, to:bob.address, tokenId:'0x0002', amount:'0x00000000000000000000000000000014', fee:'0x00000000000000000000000000000001' });
+        const pubdata = getMappingPubdata({ fromChainId:'0x01',
+            toChainId:'0x00',
+            owner:bob.address,
+            to:bob.address,
+            tokenId:'0x0002',
+            amount:'0x00000000000000000000000000000014',
+            fee:'0x00000000000000000000000000000001',
+            nonce:'0x00000001',
+            withdrawFee:'0x0001'});
         await zkSyncBlock.testExecMappingToken(pubdata);
-        expect(await zkl.balanceOf(bob.address)).to.be.equal(19);
+        expect(await zkSync.getPendingBalance(bob.address, zkl.address)).to.be.equal(19);
     });
 });
