@@ -261,7 +261,10 @@ contract ZkSyncBlock is ZkSyncBase {
             address tokenAddress = governance.tokenAddresses(tokenId);
             governance.validateTokenAddress(tokenAddress);
             // transfer erc20 token from accepter to receiver directly
-            Utils.transferFromERC20(IERC20(tokenAddress), msg.sender, receiver, amountReceive);
+            if (msg.sender != accepter) {
+                require(IERC20(tokenAddress).allowance(accepter, msg.sender) >= amountReceive, 'ZkSyncBlock: allowance');
+            }
+            Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive);
         }
         emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
     }
