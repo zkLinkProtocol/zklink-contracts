@@ -2,7 +2,7 @@ const hardhat = require('hardhat');
 const { expect } = require('chai');
 
 describe('Fast withdraw unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, vault;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault;
     let wallet,alice,bob;
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
@@ -31,9 +31,13 @@ describe('Fast withdraw unit tests', function () {
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
+        // ZkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
+        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
         await vault.setZkSyncAddress(zkSync.address);
     });
@@ -54,7 +58,7 @@ describe('Fast withdraw unit tests', function () {
 
         await token.connect(alice).mint(amount);
         await token.connect(alice).approve(zkSync.address, amount);
-        await expect(zkSyncBlock.connect(alice).accept(accepter, receiver, tokenId, amount, fastWithdrawFeeRatio, nonce))
+        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, tokenId, amount, fastWithdrawFeeRatio, nonce))
             .to.emit(zkSync, 'Accept')
             .withArgs(accepter, receiver, tokenId, amount, fastWithdrawFee, nonce);
         expect(await token.balanceOf(receiver)).to.eq(bobReceive);
@@ -63,6 +67,6 @@ describe('Fast withdraw unit tests', function () {
             [opType,accountId,tokenId,amount,fee,receiver,nonce,true,fastWithdrawFeeRatio]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecPartialExit(pubdata);
-        expect(await zkSync.getPendingBalance(accepter, token.address)).to.eq(amount);
+        expect(await zkSyncExit.getPendingBalance(accepter, token.address)).to.eq(amount);
     });
 });

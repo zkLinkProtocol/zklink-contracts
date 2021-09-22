@@ -72,13 +72,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     function initialize(bytes calldata initializationParameters) external {
         initializeReentrancyGuard();
 
-        (address _governanceAddress, address _verifierAddress, address _zkSyncBlock, address payable _vaultAddress, bytes32 _genesisStateHash) =
-            abi.decode(initializationParameters, (address, address, address, address, bytes32));
+        (address _governanceAddress, address _verifierAddress, address payable _vaultAddress, address _zkSyncBlock, address _zkSyncExit, bytes32 _genesisStateHash) =
+            abi.decode(initializationParameters, (address, address, address, address, address, bytes32));
 
         verifier = Verifier(_verifierAddress);
         governance = Governance(_governanceAddress);
-        zkSyncBlock = _zkSyncBlock;
         vault = IVault(_vaultAddress);
+        zkSyncBlock = _zkSyncBlock;
+        zkSyncExit = _zkSyncExit;
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
@@ -90,56 +91,9 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @notice zkSync contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {
-        (address _zkSyncBlock) = abi.decode(upgradeParameters, (address));
+        (address _zkSyncBlock, address _zkSyncExit) = abi.decode(upgradeParameters, (address, address));
         zkSyncBlock = _zkSyncBlock;
-    }
-
-    /// @notice Accrues users balances from deposit priority requests in Exodus mode
-    /// @dev WARNING: Only for Exodus mode
-    /// @dev Canceling may take several separate transactions to be completed
-    /// @param _n number of requests to process
-    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] memory _depositsPubdata) external nonReentrant {
-        require(exodusMode, "8"); // exodus mode not active
-        uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
-        require(toProcess == _depositsPubdata.length, "A");
-        require(toProcess > 0, "9"); // no deposits to process
-        uint64 currentDepositIdx = 0;
-        for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
-            if (priorityRequests[id].opType == Operations.OpType.Deposit ||
-                priorityRequests[id].opType == Operations.OpType.QuickSwap ||
-                priorityRequests[id].opType == Operations.OpType.Mapping ||
-                priorityRequests[id].opType == Operations.OpType.L1AddLQ) {
-                bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
-                require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
-                ++currentDepositIdx;
-
-                bytes22 packedBalanceKey;
-                uint128 amount;
-                if (priorityRequests[id].opType == Operations.OpType.Deposit) {
-                    Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
-                } else if (priorityRequests[id].opType == Operations.OpType.QuickSwap) {
-                    Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.fromTokenId);
-                    amount = op.amountIn;
-                } else if (priorityRequests[id].opType == Operations.OpType.Mapping) {
-                    Operations.Mapping memory op = Operations.readMappingPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
-                } else {
-                    Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
-                    // revoke nft
-                    governance.nft().revokeAddLq(op.nftTokenId);
-                }
-                pendingBalances[packedBalanceKey].balanceToWithdraw += amount;
-            }
-            delete priorityRequests[id];
-        }
-        firstPriorityRequestId += toProcess;
-        totalOpenPriorityRequests -= toProcess;
+        zkSyncExit = _zkSyncExit;
     }
 
     /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
@@ -283,45 +237,6 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         // register request
         IZKLinkNFT.Lq memory lq = governance.nft().tokenLq(_nftTokenId);
         registerRemoveLiquidity(_zkSyncAddress, lq.tokenId, _minAmount, lq.pair, lq.lpTokenAmount, _nftTokenId);
-    }
-
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
-    /// @param _address Address of the tokens owner
-    /// @param _token Address of token, zero address is used for ETH
-    function getPendingBalance(address _address, address _token) public view returns (uint128) {
-        uint16 tokenId = 0;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
-        return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
-    }
-
-    /// @notice  Withdraws tokens from zkSync contract to the owner
-    /// @param _owner Address of the tokens owner
-    /// @param _token Address of tokens, zero address is used for ETH
-    /// @param _amount Amount to withdraw to request.
-    ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkSync contract
-    ///         balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    function withdrawPendingBalance(
-        address payable _owner,
-        address _token,
-        uint128 _amount
-    ) external nonReentrant {
-        // eth and non lp erc20 token is managed by vault and withdraw from vault
-        uint16 tokenId;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, tokenId);
-        uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-        if (_amount > balance) {
-            _amount = balance;
-        }
-        require(_amount > 0, 'ZkSync: withdraw amount');
-
-        pendingBalances[packedBalanceKey].balanceToWithdraw = balance.sub(_amount);
-        vault.withdraw(tokenId, _owner, _amount);
-        emit Withdrawal(tokenId, _amount);
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request

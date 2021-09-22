@@ -2,14 +2,14 @@
 
 pragma solidity ^0.7.0;
 
-import "../ZkSync.sol";
+import "../ZkSyncExit.sol";
 
 contract ZkSyncUser {
 
-    ZkSync public zkSync;
+    ZkSyncExit public zkSync;
 
     constructor(address payable _zkSync) {
-        zkSync = ZkSync(_zkSync);
+        zkSync = ZkSyncExit(_zkSync);
     }
 
     receive() external payable {}

@@ -107,10 +107,14 @@ contract Storage {
     /// @dev Used when user wants to reset `authFacts` for some nonce.
     mapping(address => mapping(uint32 => uint256)) internal authFactsResetTimer;
 
+    /// @dev zkSync contract part 2
     address public zkSyncBlock;
 
     /// @dev Accept infos of fast withdraw
     /// @dev Key is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce))
     /// @dev Value is the accepter address
     mapping(bytes32 => address) public accepts;
+
+    /// @dev zkSync contract part 3
+    address public zkSyncExit;
 }

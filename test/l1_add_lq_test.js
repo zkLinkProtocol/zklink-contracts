@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const {getL1AddLQPubdata} = require('./utils');
 
 describe('L1AddLQ unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, vault, nft;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault, nft;
     let wallet,alice,bob,pair;
     beforeEach(async () => {
         [wallet,alice,bob,pair] = await hardhat.ethers.getSigners();
@@ -36,9 +36,13 @@ describe('L1AddLQ unit tests', function () {
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
+        // ZkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
+        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
         await vault.setZkSyncAddress(zkSync.address);
         await nft.transferOwnership(zkSync.address);
@@ -68,8 +72,8 @@ describe('L1AddLQ unit tests', function () {
 
         const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x00', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
         await zkSync.setExodusMode(true);
-        await zkSync.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
-        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
+        await zkSyncExit.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
+        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
             .emit(zkSync, 'Withdrawal')
             .withArgs(1, 20);
     });

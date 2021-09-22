@@ -27,9 +27,10 @@ contract DeployFactory {
     // genesis state, as the very first account in tree is a fee account, and we need its address before
     // we're able to start recovering the data from the Ethereum blockchain.
     constructor(
+        address _zkSyncBlock,
+        address _zkSyncExit,
         Governance _govTarget,
         Verifier _verifierTarget,
-        address _zkSyncBlock,
         Vault _vaultTarget,
         ZkSync _zkSyncTarget,
         bytes32 _genesisRoot,
@@ -38,11 +39,16 @@ contract DeployFactory {
         address _feeAccountAddress
     ) {
         require(_zkSyncBlock != address(0));
+        require(_zkSyncExit != address(0));
         require(_firstValidator != address(0));
         require(_governor != address(0));
         require(_feeAccountAddress != address(0));
 
-        deployProxyContracts(_govTarget, _verifierTarget, _zkSyncBlock, _vaultTarget, _zkSyncTarget, _genesisRoot, _firstValidator, _governor);
+        // set this contract as governor
+        Proxy governance = new Proxy(address(_govTarget), abi.encode(this));
+        Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
+        Proxy vault = new Proxy(address(_vaultTarget), abi.encode(address(governance)));
+        deployProxyContracts(_zkSyncBlock, _zkSyncExit, governance, verifier, vault, _zkSyncTarget, _genesisRoot, _firstValidator, _governor);
 
         selfdestruct(msg.sender);
     }
@@ -50,21 +56,18 @@ contract DeployFactory {
     event Addresses(address governance, address zksync, address verifier, address vault, address gatekeeper);
 
     function deployProxyContracts(
-        Governance _governanceTarget,
-        Verifier _verifierTarget,
         address _zkSyncBlock,
-        Vault _vaultTarget,
+        address _zkSyncExit,
+        Proxy governance,
+        Proxy verifier,
+        Proxy vault,
         ZkSync _zksyncTarget,
         bytes32 _genesisRoot,
         address _validator,
         address _governor
     ) internal {
-        Proxy governance = new Proxy(address(_governanceTarget), abi.encode(this));
-        // set this contract as governor
-        Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
-        Proxy vault = new Proxy(address(_vaultTarget), abi.encode(address(governance)));
         Proxy zkSync =
-            new Proxy(address(_zksyncTarget), abi.encode(address(governance), address(verifier), _zkSyncBlock, address(vault), _genesisRoot));
+            new Proxy(address(_zksyncTarget), abi.encode(address(governance), address(verifier), address(vault), _zkSyncBlock, _zkSyncExit, _genesisRoot));
 
         // set zkSync address
         Vault(address(vault)).setZkSyncAddress(address(zkSync));

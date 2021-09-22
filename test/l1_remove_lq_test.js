@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const {getL1AddLQPubdata,getL1RemoveLQPubdata} = require('./utils');
 
 describe('L1RemoveLQ unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, vault, nft;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault, nft;
     let wallet,alice,bob,pair;
     beforeEach(async () => {
         [wallet,alice,bob,pair] = await hardhat.ethers.getSigners();
@@ -36,9 +36,13 @@ describe('L1RemoveLQ unit tests', function () {
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
+        // ZkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
+        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
         await vault.setZkSyncAddress(zkSync.address);
         await nft.transferOwnership(zkSync.address);
@@ -70,7 +74,7 @@ describe('L1RemoveLQ unit tests', function () {
         await zkSyncBlock.testExecL1RemoveLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(0);
-        expect(await zkSync.getPendingBalance(bob.address, token.address)).to.be.equal(19);
+        expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(19);
     });
 
     it('revoke remove lq should success', async () => {
@@ -80,7 +84,7 @@ describe('L1RemoveLQ unit tests', function () {
         await zkSyncBlock.testExecL1RemoveLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(2);
-        expect(await zkSync.getPendingBalance(bob.address, token.address)).to.be.equal(0);
+        expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(0);
     });
 
     it('only current chain will handle add lq op', async () => {

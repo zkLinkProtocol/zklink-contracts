@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const {writeDepositPubdata, getQuickSwapPubdata, calFee} = require('./utils');
 
 describe('Quick swap unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, vault;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault;
     let wallet,alice,bob;
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
@@ -32,9 +32,13 @@ describe('Quick swap unit tests', function () {
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
+        // ZkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
+        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
         await vault.setZkSyncAddress(zkSync.address);
     });
@@ -88,8 +92,8 @@ describe('Quick swap unit tests', function () {
         const nonce = '0x00000000';
         const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce});
         await zkSync.setExodusMode(true);
-        await zkSync.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
+        await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
+        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
             .emit(zkSync, 'Withdrawal')
             .withArgs(0, 50);
     });
@@ -103,18 +107,18 @@ describe('Quick swap unit tests', function () {
         const accepter = alice.address;
         const receiver = bob.address;
         const nonce = 0;
-        await expect(zkSyncBlock.accept(accepter, receiver, toTokenId, 0, 0, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
-        await expect(zkSyncBlock.accept(accepter, receiver, toTokenId, 100, 10000, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
+        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 0, 0, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
+        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 100, 10000, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
 
         let amount = hardhat.ethers.utils.parseEther("1");
         let withdrawFee = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("0.997");
         await zkSync.connect(bob).swapExactETHForTokens(bob.address, amount, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
 
-        await expect(zkSyncBlock.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSyncBlock: msg value");
+        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSyncBlock: msg value");
         let aliceBalance0 = await alice.getBalance();
         let bobBalance0 = await bob.getBalance();
-        let tx = await zkSyncBlock.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("1")});
+        let tx = await zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("1")});
         let txFee = await calFee(tx);
         let aliceBalance1 = await alice.getBalance();
         let bobBalance1 = await bob.getBalance();
@@ -125,7 +129,7 @@ describe('Quick swap unit tests', function () {
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let alicePendingBalance = await zkSync.getPendingBalance(accepter, hardhat.ethers.constants.AddressZero);
+        let alicePendingBalance = await zkSyncExit.getPendingBalance(accepter, hardhat.ethers.constants.AddressZero);
         expect(alicePendingBalance).to.eq(amount);
     });
 
@@ -153,7 +157,7 @@ describe('Quick swap unit tests', function () {
         let bobBalance0 = await token.balanceOf(bob.address);
 
         await token.connect(alice).approve(zkSync.address, amount);
-        await expect(zkSyncBlock.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, nonce))
+        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, nonce))
             .to.emit(zkSync, 'Accept')
             .withArgs(accepter, receiver, toTokenId, amount, fee, nonce);
 
@@ -166,7 +170,7 @@ describe('Quick swap unit tests', function () {
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let alicePendingBalance = await zkSync.getPendingBalance(accepter, token.address);
+        let alicePendingBalance = await zkSyncExit.getPendingBalance(accepter, token.address);
         expect(alicePendingBalance).to.eq(amount);
     });
 });

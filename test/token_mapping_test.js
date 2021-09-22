@@ -3,7 +3,7 @@ const { expect } = require('chai');
 const {getMappingPubdata} = require('./utils');
 
 describe('Token mapping unit tests', function () {
-    let token, zkSync, zkSyncBlock, governance, vault, zkl;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault, zkl;
     let wallet,alice,bob;
     beforeEach(async () => {
         [wallet,alice,bob] = await hardhat.ethers.getSigners();
@@ -32,9 +32,13 @@ describe('Token mapping unit tests', function () {
         const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
+        // ZkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
+        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                [governance.address, verifier.address, zkSyncBlockRaw.address, vault.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
+            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
         await vault.setZkSyncAddress(zkSync.address);
         // zkl
@@ -80,8 +84,8 @@ describe('Token mapping unit tests', function () {
             nonce:'0x00000001',
             withdrawFee:'0x0001' });
         await zkSync.setExodusMode(true);
-        await zkSync.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
-        await expect(zkSync.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
+        await zkSyncExit.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
+        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
             .emit(zkSync, 'Withdrawal')
             .withArgs(1, 20);
     });
@@ -113,6 +117,6 @@ describe('Token mapping unit tests', function () {
             nonce:'0x00000001',
             withdrawFee:'0x0001'});
         await zkSyncBlock.testExecMappingToken(pubdata);
-        expect(await zkSync.getPendingBalance(bob.address, zkl.address)).to.be.equal(19);
+        expect(await zkSyncExit.getPendingBalance(bob.address, zkl.address)).to.be.equal(19);
     });
 });

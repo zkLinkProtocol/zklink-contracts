@@ -12,12 +12,15 @@ describe('DeployFactory unit tests', function () {
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
         const verifier = await verifierFactory.deploy();
-        // zkSyncBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
-        const zkSyncBlock = await zkSyncBlockFactory.deploy();
         // vault
         const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
         const vault = await vaultFactory.deploy();
+        // zkSyncBlock
+        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+        const zkSyncBlock = await zkSyncBlockFactory.deploy();
+        // zkSyncExit
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExit = await zkSyncExitFactory.deploy();
         // zkSync
         const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
         const zkSync = await zkSyncFactory.deploy();
@@ -27,9 +30,10 @@ describe('DeployFactory unit tests', function () {
         // deployer
         const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
         const deployer = await deployerFactory.deploy(
+            zkSyncBlock.address,
+            zkSyncExit.address,
             governance.address,
             verifier.address,
-            zkSyncBlock.address,
             vault.address,
             zkSync.address,
             genesisRoot,

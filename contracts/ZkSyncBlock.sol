@@ -4,8 +4,6 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./SafeMath.sol";
-import "./SafeMathUInt128.sol";
 import "./SafeCast.sol";
 import "./Utils.sol";
 
@@ -58,6 +56,46 @@ contract ZkSyncBlock is ZkSyncBase {
         uint256[] commitments;
         uint8[] vkIndexes;
         uint256[16] subproofsLimbs;
+    }
+
+    /// @notice Will run when no functions matches call data
+    fallback() external payable {
+        _fallback();
+    }
+
+    /// @notice Same as fallback but called when calldata is empty
+    receive() external payable {
+        _fallback();
+    }
+
+    /// @notice Performs a delegatecall to the contract implementation
+    /// @dev Fallback function allowing to perform a delegatecall to the given implementation
+    /// This function will return whatever the implementation call returns
+    function _fallback() internal {
+        address _target = zkSyncExit;
+        require(_target != address(0), "f1");
+        assembly {
+        // The pointer to the free memory slot
+            let ptr := mload(0x40)
+        // Copy function signature and arguments from calldata at zero position into memory at pointer position
+            calldatacopy(ptr, 0x0, calldatasize())
+        // Delegatecall method of the implementation contract, returns 0 on error
+            let result := delegatecall(gas(), _target, ptr, calldatasize(), 0x0, 0)
+        // Get the size of the last return data
+            let size := returndatasize()
+        // Copy the size length of bytes from return data at zero position to pointer position
+            returndatacopy(ptr, 0x0, size)
+        // Depending on result value
+            switch result
+            case 0 {
+            // End execution and revert state changes
+                revert(ptr, size)
+            }
+            default {
+            // Return data with length of size at pointers position
+                return(ptr, size)
+            }
+        }
     }
 
     /// @notice Commit block
@@ -159,114 +197,6 @@ contract ZkSyncBlock is ZkSyncBase {
         }
 
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
-    }
-
-    /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
-    /// @dev Exodus mode must be entered in case of current ethereum block number is higher than the oldest
-    /// @dev of existed priority requests expiration block number.
-    /// @return bool flag that is true if the Exodus mode must be entered.
-    function activateExodusMode() public returns (bool) {
-        bool trigger =
-        block.number >= priorityRequests[firstPriorityRequestId].expirationBlock &&
-        priorityRequests[firstPriorityRequestId].expirationBlock != 0;
-        if (trigger) {
-            if (!exodusMode) {
-                exodusMode = true;
-                emit ExodusMode();
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /// @notice Withdraws token from ZkSync to root chain in case of exodus mode. User must provide proof that he owns funds
-    /// @param _storedBlockInfo Last verified block
-    /// @param _owner Owner of the account
-    /// @param _accountId Id of the account in the tree
-    /// @param _proof Proof
-    /// @param _tokenId Verified token id
-    /// @param _amount Amount for owner (must be total amount, not part of it)
-    function performExodus(
-        StoredBlockInfo memory _storedBlockInfo,
-        address _owner,
-        uint32 _accountId,
-        uint16 _tokenId,
-        uint128 _amount,
-        uint256[] memory _proof
-    ) external nonReentrant {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
-        require(exodusMode, "s"); // must be in exodus mode
-        require(!performedExodus[_accountId][_tokenId], "t"); // already exited
-        require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "u"); // incorrect sotred block info
-
-        bool proofCorrect =
-        verifier.verifyExitProof(_storedBlockInfo.stateHash, _accountId, _owner, _tokenId, _amount, _proof);
-        require(proofCorrect, "x");
-
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
-        performedExodus[_accountId][_tokenId] = true;
-    }
-
-    /// @notice Set data for changing pubkey hash using onchain authorization.
-    ///         Transaction author (msg.sender) should be L2 account address
-    /// @notice New pubkey hash can be reset, to do that user should send two transactions:
-    ///         1) First `setAuthPubkeyHash` transaction for already used `_nonce` will set timer.
-    ///         2) After `AUTH_FACT_RESET_TIMELOCK` time is passed second `setAuthPubkeyHash` transaction will reset pubkey hash for `_nonce`.
-    /// @param _pubkey_hash New pubkey hash
-    /// @param _nonce Nonce of the change pubkey L2 transaction
-    function setAuthPubkeyHash(bytes calldata _pubkey_hash, uint32 _nonce) external {
-        require(_pubkey_hash.length == PUBKEY_HASH_BYTES, "y"); // PubKeyHash should be 20 bytes.
-        if (authFacts[msg.sender][_nonce] == bytes32(0)) {
-            authFacts[msg.sender][_nonce] = keccak256(_pubkey_hash);
-        } else {
-            uint256 currentResetTimer = authFactsResetTimer[msg.sender][_nonce];
-            if (currentResetTimer == 0) {
-                authFactsResetTimer[msg.sender][_nonce] = block.timestamp;
-            } else {
-                require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "z");
-                authFactsResetTimer[msg.sender][_nonce] = 0;
-                authFacts[msg.sender][_nonce] = keccak256(_pubkey_hash);
-            }
-        }
-    }
-
-    /// @notice Accepter accept a fast withdraw, accepter will get a fee of (amount - amountOutMin)
-    /// @param accepter Accepter
-    /// @param receiver User receive token from accepter
-    /// @param tokenId Token id, only non lp token supported
-    /// @param amount Fast withdraw amount
-    /// @param withdrawFee Fast withdraw fee taken by accepter
-    /// @param nonce Used to produce unique accept info
-    function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable {
-        uint128 fee = amount * withdrawFee / MAX_WITHDRAW_FEE;
-        uint128 amountReceive = amount - fee;
-        require(amountReceive > 0 && amountReceive <= amount, 'ZkSyncBlock: amountReceive');
-
-        bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
-        require(accepts[hash] == address(0), 'ZkSyncBlock: accepted');
-
-        accepts[hash] = accepter;
-
-        // send token to receiver from msg.sender
-        if (tokenId == 0) {
-            // accepter should transfer at least amountReceive platform token to this contract
-            require(msg.value >= amountReceive, 'ZkSyncBlock: msg value');
-            payable(receiver).transfer(amountReceive);
-            // if there are any left return back to accepter
-            if (msg.value > amountReceive) {
-                payable(msg.sender).transfer(msg.value - amountReceive);
-            }
-        } else {
-            address tokenAddress = governance.tokenAddresses(tokenId);
-            governance.validateTokenAddress(tokenAddress);
-            // transfer erc20 token from accepter to receiver directly
-            if (msg.sender != accepter) {
-                require(IERC20(tokenAddress).allowance(accepter, msg.sender) >= amountReceive, 'ZkSyncBlock: allowance');
-            }
-            Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive);
-        }
-        emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
     }
 
     /// @dev Process one block commit using previous block StoredBlockInfo,
@@ -623,11 +553,6 @@ contract ZkSyncBlock is ZkSyncBase {
             concatenated = abi.encodePacked(concatenated, crtCommitments[i]);
         }
         return sha256(concatenated)  & bytes32(INPUT_MASK);
-    }
-
-    function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
-        uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
-        pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
     }
 
     function execQuickSwap(bytes memory pubData) internal returns (bool) {

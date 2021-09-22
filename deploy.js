@@ -109,6 +109,29 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
+        // vault
+        let vaultTarget;
+        if (!('vaultTarget' in deployLog)) {
+            console.log('deploy vault target...');
+            const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
+            const vault = await vaultFactory.connect(deployer).deploy();
+            await vault.deployed();
+            vaultTarget = vault.address;
+            deployLog.vaultTarget = vaultTarget;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        } else {
+            vaultTarget = deployLog.vaultTarget;
+        }
+        console.log('vault target', vaultTarget);
+        if (!('vaultTargetVerified' in deployLog) && !skipVerify) {
+            console.log('verify vault target...');
+            await hardhat.run("verify:verify", {
+                address: vaultTarget
+            });
+            deployLog.vaultTargetVerified = true;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        }
+
         // zkSyncBlock
         let zkSyncBlockAddr;
         if (!('zkSyncBlock' in deployLog)) {
@@ -132,26 +155,26 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
-        // vault
-        let vaultTarget;
-        if (!('vaultTarget' in deployLog)) {
-            console.log('deploy vault target...');
-            const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
-            const vault = await vaultFactory.connect(deployer).deploy();
-            await vault.deployed();
-            vaultTarget = vault.address;
-            deployLog.vaultTarget = vaultTarget;
+        // zkSyncExit
+        let zkSyncExitAddr;
+        if (!('zkSyncExit' in deployLog)) {
+            console.log('deploy zkSyncExit...');
+            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+            const zkSyncExit = await zkSyncExitFactory.connect(deployer).deploy();
+            await zkSyncExit.deployed();
+            zkSyncExitAddr = zkSyncExit.address;
+            deployLog.zkSyncExit = zkSyncExitAddr;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         } else {
-            vaultTarget = deployLog.vaultTarget;
+            zkSyncExitAddr = deployLog.zkSyncExit;
         }
-        console.log('vault target', vaultTarget);
-        if (!('vaultTargetVerified' in deployLog) && !skipVerify) {
-            console.log('verify vault target...');
+        console.log('zkSyncExit', zkSyncExitAddr);
+        if (!('zkSyncExitVerified' in deployLog) && !skipVerify) {
+            console.log('verify zkSyncExit...');
             await hardhat.run("verify:verify", {
-                address: vaultTarget
+                address: zkSyncExitAddr
             });
-            deployLog.vaultTargetVerified = true;
+            deployLog.zkSyncExitVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
@@ -189,9 +212,10 @@ task("deploy", "Deploy zklink")
             console.log('use deploy factory...');
             const deployFactoryFactory = await hardhat.ethers.getContractFactory('DeployFactory');
             const deployFactory = await deployFactoryFactory.connect(deployer).deploy(
+                zkSyncBlockAddr,
+                zkSyncExitAddr,
                 govTarget,
                 verifierTarget,
-                zkSyncBlockAddr,
                 vaultTarget,
                 zkSyncTarget,
                 hardhat.ethers.utils.arrayify(genesisRoot),
@@ -262,8 +286,8 @@ task("deploy", "Deploy zklink")
                 address: zkSyncProxyAddr,
                 constructorArguments:[
                     zkSyncTarget,
-                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','bytes32'],
-                        [governanceProxyAddr, verifierProxyAddr, zkSyncBlockAddr, vaultProxyAddr, genesisRoot])
+                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
+                        [governanceProxyAddr, verifierProxyAddr, vaultProxyAddr, zkSyncBlockAddr, zkSyncExitAddr, genesisRoot])
                 ]
             });
             deployLog.zkSyncProxyVerified = true;
@@ -506,12 +530,25 @@ task("upgrade", "Upgrade zklink on testnet")
             deployLog.zkSyncBlock = zkSyncBlock.address;
             console.log('zkSyncBlock', deployLog.zkSyncBlock);
 
+            console.log('deploy zkSyncExit...');
+            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+            const zkSyncExit = await zkSyncExitFactory.connect(deployer).deploy();
+            await zkSyncExit.deployed();
+            deployLog.zkSyncExit = zkSyncExit.address;
+            console.log('zkSyncExit', deployLog.zkSyncExit);
+
             if (!skipVerify) {
                 console.log('verify zkSyncBlock...');
                 await hardhat.run("verify:verify", {
                     address: deployLog.zkSyncBlock
                 });
                 deployLog.zkSyncBlockVerified = true;
+
+                console.log('verify zkSyncExit...');
+                await hardhat.run("verify:verify", {
+                    address: deployLog.zkSyncExit
+                });
+                deployLog.zkSyncExitVerified = true;
             }
 
             console.log('deploy zkSync target...');
@@ -520,7 +557,7 @@ task("upgrade", "Upgrade zklink on testnet")
             await zkSync.deployed();
             deployLog.zkSyncTarget = zkSync.address;
             upgradeTargets[3] = deployLog.zkSyncTarget;
-            upgradeParameters[3] = hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [deployLog.zkSyncBlock]);
+            upgradeParameters[3] = hardhat.ethers.utils.defaultAbiCoder.encode(['address','address'], [deployLog.zkSyncBlock, deployLog.zkSyncExit]);
             console.log('zkSync target', deployLog.zkSyncTarget);
 
             if (!skipVerify) {
