@@ -60,6 +60,16 @@ library Operations {
 
     uint8 constant NFT_TOKEN_BYTES = 4;
 
+    /// @notice Priority Operation container
+    /// @member hashedPubData Hashed priority operation public data
+    /// @member expirationBlock Expiration block number (ETH block) for this request (must be satisfied before)
+    /// @member opType Priority operation type
+    struct PriorityOperation {
+        bytes20 hashedPubData;
+        uint64 expirationBlock;
+        OpType opType;
+    }
+
     // Deposit pubdata
     struct Deposit {
         // uint8 opType
@@ -95,9 +105,12 @@ library Operations {
         );
     }
 
-    /// @notice Write deposit pubdata for priority queue check.
-    function checkDepositInPriorityQueue(Deposit memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeDepositPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that deposit is same as operation in priority queue
+    /// @param _deposit Deposit data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(Deposit memory _deposit, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.Deposit, "Operations: Deposit Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeDepositPubdataForPriorityQueue(_deposit)) == _priorityOperation.hashedPubData, "Operations: Deposit Hash");
     }
 
     // FullExit pubdata
@@ -134,8 +147,12 @@ library Operations {
         );
     }
 
-    function checkFullExitInPriorityQueue(FullExit memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeFullExitPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that FullExit is same as operation in priority queue
+    /// @param _fullExit FullExit data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(FullExit memory _fullExit, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.FullExit, "Operations: FullExit Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeFullExitPubdataForPriorityQueue(_fullExit)) == _priorityOperation.hashedPubData, "Operations: FullExit Hash");
     }
 
     // PartialExit pubdata
@@ -267,9 +284,12 @@ library Operations {
         );
     }
 
-    /// @notice Write quick swap pubdata for priority queue check.
-    function checkQuickSwapInPriorityQueue(QuickSwap memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeQuickSwapPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that quick swap is same as operation in priority queue
+    /// @param _quickSwap Quick swap data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(QuickSwap memory _quickSwap, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.QuickSwap, "Operations: QuickSwap Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeQuickSwapPubdataForPriorityQueue(_quickSwap)) == _priorityOperation.hashedPubData, "Operations: QuickSwap Hash");
     }
 
     // Mapping pubdata
@@ -322,9 +342,12 @@ library Operations {
         );
     }
 
-    /// @notice Write mapping pubdata for priority queue check.
-    function checkMappingInPriorityQueue(Mapping memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeMappingPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that token mapping is same as operation in priority queue
+    /// @param _mapping Mapping data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(Mapping memory _mapping, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.Mapping, "Operations: Mapping Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeMappingPubdataForPriorityQueue(_mapping)) == _priorityOperation.hashedPubData, "Operations: Mapping Hash");
     }
 
     // L1AddLQ pubdata
@@ -374,9 +397,12 @@ library Operations {
         );
     }
 
-    /// @notice Write pubdata for priority queue check.
-    function checkL1AddLQInPriorityQueue(L1AddLQ memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeL1AddLQPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that l1AddLQ is same as operation in priority queue
+    /// @param _l1AddLQ L1AddLQ data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(Operations.L1AddLQ memory _l1AddLQ, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.L1AddLQ, "Operations: L1AddLQ Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeL1AddLQPubdataForPriorityQueue(_l1AddLQ)) == _priorityOperation.hashedPubData, "Operations: L1AddLQ Hash");
     }
 
     // L1RemoveLQ pubdata
@@ -426,8 +452,11 @@ library Operations {
         );
     }
 
-    /// @notice Write pubdata for priority queue check.
-    function checkL1RemoveLQInPriorityQueue(L1RemoveLQ memory op, bytes20 hashedPubdata) internal pure returns (bool) {
-        return Utils.hashBytesToBytes20(writeL1RemoveLQPubdataForPriorityQueue(op)) == hashedPubdata;
+    /// @notice Checks that l1RemoveLQ is same as operation in priority queue
+    /// @param _l1RemoveLQ L1RemoveLQ data
+    /// @param _priorityOperation Operation in priority queue
+    function checkPriorityOperation(Operations.L1RemoveLQ memory _l1RemoveLQ, PriorityOperation memory _priorityOperation) internal pure {
+        require(_priorityOperation.opType == Operations.OpType.L1RemoveLQ, "Operations: L1RemoveLQ Op Type"); // incorrect priority op type
+        require(Utils.hashBytesToBytes20(writeL1RemoveLQPubdataForPriorityQueue(_l1RemoveLQ)) == _priorityOperation.hashedPubData, "Operations: L1AddLQ Hash");
     }
 }

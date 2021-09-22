@@ -501,7 +501,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
 
         bytes20 hashedPubData = Utils.hashBytesToBytes20(_pubData);
 
-        priorityRequests[nextPriorityRequestId] = PriorityOperation({
+        priorityRequests[nextPriorityRequestId] = Operations.PriorityOperation({
             hashedPubData: hashedPubData,
             expirationBlock: expirationBlock,
             opType: _opType

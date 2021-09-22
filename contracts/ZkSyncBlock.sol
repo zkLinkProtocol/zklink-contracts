@@ -400,7 +400,7 @@ contract ZkSyncBlock is ZkSyncBase {
 
                 Operations.Deposit memory depositData = Operations.readDepositPubdata(opPubData);
 
-                checkPriorityOperation(depositData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                Operations.checkPriorityOperation(depositData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                 priorityOperationsProcessed++;
             } else if (opType == Operations.OpType.ChangePubKey) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
@@ -420,7 +420,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkSyncBlock: chain id');
                 // fromChainId and toChainId may be the same
                 if (quickSwapData.fromChainId == CHAIN_ID) {
-                    checkPriorityOperation(quickSwapData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                 }
                 // only to chain need to handle QuickSwap in exec block
@@ -434,7 +434,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 require(mappingData.fromChainId != mappingData.toChainId &&
                     (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkSyncBlock: chain id');
                 if (mappingData.fromChainId == CHAIN_ID) {
-                    checkPriorityOperation(mappingData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    Operations.checkPriorityOperation(mappingData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                 }
                 // fromChain and toChain both will handle TokenMapping in exec
@@ -443,7 +443,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1ADDLQ_BYTES);
                 Operations.L1AddLQ memory l1AddLQData = Operations.readL1AddLQPubdata(opPubData);
                 if (l1AddLQData.chainId == CHAIN_ID) {
-                    checkPriorityOperation(l1AddLQData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    Operations.checkPriorityOperation(l1AddLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                     processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
                 }
@@ -451,7 +451,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1REMOVELQ_BYTES);
                 Operations.L1RemoveLQ memory l1RemoveLQData = Operations.readL1RemoveLQPubdata(opPubData);
                 if (l1RemoveLQData.chainId == CHAIN_ID) {
-                    checkPriorityOperation(l1RemoveLQData, uncommittedPriorityRequestsOffset + priorityOperationsProcessed);
+                    Operations.checkPriorityOperation(l1RemoveLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                     processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
                 }
@@ -466,11 +466,7 @@ contract ZkSyncBlock is ZkSyncBase {
                     opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
 
                     Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-
-                    checkPriorityOperation(
-                        fullExitData,
-                        uncommittedPriorityRequestsOffset + priorityOperationsProcessed
-                    );
+                    Operations.checkPriorityOperation(fullExitData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                 } else {
                     revert("F"); // unsupported op
@@ -627,72 +623,6 @@ contract ZkSyncBlock is ZkSyncBase {
             concatenated = abi.encodePacked(concatenated, crtCommitments[i]);
         }
         return sha256(concatenated)  & bytes32(INPUT_MASK);
-    }
-
-    /// @notice Checks that deposit is same as operation in priority queue
-    /// @param _deposit Deposit data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.Deposit memory _deposit, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.Deposit, "H"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkDepositInPriorityQueue(_deposit, hashedPubdata), "I");
-    }
-
-    /// @notice Checks that quick swap is same as operation in priority queue
-    /// @param _quickSwap Quick swap data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.QuickSwap memory _quickSwap, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.QuickSwap, "ZkSyncBlock: QuickSwap Op Type"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkQuickSwapInPriorityQueue(_quickSwap, hashedPubdata), "ZkSyncBlock: QuickSwap Hash");
-    }
-
-    /// @notice Checks that token mapping is same as operation in priority queue
-    /// @param _mapping Mapping data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.Mapping memory _mapping, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.Mapping, "ZkSyncBlock: Mapping Op Type"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkMappingInPriorityQueue(_mapping, hashedPubdata), "ZkSyncBlock: QuickSwap Hash");
-    }
-
-    /// @notice Checks that FullExit is same as operation in priority queue
-    /// @param _fullExit FullExit data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.FullExit memory _fullExit, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.FullExit, "J"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkFullExitInPriorityQueue(_fullExit, hashedPubdata), "K");
-    }
-
-    /// @notice Checks that l1AddLQ is same as operation in priority queue
-    /// @param _l1AddLQ L1AddLQ data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.L1AddLQ memory _l1AddLQ, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.L1AddLQ, "ZkSyncBlock: L1AddLQ Op Type"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkL1AddLQInPriorityQueue(_l1AddLQ, hashedPubdata), "ZkSyncBlock: L1AddLQ Hash");
-    }
-
-    /// @notice Checks that l1RemoveLQ is same as operation in priority queue
-    /// @param _l1RemoveLQ L1RemoveLQ data
-    /// @param _priorityRequestId Operation's id in priority queue
-    function checkPriorityOperation(Operations.L1RemoveLQ memory _l1RemoveLQ, uint64 _priorityRequestId) internal view {
-        Operations.OpType priorReqType = priorityRequests[_priorityRequestId].opType;
-        require(priorReqType == Operations.OpType.L1RemoveLQ, "ZkSyncBlock: L1RemoveLQ Op Type"); // incorrect priority op type
-
-        bytes20 hashedPubdata = priorityRequests[_priorityRequestId].hashedPubData;
-        require(Operations.checkL1RemoveLQInPriorityQueue(_l1RemoveLQ, hashedPubdata), "ZkSyncBlock: L1AddLQ Hash");
     }
 
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {

@@ -98,20 +98,10 @@ contract Storage {
     /// @notice Total blocks proven.
     uint32 public totalBlocksProven;
 
-    /// @notice Priority Operation container
-    /// @member hashedPubData Hashed priority operation public data
-    /// @member expirationBlock Expiration block number (ETH block) for this request (must be satisfied before)
-    /// @member opType Priority operation type
-    struct PriorityOperation {
-        bytes20 hashedPubData;
-        uint64 expirationBlock;
-        Operations.OpType opType;
-    }
-
     /// @dev Priority Requests mapping (request id - operation)
     /// @dev Contains op type, pubdata and expiration block of unsatisfied requests.
     /// @dev Numbers are in order of requests receiving
-    mapping(uint64 => PriorityOperation) internal priorityRequests;
+    mapping(uint64 => Operations.PriorityOperation) internal priorityRequests;
 
     /// @dev Timer for authFacts entry reset (address, nonce -> timer).
     /// @dev Used when user wants to reset `authFacts` for some nonce.
