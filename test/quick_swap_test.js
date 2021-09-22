@@ -107,15 +107,15 @@ describe('Quick swap unit tests', function () {
         const accepter = alice.address;
         const receiver = bob.address;
         const nonce = 0;
-        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 0, 0, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
-        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 100, 10000, nonce)).to.be.revertedWith("ZkSyncBlock: amountReceive");
+        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 0, 0, nonce)).to.be.revertedWith("ZkSync: amountReceive");
+        await expect(zkSyncExit.accept(accepter, receiver, toTokenId, 100, 10000, nonce)).to.be.revertedWith("ZkSync: amountReceive");
 
         let amount = hardhat.ethers.utils.parseEther("1");
         let withdrawFee = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("0.997");
         await zkSync.connect(bob).swapExactETHForTokens(bob.address, amount, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
 
-        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSyncBlock: msg value");
+        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSync: accept msg value");
         let aliceBalance0 = await alice.getBalance();
         let bobBalance0 = await bob.getBalance();
         let tx = await zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("1")});
