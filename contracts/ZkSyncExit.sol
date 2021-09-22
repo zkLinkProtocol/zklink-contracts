@@ -7,7 +7,7 @@ pragma experimental ABIEncoderV2;
 import "./Utils.sol";
 import "./ZkSyncBase.sol";
 
-/// @title zkSync main contract part 3: exit, auth, accept
+/// @title zkSync main contract part 3: exit, auth, accept, withdraw pending
 /// @author Matter Labs
 /// @author ZkLink Labs
 contract ZkSyncExit is ZkSyncBase {
@@ -142,17 +142,17 @@ contract ZkSyncExit is ZkSyncBase {
     function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable {
         uint128 fee = amount * withdrawFee / MAX_WITHDRAW_FEE;
         uint128 amountReceive = amount - fee;
-        require(amountReceive > 0 && amountReceive <= amount, 'ZkSyncBlock: amountReceive');
+        require(amountReceive > 0 && amountReceive <= amount, 'ZkSync: amountReceive');
 
         bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
-        require(accepts[hash] == address(0), 'ZkSyncBlock: accepted');
+        require(accepts[hash] == address(0), 'ZkSync: accepted');
 
         accepts[hash] = accepter;
 
         // send token to receiver from msg.sender
         if (tokenId == 0) {
             // accepter should transfer at least amountReceive platform token to this contract
-            require(msg.value >= amountReceive, 'ZkSyncBlock: msg value');
+            require(msg.value >= amountReceive, 'ZkSync: accept msg value');
             payable(receiver).transfer(amountReceive);
             // if there are any left return back to accepter
             if (msg.value > amountReceive) {
@@ -163,11 +163,24 @@ contract ZkSyncExit is ZkSyncBase {
             governance.validateTokenAddress(tokenAddress);
             // transfer erc20 token from accepter to receiver directly
             if (msg.sender != accepter) {
-                require(IERC20(tokenAddress).allowance(accepter, msg.sender) >= amountReceive, 'ZkSyncBlock: allowance');
+                require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkSync: broker allowance');
+                brokerAllowances[tokenId][accepter][msg.sender] -= amountReceive;
             }
             Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive);
         }
         emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
+    }
+
+    function brokerAllowance(uint16 tokenId, address owner, address spender) public view returns (uint128) {
+        return brokerAllowances[tokenId][owner][spender];
+    }
+
+    function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
+        address tokenAddress = governance.tokenAddresses(tokenId);
+        governance.validateTokenAddress(tokenAddress);
+        require(spender != address(0), "ZkSync: approve to the zero address");
+        brokerAllowances[tokenId][msg.sender][spender] = amount;
+        return true;
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract

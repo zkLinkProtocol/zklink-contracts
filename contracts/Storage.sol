@@ -117,4 +117,7 @@ contract Storage {
 
     /// @dev zkSync contract part 3
     address public zkSyncExit;
+
+    /// @dev Broker allowance used in accept
+    mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
 }
