@@ -194,6 +194,17 @@ contract ZkSyncExit is ZkSyncBase {
         return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
     }
 
+    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
+    /// @param _address Address of the tokens owner
+    /// @param _tokens Address of tokens, zero address is used for ETH
+    function getPendingBalances(address _address, address[] memory _tokens) public view returns (uint128[] memory) {
+        uint128[] memory balances = new uint128[](_tokens.length);
+        for(uint256 i = 0; i < _tokens.length; i++) {
+            balances[i] = getPendingBalance(_address, _tokens[i]);
+        }
+        return balances;
+    }
+
     /// @notice  Withdraws tokens from zkSync contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _token Address of tokens, zero address is used for ETH

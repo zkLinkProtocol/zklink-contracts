@@ -173,4 +173,12 @@ describe('ZkSync unit tests', function () {
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
         expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x1a71c78bec2495904b8bf0f12e8564f2278100a93cc6a8342442ef7c9161e214');
     });
+
+    it('getPendingBalances should success', async () => {
+        await zkSync.setBalancesToWithdraw(alice.address, 1, 10);
+        await zkSync.setBalancesToWithdraw(alice.address, 2, 20);
+        const balances = await zkSyncExit.getPendingBalances(alice.address, [tokenA, tokenB]);
+        expect(balances[0]).to.eq(10);
+        expect(balances[1]).to.eq(20);
+    });
 });
