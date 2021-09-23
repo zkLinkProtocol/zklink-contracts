@@ -166,7 +166,7 @@ contract ZkSyncExit is ZkSyncBase {
                 require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkSync: broker allowance');
                 brokerAllowances[tokenId][accepter][msg.sender] -= amountReceive;
             }
-            Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive);
+            require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkSync: transferFrom failed');
         }
         emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
     }
