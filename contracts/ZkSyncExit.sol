@@ -216,7 +216,7 @@ contract ZkSyncExit is ZkSyncBase {
     ) external nonReentrant {
         require(_tokens.length > 0 && _tokens.length == _amounts.length, 'ZkSync: withdraw length');
         for(uint256 i = 0; i < _tokens.length; i++) {
-            withdrawPendingBalance(_owner, _tokens[i], _amounts[i]);
+            _withdrawPendingBalance(_owner, _tokens[i], _amounts[i]);
         }
     }
 
@@ -230,7 +230,15 @@ contract ZkSyncExit is ZkSyncBase {
         address payable _owner,
         address _token,
         uint128 _amount
-    ) public nonReentrant {
+    ) external nonReentrant {
+        _withdrawPendingBalance(_owner, _token, _amount);
+    }
+
+    function _withdrawPendingBalance(
+        address payable _owner,
+        address _token,
+        uint128 _amount
+    ) internal {
         // eth and non lp erc20 token is managed by vault and withdraw from vault
         uint16 tokenId;
         if (_token != address(0)) {
