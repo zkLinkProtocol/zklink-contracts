@@ -138,7 +138,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
-    function swapExactETHForTokens(address _zkSyncAddress, uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external payable {
+    /// @param _pair L2 cross chain pair address
+    function swapExactETHForTokens(address _zkSyncAddress, uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce, address _pair) external payable {
         requireActive();
         require(msg.value > 0, 'ZkSync: amountIn');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
@@ -146,7 +147,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         (bool success, ) = payable(address(vault)).call{value: msg.value}("");
         require(success, "ZkSync: eth transfer failed");
         vault.recordDeposit(0);
-        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce);
+        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce, _pair);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
@@ -159,7 +160,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
-    function swapExactTokensForTokens(address _zkSyncAddress, uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce) external {
+    /// @param _pair L2 cross chain pair address
+    function swapExactTokensForTokens(address _zkSyncAddress, uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce, address _pair) external {
         requireActive();
         require(_amountIn > 0, 'ZkSync: amountIn');
         require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
@@ -171,7 +173,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit
         vault.recordDeposit(fromTokenId);
-        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair);
     }
 
     /// @notice Mapping ERC20 from this chain to another chain - transfer ERC20 tokens from user into contract, validate it, register mapping
@@ -300,7 +302,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         uint8 _toChainId,
         uint16 _toTokenId,
         address _to,
-        uint32 _nonce
+        uint32 _nonce,
+        address _pair
     ) internal {
         // Priority Queue request
         Operations.QuickSwap memory op =
@@ -314,11 +317,12 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
                 toTokenId: _toTokenId,
                 amountOutMin: _amountOutMin,
                 withdrawFee: _withdrawFee,
-                nonce: _nonce
+                nonce: _nonce,
+                pair: _pair
             });
         bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.QuickSwap, pubData);
-        emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce);
+        emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair);
     }
 
     /// @notice Register mapping request - pack pubdata, add priority request and emit OnchainMapping event

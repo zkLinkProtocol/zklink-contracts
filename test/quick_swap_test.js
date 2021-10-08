@@ -3,10 +3,10 @@ const { expect } = require('chai');
 const {writeDepositPubdata, getQuickSwapPubdata, calFee} = require('./utils');
 
 describe('Quick swap unit tests', function () {
-    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault;
+    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault, pair;
     let wallet,alice,bob;
     beforeEach(async () => {
-        [wallet,alice,bob] = await hardhat.ethers.getSigners();
+        [wallet,alice,bob,pair] = await hardhat.ethers.getSigners();
         // token
         const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         token = await erc20Factory.deploy(10000);
@@ -45,8 +45,8 @@ describe('Quick swap unit tests', function () {
 
     it('should revert when exodusMode is active', async () => {
         await zkSync.setExodusMode(true);
-        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 0, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
-        await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, 0, token.address, 1, 1, wallet.address, 0)).to.be.revertedWith("L");
+        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 0, 1, 1, wallet.address, 0, pair.address)).to.be.revertedWith("L");
+        await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, 0, token.address, 1, 1, wallet.address, 0, pair.address)).to.be.revertedWith("L");
     });
 
     it('quick swap eth should success', async () => {
@@ -56,7 +56,7 @@ describe('Quick swap unit tests', function () {
         const toChainId = 1;
         const toTokenId = 1;
         const to = bob.address;
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amountOutMin, withdrawFee, toChainId, toTokenId, to, 0,{value:amountIn});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amountOutMin, withdrawFee, toChainId, toTokenId, to, 0, pair.address, {value:amountIn});
         let contractBalance = await hardhat.ethers.provider.getBalance(vault.address);
         expect(contractBalance).equal(amountIn);
     });
@@ -70,13 +70,13 @@ describe('Quick swap unit tests', function () {
         const to = bob.address;
         await token.connect(bob).mint(amountIn);
         await token.connect(bob).approve(zkSync.address, amountIn);
-        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amountIn, amountOutMin, withdrawFee, token.address, toChainId, toTokenId, to, 0);
+        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amountIn, amountOutMin, withdrawFee, token.address, toChainId, toTokenId, to, 0, pair.address);
         expect(await token.balanceOf(vault.address)).equal(amountIn);
     });
 
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
         await zkSync.connect(bob).depositETH(bob.address, {value:30});
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 0, 1, 1, bob.address, 0, {value:20});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 0, 1, 1, bob.address, 0, pair.address, {value:20});
 
         const tokenId = '0x0000';
         const amount = '0x0000000000000000000000000000001e';
@@ -90,7 +90,7 @@ describe('Quick swap unit tests', function () {
         const amountOutMin = '0x00000000000000000000000000000000';
         const withdrawFee = '0x0000';
         const nonce = '0x00000000';
-        const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce});
+        const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, withdrawFee, nonce, pair:pair.address});
         await zkSync.setExodusMode(true);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
         await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
@@ -113,7 +113,7 @@ describe('Quick swap unit tests', function () {
         let amount = hardhat.ethers.utils.parseEther("1");
         let withdrawFee = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("0.997");
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amount, withdrawFee, toChainId, toTokenId, bob.address, nonce, {value:amount});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amount, withdrawFee, toChainId, toTokenId, bob.address, nonce, pair.address, {value:amount});
 
         await expect(zkSyncExit.connect(alice).accept(accepter, receiver, toTokenId, amount, withdrawFee, 0, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkSync: accept msg value");
         let aliceBalance0 = await alice.getBalance();
@@ -125,8 +125,8 @@ describe('Quick swap unit tests', function () {
         expect(aliceBalance1).to.eq(aliceBalance0.sub(bobReceive).sub(txFee));
         expect(bobBalance1).to.eq(bobBalance0.add(bobReceive));
 
-        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32"],
-            [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
+        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32","address"],
+            [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce,pair.address]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
         let alicePendingBalance = await zkSyncExit.getPendingBalance(accepter, hardhat.ethers.constants.AddressZero);
@@ -150,7 +150,7 @@ describe('Quick swap unit tests', function () {
 
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
-        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amount, amount, withdrawFee, token.address, toChainId, toTokenId, bob.address, nonce);
+        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, amount, amount, withdrawFee, token.address, toChainId, toTokenId, bob.address, nonce, pair.address);
 
         await token.connect(alice).mint(amount);
         let aliceBalance0 = await token.balanceOf(alice.address);
@@ -166,8 +166,8 @@ describe('Quick swap unit tests', function () {
         expect(aliceBalance1).to.eq(aliceBalance0.sub(bobReceive));
         expect(bobBalance1).to.eq(bobBalance0.add(bobReceive));
 
-        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32"],
-            [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce]);
+        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint16","uint32","address"],
+            [opType,fromChainId,toChainId,bob.address,fromTokenId,amount,bob.address,toTokenId,amount,withdrawFee,nonce,pair.address]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
         let alicePendingBalance = await zkSyncExit.getPendingBalance(accepter, token.address);

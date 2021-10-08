@@ -29,7 +29,8 @@ interface Events {
         uint8 toChainId,
         uint16 toTokenId,
         address to,
-        uint32 nonce);
+        uint32 nonce,
+        address pair);
 
     /// @notice Event emitted when user mapping token
     event TokenMapping(uint16 indexed tokenId, uint128 amount, uint8 toChainId);

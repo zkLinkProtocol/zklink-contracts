@@ -244,10 +244,11 @@ library Operations {
         uint128 amountOutMin;
         uint16 withdrawFee;
         uint32 nonce;
+        address pair; // l2 pair address
     }
 
     uint256 public constant PACKED_QUICK_SWAP_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * (CHAIN_BYTES + AMOUNT_BYTES + TOKEN_BYTES + ADDRESS_BYTES) + FEE_BYTES + NONCE_BYTES;
+    OP_TYPE_BYTES + 2 * (CHAIN_BYTES + AMOUNT_BYTES + TOKEN_BYTES + ADDRESS_BYTES) + FEE_BYTES + NONCE_BYTES + ADDRESS_BYTES;
 
     /// Deserialize quick swap pubdata
     function readQuickSwapPubdata(bytes memory _data) internal pure returns (QuickSwap memory parsed) {
@@ -263,6 +264,7 @@ library Operations {
         (offset, parsed.amountOutMin) = Bytes.readUInt128(_data, offset); // amountOutMin
         (offset, parsed.withdrawFee) = Bytes.readUInt16(_data, offset); // withdrawAmountOutMin
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
+        (offset, parsed.pair) = Bytes.readAddress(_data, offset); // pair
 
         require(offset == PACKED_QUICK_SWAP_PUBDATA_BYTES, "Operations: Read QuickSwap"); // reading invalid quick swap pubdata size
     }
@@ -280,7 +282,8 @@ library Operations {
             op.toTokenId,
             uint128(0), // amountOutMin ignored
             op.withdrawFee,
-            op.nonce
+            op.nonce,
+            op.pair
         );
     }
 

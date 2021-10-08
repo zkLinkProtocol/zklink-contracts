@@ -67,6 +67,7 @@ contract OperationsTest {
         require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
         require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
         require(_example.nonce == parsed.nonce, "nonce");
+        require(_example.pair == parsed.pair, "pair");
     }
 
     function testWriteQuickSwapPubdata(Operations.QuickSwap calldata _example) external pure {
@@ -82,6 +83,7 @@ contract OperationsTest {
         require(0 == parsed.amountOutMin, "amountOutMin");
         require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
         require(_example.nonce == parsed.nonce, "nonce");
+        require(_example.pair == parsed.pair, "pair");
     }
 
     function testCreateMappingPubdata(Operations.Mapping calldata _example, bytes calldata _pubdata) external pure {

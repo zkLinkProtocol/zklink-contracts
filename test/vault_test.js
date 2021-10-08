@@ -5,12 +5,13 @@ const {calFee} = require('./utils');
 describe('Vault unit tests', function () {
     let vault;
     let zkSync;
+    let pool;
     let deployer, governor, alice;
     let tokenA, tokenAId;
     let strategyA, strategyB;
     let zkSyncUser;
     beforeEach(async () => {
-        [deployer, governor, alice] = await hardhat.ethers.getSigners();
+        [deployer, governor, alice, pool] = await hardhat.ethers.getSigners();
         // governance, governor is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
         const governance = await governanceFactory.deploy();
@@ -35,9 +36,9 @@ describe('Vault unit tests', function () {
         tokenAId = await governance.validateTokenAddress(tokenA.address);
         // strategyA
         const strategyFactory = await hardhat.ethers.getContractFactory('SimpleStrategy');
-        strategyA = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address);
+        strategyA = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address, pool.address, []);
         // strategyB
-        strategyB = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address);
+        strategyB = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address, pool.address, []);
         // ZkSyncUser
         const zkSyncUserFactor = await hardhat.ethers.getContractFactory('ZkSyncUser');
         zkSyncUser = await zkSyncUserFactor.deploy(zkSync.address);
@@ -103,7 +104,7 @@ describe('Vault unit tests', function () {
 
     it('should fail when strategy want is invalid', async () => {
         const strategyFactory = await hardhat.ethers.getContractFactory('SimpleStrategy');
-        const strategy = await strategyFactory.deploy(vault.address, 2, '0xe4815AE53B124e7263F08dcDBBB757d41Ed658c6');
+        const strategy = await strategyFactory.deploy(vault.address, 2, '0xe4815AE53B124e7263F08dcDBBB757d41Ed658c6', pool.address, []);
         await expect(vault.connect(governor).addStrategy(strategy.address)).to.be.revertedWith('Vault: token not exist');
     });
 
