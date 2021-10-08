@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenAddr, mappable) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
     const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
@@ -17,10 +19,7 @@ task("addToken", "Adds a new token with a given address")
     .addParam("governance", "The governance contract address, default get from deploy log", undefined, types.string, true)
     .addParam("token", "The token address")
     .addParam("mappable", "The token is mappable? default is false", undefined, types.boolean, true)
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
-        const fs = require('fs');
-
+    .setAction(async (taskArgs, hardhat) => {
         const key = taskArgs.key;
         let governanceAddr = taskArgs.governance;
         const tokenAddr = taskArgs.token;
@@ -50,10 +49,7 @@ task("addToken", "Adds a new token with a given address")
 
 task("addMultipleToken", "Adds a multiple tokens for current network")
     .addParam("key", "The network governor key", undefined, types.string, true)
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
-        const fs = require('fs');
-
+    .setAction(async (taskArgs, hardhat) => {
         const key = taskArgs.key;
         let governor;
         if (key === undefined) {
@@ -81,8 +77,7 @@ task("depositETH", "Deposit eth to zksync")
     .addParam("key", "The sender key", undefined, types.string, true)
     .addParam("zksync", "The zksync proxy address")
     .addParam("amount", "The deposit amount in ether")
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
+    .setAction(async (taskArgs, hardhat) => {
         const key = taskArgs.key;
         const zksync = taskArgs.zksync;
         const amount = taskArgs.amount;
@@ -110,8 +105,7 @@ task("depositERC20", "Deposit erc20 token to zksync")
     .addParam("token", "The token address")
     .addParam("decimals", "The token decimals", undefined, types.number, true)
     .addParam("amount", "The deposit amount in ether")
-    .setAction(async (taskArgs) => {
-            const hardhat = require("hardhat");
+    .setAction(async (taskArgs, hardhat) => {
             const key = taskArgs.key;
             const zksync = taskArgs.zksync;
             const token = taskArgs.token;

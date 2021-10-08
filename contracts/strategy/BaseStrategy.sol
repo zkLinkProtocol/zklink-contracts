@@ -19,16 +19,24 @@ abstract contract BaseStrategy is IStrategy {
     uint16 public override want;
     /// @notice want token address, if want == 0 then wantToken is wrapped platform token or erc20 token managed by Governance contract
     address public override wantToken;
+    /// @notice stake pool where harvest reward tokens transfer to
+    address public stakePool;
 
     modifier onlyVault {
         require(msg.sender == vault, 'BaseStrategy: require Vault');
         _;
     }
 
-    constructor(address _vault, uint16 _want, address _wantToken) {
+    modifier onlyStakePool {
+        require(msg.sender == stakePool, 'BaseStrategy: require stake pool');
+        _;
+    }
+
+    constructor(address _vault, uint16 _want, address _wantToken, address _stakePool) {
         vault = _vault;
         want = _want;
         wantToken = _wantToken;
+        stakePool = _stakePool;
     }
 
     /// @notice receive platform token

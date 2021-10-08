@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 task("deploy", "Deploy zklink")
     .addParam("key", "The deployer key", undefined, types.string, true)
     .addParam("governor", "The governor address, default is same as deployer", undefined, types.string, true)
@@ -6,10 +8,7 @@ task("deploy", "Deploy zklink")
     .addParam("genesisRoot", "The genesis root hash")
     .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
-        const fs = require('fs');
-
+    .setAction(async (taskArgs, hardhat) => {
         let deployer;
         const key = taskArgs.key;
         if (key === undefined) {
@@ -388,6 +387,30 @@ task("deploy", "Deploy zklink")
             deployLog.nftVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
+
+        // stake pool
+        let poolContractAddr;
+        if (!('pool' in deployLog)) {
+            console.log('deploy stake pool...');
+            const poolFactory = await hardhat.ethers.getContractFactory('StakePool');
+            const poolContract = await poolFactory.connect(deployer).deploy(nftContractAddr, zklContractAddr, governor);
+            await poolContract.deployed();
+            poolContractAddr = poolContract.address;
+            deployLog.pool = poolContractAddr;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        } else {
+            poolContractAddr = deployLog.pool;
+        }
+        console.log('pool', poolContractAddr);
+        if (!('poolVerified' in deployLog) && !skipVerify) {
+            console.log('verify pool...');
+            await hardhat.run("verify:verify", {
+                address: poolContractAddr,
+                constructorArguments: [nftContractAddr, zklContractAddr, governor]
+            });
+            deployLog.poolVerified = true;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        }
 });
 
 task("upgrade", "Upgrade zklink on testnet")
@@ -397,10 +420,7 @@ task("upgrade", "Upgrade zklink on testnet")
     .addParam("upgradeVault", "Upgrade vault, default is false", undefined, types.boolean, true)
     .addParam("upgradeZksync", "Upgrade zksync, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
-        const fs = require('fs');
-
+    .setAction(async (taskArgs, hardhat) => {
         let deployer;
         const key = taskArgs.key;
         if (key === undefined) {
@@ -591,8 +611,7 @@ task("deploy_strategy", "Deploy strategy")
     .addParam("key", "The deployer key", undefined, types.string, true)
     .addParam("strategy", "The strategy contract name")
     .addParam("params", "The strategy deploy params")
-    .setAction(async (taskArgs) => {
-        const hardhat = require("hardhat");
+    .setAction(async (taskArgs, hardhat) => {
         let deployer;
         const key = taskArgs.key;
         if (key === undefined) {

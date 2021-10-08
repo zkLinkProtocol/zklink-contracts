@@ -19,7 +19,7 @@ interface IZKLinkNFT {
         uint128 lpTokenAmount; // l2 cross chain pair token amount
     }
 
-    function tokenLq(uint32 nftTokenId) external returns (Lq memory);
+    function tokenLq(uint32 nftTokenId) external view returns (Lq memory);
     function addLq(address to, uint16 tokenId, uint128 amount, address pair) external returns (uint32);
     function confirmAddLq(uint32 nftTokenId, uint128 lpTokenAmount) external;
     function revokeAddLq(uint32 nftTokenId) external;

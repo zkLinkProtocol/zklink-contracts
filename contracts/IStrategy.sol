@@ -34,9 +34,15 @@ interface IStrategy {
     function withdraw(uint256 amountNeeded) external;
 
     /**
-     * @notice Harvest reward tokens to pool.
+     * @notice Harvest reward tokens.
      */
-    function harvest() external;
+    function rewardTokens() external view returns (address[] memory);
+
+    /**
+     * @notice Harvest reward tokens to pool.
+     * @return amounts of each reward token
+     */
+    function harvest() external returns (uint256[] memory);
 
     /**
      * @notice Migrate all assets to `_newStrategy`.
