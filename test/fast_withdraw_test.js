@@ -60,7 +60,7 @@ describe('Fast withdraw unit tests', function () {
         await token.connect(alice).approve(zkSync.address, amount);
         await expect(zkSyncExit.connect(alice).accept(accepter, receiver, tokenId, amount, fastWithdrawFeeRatio, nonce))
             .to.emit(zkSync, 'Accept')
-            .withArgs(accepter, receiver, tokenId, amount, fastWithdrawFee, nonce);
+            .withArgs(accepter, receiver, tokenId, bobReceive);
         expect(await token.balanceOf(receiver)).to.eq(bobReceive);
 
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint32","uint16","uint128","uint16","address","uint32","bool","uint16"],

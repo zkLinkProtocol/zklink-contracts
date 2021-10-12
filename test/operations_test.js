@@ -97,11 +97,13 @@ describe('Operations unit tests', function () {
         const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const toTokenId = '0x0103';
         const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
-        const withdrawFee = '0x0001';
+        const amountOut = '0x001212131415161718191a1b1c1d1e1f';
         const nonce = '0x01020304';
         const pair = '0x8177598e08ee8199c160a48c7a0af31ab54bb59f';
+        const acceptTokenId = '0x0104';
+        const acceptAmountOutMin = '0x001312131415161718191a1b1c1d1e1f';
 
-        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce, pair };
+        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin };
         const pubdata = getQuickSwapPubdata(example);
         await testContract.testQuickSwapPubdata(example, pubdata);
     });
@@ -115,11 +117,13 @@ describe('Operations unit tests', function () {
         const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const toTokenId = '0x0103';
         const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
-        const withdrawFee = '0x0001';
+        const amountOut = '0x001212131415161718191a1b1c1d1e1f';
         const nonce = '0x01020304';
         const pair = '0x8177598e08ee8199c160a48c7a0af31ab54bb59f';
+        const acceptTokenId = '0x0104';
+        const acceptAmountOutMin = '0x002112131415161718191a1b1c1d1e1f';
 
-        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce, pair };
+        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin };
         await testContract.testWriteQuickSwapPubdata(example);
     });
 

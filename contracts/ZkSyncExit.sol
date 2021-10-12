@@ -135,7 +135,7 @@ contract ZkSyncExit is ZkSyncBase {
     /// @notice Accepter accept a fast withdraw, accepter will get a fee of (amount - amountOutMin)
     /// @param accepter Accepter
     /// @param receiver User receive token from accepter
-    /// @param tokenId Token id, only non lp token supported
+    /// @param tokenId Token id
     /// @param amount Fast withdraw amount
     /// @param withdrawFee Fast withdraw fee taken by accepter
     /// @param nonce Used to produce unique accept info
@@ -145,8 +145,24 @@ contract ZkSyncExit is ZkSyncBase {
         require(amountReceive > 0 && amountReceive <= amount, 'ZkSync: amountReceive');
 
         bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
-        require(accepts[hash] == address(0), 'ZkSync: accepted');
+        _accept(accepter, receiver, tokenId, amountReceive, hash);
+    }
 
+    /// @notice Accepter accept a quick swap
+    /// @param accepter Accepter
+    /// @param receiver User receive token from accepter
+    /// @param toTokenId Swap to token id
+    /// @param amountOut Swap amount out
+    /// @param acceptTokenId Token user really want to receive
+    /// @param acceptAmountOutMin Token amount min user really want to receive
+    /// @param nonce Used to produce unique accept info
+    function acceptQuickSwap(address accepter, address receiver, uint16 toTokenId, uint128 amountOut, uint16 acceptTokenId, uint128 acceptAmountOutMin, uint32 nonce) external payable {
+        bytes32 hash = keccak256(abi.encodePacked(receiver, toTokenId, amountOut, acceptTokenId, acceptAmountOutMin, nonce));
+        _accept(accepter, receiver, acceptTokenId, acceptAmountOutMin, hash);
+    }
+
+    function _accept(address accepter, address receiver, uint16 tokenId, uint128 amountReceive, bytes32 hash) internal {
+        require(accepts[hash] == address(0), 'ZkSync: accepted');
         accepts[hash] = accepter;
 
         // send token to receiver from msg.sender
@@ -168,7 +184,7 @@ contract ZkSyncExit is ZkSyncBase {
             }
             require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkSync: transferFrom failed');
         }
-        emit Accept(accepter, receiver, tokenId, amount, fee, nonce);
+        emit Accept(accepter, receiver, tokenId, amountReceive);
     }
 
     function brokerAllowance(uint16 tokenId, address owner, address spender) public view returns (uint128) {

@@ -55,7 +55,7 @@ function getChangePubkeyPubdata({ accountId, pubKeyHash, owner, nonce}) {
     ]);
 }
 
-function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, withdrawFee, nonce, pair }) {
+function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin }) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x0c'),
         ethers.utils.arrayify(fromChainId),
@@ -66,9 +66,11 @@ function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amount
         ethers.utils.arrayify(to),
         ethers.utils.arrayify(toTokenId),
         ethers.utils.arrayify(amountOutMin),
-        ethers.utils.arrayify(withdrawFee),
+        ethers.utils.arrayify(amountOut),
         ethers.utils.arrayify(nonce),
         ethers.utils.arrayify(pair),
+        ethers.utils.arrayify(acceptTokenId),
+        ethers.utils.arrayify(acceptAmountOutMin)
     ]);
 }
 

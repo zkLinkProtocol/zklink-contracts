@@ -61,7 +61,7 @@ describe('Accept unit tests', function () {
         await token.connect(alice).approve(zkSync.address, amount);
         await expect(zkSyncExit.connect(alice).accept(accepter, receiver, tokenId, amount, withdrawFee, nonce))
             .to.emit(zkSync, 'Accept')
-            .withArgs(accepter, receiver, tokenId, amount, fee, nonce);
+            .withArgs(accepter, receiver, tokenId, bobReceive);
 
         expect(await token.balanceOf(alice.address)).to.eq(fee);
         expect(await token.balanceOf(bob.address)).to.eq(bobReceive);
@@ -90,7 +90,7 @@ describe('Accept unit tests', function () {
         await zkSyncExit.connect(alice).brokerApprove(tokenId, broker.address, amount);
         await expect(zkSyncExit.connect(broker).accept(accepter, receiver, tokenId, amount, withdrawFee, nonce))
             .to.emit(zkSync, 'Accept')
-            .withArgs(accepter, receiver, tokenId, amount, fee, nonce);
+            .withArgs(accepter, receiver, tokenId, bobReceive);
 
         expect(await token.balanceOf(alice.address)).to.eq(fee);
         expect(await token.balanceOf(bob.address)).to.eq(bobReceive);

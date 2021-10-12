@@ -65,9 +65,11 @@ contract OperationsTest {
         require(_example.to == parsed.to, "to");
         require(_example.toTokenId == parsed.toTokenId, "toTokenId");
         require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
-        require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
+        require(_example.amountOut == parsed.amountOut, "amountOut");
         require(_example.nonce == parsed.nonce, "nonce");
         require(_example.pair == parsed.pair, "pair");
+        require(_example.acceptTokenId == parsed.acceptTokenId, "acceptTokenId");
+        require(_example.acceptAmountOutMin == parsed.acceptAmountOutMin, "acceptAmountOutMin");
     }
 
     function testWriteQuickSwapPubdata(Operations.QuickSwap calldata _example) external pure {
@@ -80,10 +82,12 @@ contract OperationsTest {
         require(_example.amountIn == parsed.amountIn, "amountIn");
         require(_example.to == parsed.to, "to");
         require(_example.toTokenId == parsed.toTokenId, "toTokenId");
-        require(0 == parsed.amountOutMin, "amountOutMin");
-        require(_example.withdrawFee == parsed.withdrawFee, "withdrawAmountOutMin");
+        require(0 == parsed.amountOut, "amountOut");
+        require(_example.amountOutMin == parsed.amountOutMin, "amountOutMin");
         require(_example.nonce == parsed.nonce, "nonce");
         require(_example.pair == parsed.pair, "pair");
+        require(_example.acceptTokenId == parsed.acceptTokenId, "acceptTokenId");
+        require(_example.acceptAmountOutMin == parsed.acceptAmountOutMin, "acceptAmountOutMin");
     }
 
     function testCreateMappingPubdata(Operations.Mapping calldata _example, bytes calldata _pubdata) external pure {
