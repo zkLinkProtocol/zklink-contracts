@@ -237,18 +237,19 @@ library Operations {
         address owner;
         uint16 fromTokenId;
         uint128 amountIn;
-        address to;
+        address to; // to address in to chain may be different with owner
         uint16 toTokenId;
-        // amountOutMin has two meanings, the first refers to swap slippage of the from chain
-        // and the second refers to the actual amountOut of the to chain
-        uint128 amountOutMin;
-        uint16 withdrawFee;
+        uint128 amountOutMin; // token min amount when swap
+        uint128 amountOut; // token amount l2 swap out
         uint32 nonce;
         address pair; // l2 pair address
+        uint16 acceptTokenId; // token user really want to receive
+        uint128 acceptAmountOutMin; // token min user really want to receive
     }
 
     uint256 public constant PACKED_QUICK_SWAP_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * (CHAIN_BYTES + AMOUNT_BYTES + TOKEN_BYTES + ADDRESS_BYTES) + FEE_BYTES + NONCE_BYTES + ADDRESS_BYTES;
+    OP_TYPE_BYTES + 2 * (CHAIN_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES) +
+    AMOUNT_BYTES + NONCE_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES;
 
     /// Deserialize quick swap pubdata
     function readQuickSwapPubdata(bytes memory _data) internal pure returns (QuickSwap memory parsed) {
@@ -262,9 +263,11 @@ library Operations {
         (offset, parsed.to) = Bytes.readAddress(_data, offset); // to
         (offset, parsed.toTokenId) = Bytes.readUInt16(_data, offset); // toTokenId
         (offset, parsed.amountOutMin) = Bytes.readUInt128(_data, offset); // amountOutMin
-        (offset, parsed.withdrawFee) = Bytes.readUInt16(_data, offset); // withdrawAmountOutMin
+        (offset, parsed.amountOut) = Bytes.readUInt128(_data, offset); // amountOut
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
         (offset, parsed.pair) = Bytes.readAddress(_data, offset); // pair
+        (offset, parsed.acceptTokenId) = Bytes.readUInt16(_data, offset); // acceptTokenId
+        (offset, parsed.acceptAmountOutMin) = Bytes.readUInt128(_data, offset); // acceptAmountOutMin
 
         require(offset == PACKED_QUICK_SWAP_PUBDATA_BYTES, "Operations: Read QuickSwap"); // reading invalid quick swap pubdata size
     }
@@ -280,11 +283,14 @@ library Operations {
             op.amountIn,
             op.to,
             op.toTokenId,
-            uint128(0), // amountOutMin ignored
-            op.withdrawFee,
+            op.amountOutMin,
+            uint128(0), // amountOut ignored
             op.nonce,
-            op.pair
+            op.pair,
+            op.acceptTokenId
         );
+        // to avoid Stack too deep error when compile
+        buf = abi.encodePacked(buf, op.acceptAmountOutMin);
     }
 
     /// @notice Checks that quick swap is same as operation in priority queue

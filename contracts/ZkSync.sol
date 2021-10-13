@@ -133,38 +133,58 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
     /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
     /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
-    /// @param _withdrawFee Withdraw fee, 100 means 1%
     /// @param _toChainId Chain id of to token
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
     /// @param _pair L2 cross chain pair address
-    function swapExactETHForTokens(address _zkSyncAddress, uint104 _amountOutMin, uint16 _withdrawFee, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce, address _pair) external payable {
+    /// @param _acceptTokenId Accept token user really want to receive
+    /// @param _acceptAmountOutMin Accept token min amount user really want to receive
+    function swapExactETHForTokens(address _zkSyncAddress,
+        uint104 _amountOutMin,
+        uint8 _toChainId,
+        uint16 _toTokenId,
+        address _to,
+        uint32 _nonce,
+        address _pair,
+        uint16 _acceptTokenId,
+        uint128 _acceptAmountOutMin) external payable {
         requireActive();
         require(msg.value > 0, 'ZkSync: amountIn');
-        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
+        require(_acceptAmountOutMin> 0, 'ZkSync: acceptAmountOutMin');
 
         (bool success, ) = payable(address(vault)).call{value: msg.value}("");
         require(success, "ZkSync: eth transfer failed");
         vault.recordDeposit(0);
-        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, _withdrawFee, 0, _toChainId, _toTokenId, _to, _nonce, _pair);
+        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, 0, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
     /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
     /// @param _amountIn Swap amount of from token
     /// @param _amountOutMin Minimum swap out amount of to token
-    /// @param _withdrawFee Withdraw fee, 100 means 1%
     /// @param _fromToken Swap token from
     /// @param _toChainId Chain id of to token
     /// @param _toTokenId Swap token to
     /// @param _to To token received address
     /// @param _nonce Used to produce unique accept info
     /// @param _pair L2 cross chain pair address
-    function swapExactTokensForTokens(address _zkSyncAddress, uint104 _amountIn, uint104 _amountOutMin, uint16 _withdrawFee, IERC20 _fromToken, uint8 _toChainId, uint16 _toTokenId, address _to, uint32 _nonce, address _pair) external {
+    /// @param _acceptTokenId Accept token user really want to receive
+    /// @param _acceptAmountOutMin Accept token min amount user really want to receive
+    function swapExactTokensForTokens(address _zkSyncAddress,
+        uint104 _amountIn,
+        uint104 _amountOutMin,
+        IERC20 _fromToken,
+        uint8 _toChainId,
+        uint16 _toTokenId,
+        address _to,
+        uint32 _nonce,
+        address _pair,
+        uint16 _acceptTokenId,
+        uint128 _acceptAmountOutMin) external {
         requireActive();
         require(_amountIn > 0, 'ZkSync: amountIn');
-        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
+        require(_acceptAmountOutMin> 0, 'ZkSync: acceptAmountOutMin');
 
         // Get token id by its address
         uint16 fromTokenId = governance.validateTokenAddress(address(_fromToken));
@@ -173,7 +193,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit
         vault.recordDeposit(fromTokenId);
-        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, _withdrawFee, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair);
+        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Mapping ERC20 from this chain to another chain - transfer ERC20 tokens from user into contract, validate it, register mapping
@@ -297,13 +317,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         address _owner,
         uint128 _amountIn,
         uint128 _amountOutMin,
-        uint16 _withdrawFee,
         uint16 _fromTokenId,
         uint8 _toChainId,
         uint16 _toTokenId,
         address _to,
         uint32 _nonce,
-        address _pair
+        address _pair,
+        uint16 _acceptTokenId,
+        uint128 _acceptAmountOutMin
     ) internal {
         // Priority Queue request
         Operations.QuickSwap memory op =
@@ -316,13 +337,15 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
                 to: _to,
                 toTokenId: _toTokenId,
                 amountOutMin: _amountOutMin,
-                withdrawFee: _withdrawFee,
+                amountOut: 0, // unknown at this point
                 nonce: _nonce,
-                pair: _pair
+                pair: _pair,
+                acceptTokenId: _acceptTokenId,
+                acceptAmountOutMin: _acceptAmountOutMin
             });
         bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.QuickSwap, pubData);
-        emit QuickSwap(_owner, _amountIn, _amountOutMin, _withdrawFee, _fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair);
+        emit QuickSwap(_owner, _amountIn, _amountOutMin, _fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Register mapping request - pack pubdata, add priority request and emit OnchainMapping event

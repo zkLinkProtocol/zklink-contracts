@@ -41,7 +41,7 @@ contract Config {
 
     uint256 constant NOOP_BYTES = 1 * CHUNK_BYTES;
     uint256 constant DEPOSIT_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant QUICK_SWAP_BYTES = 12 * CHUNK_BYTES;
+    uint256 constant QUICK_SWAP_BYTES = 16 * CHUNK_BYTES;
     uint256 constant TRANSFER_TO_NEW_BYTES = 6 * CHUNK_BYTES;
     uint256 constant PARTIAL_EXIT_BYTES = 6 * CHUNK_BYTES;
     uint256 constant TRANSFER_BYTES = 2 * CHUNK_BYTES;

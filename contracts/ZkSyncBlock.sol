@@ -527,13 +527,20 @@ contract ZkSyncBlock is ZkSyncBase {
 
     function execQuickSwap(bytes memory pubData) internal returns (bool) {
         Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
-        // only to chain need to process QuickSwap data in executeBlocks
-        if (op.toChainId != CHAIN_ID) {
-            return false;
-        }
-        // if amountOutMin is zero it means swap failed
-        if (op.amountOutMin > 0) {
-            withdrawToAccepter(op.to, op.toTokenId, op.amountOutMin, op.withdrawFee, op.nonce);
+        if (op.amountOut == 0) {
+            // only from chain need to process pubData when swap fail
+            if (op.fromChainId != CHAIN_ID) {
+                return false;
+            }
+            // store amountIn of from token to owner
+            storePendingBalance(op.fromTokenId, op.owner, op.amountIn);
+        } else {
+            // only to chain need to process pubData when swap success
+            if (op.toChainId != CHAIN_ID) {
+                return false;
+            }
+            bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOut, op.acceptTokenId, op.acceptAmountOutMin, op.nonce));
+            withdrawToAccepter(op.to, op.toTokenId, op.amountOut, hash);
         }
         return true;
     }
@@ -549,13 +556,16 @@ contract ZkSyncBlock is ZkSyncBase {
 
     function withdrawToAccepter(address to, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) internal {
         bytes32 hash = keccak256(abi.encodePacked(to, tokenId, amount, withdrawFee, nonce));
+        withdrawToAccepter(to, tokenId, amount, hash);
+    }
+
+    function withdrawToAccepter(address to, uint16 tokenId, uint128 amount, bytes32 hash) internal {
         address accepter = accepts[hash];
         if (accepter == address(0)) {
             // receiver act as a accepter
             accepts[hash] = to;
             storePendingBalance(tokenId, to, amount);
         } else {
-            // accepter profit is (amountOutMin - fee)
             storePendingBalance(tokenId, accepter, amount);
         }
     }
