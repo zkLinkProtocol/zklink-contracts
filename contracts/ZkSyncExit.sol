@@ -139,14 +139,13 @@ contract ZkSyncExit is ZkSyncBase {
     /// @param amount Fast withdraw amount
     /// @param withdrawFee Fast withdraw fee taken by accepter
     /// @param nonce Used to produce unique accept info
-    function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable returns (bytes32) {
+    function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable {
         uint128 fee = amount * withdrawFee / MAX_WITHDRAW_FEE;
         uint128 amountReceive = amount - fee;
         require(amountReceive > 0 && amountReceive <= amount, 'ZkSync: amountReceive');
 
         bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
         _accept(accepter, receiver, tokenId, amountReceive, hash);
-        return hash;
     }
 
     /// @notice Accepter accept a quick swap
@@ -157,10 +156,9 @@ contract ZkSyncExit is ZkSyncBase {
     /// @param acceptTokenId Token user really want to receive
     /// @param acceptAmountOutMin Token amount min user really want to receive
     /// @param nonce Used to produce unique accept info
-    function acceptQuickSwap(address accepter, address receiver, uint16 toTokenId, uint128 amountOut, uint16 acceptTokenId, uint128 acceptAmountOutMin, uint32 nonce) external payable returns (bytes32) {
+    function acceptQuickSwap(address accepter, address receiver, uint16 toTokenId, uint128 amountOut, uint16 acceptTokenId, uint128 acceptAmountOutMin, uint32 nonce) external payable {
         bytes32 hash = keccak256(abi.encodePacked(receiver, toTokenId, amountOut, acceptTokenId, acceptAmountOutMin, nonce));
         _accept(accepter, receiver, acceptTokenId, acceptAmountOutMin, hash);
-        return hash;
     }
 
     function _accept(address accepter, address receiver, uint16 tokenId, uint128 amountReceive, bytes32 hash) internal {

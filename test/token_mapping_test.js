@@ -117,6 +117,6 @@ describe('Token mapping unit tests', function () {
             nonce:'0x00000001',
             withdrawFee:'0x0001'});
         await zkSyncBlock.testExecMappingToken(pubdata);
-        expect(await zkSyncExit.getPendingBalance(bob.address, zkl.address)).to.be.equal(19);
+        expect(await zkl.balanceOf(bob.address)).to.be.equal(19);
     });
 });
