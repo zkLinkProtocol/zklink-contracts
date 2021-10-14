@@ -387,6 +387,14 @@ task("deploy", "Deploy zklink")
             deployLog.nftVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
+        console.log('governance change nft...');
+        if (deployer.address === governor) {
+            const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
+            const governanceContract = governanceFactory.attach(governanceProxyAddr);
+            await governanceContract.connect(deployer).changeNft(nftContractAddr);
+        } else {
+            console.log('governor address is different with deployer, you should change nft manually')
+        }
 
         // stake pool
         let poolContractAddr;
