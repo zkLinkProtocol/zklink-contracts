@@ -12,6 +12,7 @@ import "../Ownable.sol";
 import "../Config.sol";
 import "../IStrategy.sol";
 import "../IZKLinkNFT.sol";
+import "../IZKLink.sol";
 
 contract StakePool is Ownable, Config {
     using SafeMath for uint256;
@@ -47,6 +48,8 @@ contract StakePool is Ownable, Config {
     IZKLinkNFT public nft;
     /// @notice Zkl token
     IERC20 public zkl;
+    /// @notice zkLink contract
+    IZKLink public zkLink;
     /// @notice Nft depositor info, nft token id => address
     mapping(uint32 => address) public nftDepositor;
     /// @notice Info of each user that stakes tokens, zkl token id => user address => user info
@@ -60,9 +63,10 @@ contract StakePool is Ownable, Config {
     event Harvest(uint16 indexed zklTokenId);
     event RevokePendingNft(uint32 indexed nftTokendId);
 
-    constructor(address _nft, address _zkl, address _masterAddress) Ownable(_masterAddress) {
+    constructor(address _nft, address _zkl, address _zkLink, address _masterAddress) Ownable(_masterAddress) {
         nft = IZKLinkNFT(_nft);
         zkl = IERC20(_zkl);
+        zkLink = IZKLink(_zkLink);
     }
 
     function poolRewardAccPerShare(uint16 zklTokenId, address rewardToken) external view returns (uint256) {
@@ -183,7 +187,7 @@ contract StakePool is Ownable, Config {
 
     /// @notice Stake ZKLinkNFT to pool for reward allocation
     /// @param nftTokenId token id of ZKLinkNFT
-    function stake(uint32 nftTokenId) external {
+    function stake(uint32 nftTokenId) public {
         IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
         // only ADD_PENDING and FINAL nft can be staked
         require(lq.status == IZKLinkNFT.LqStatus.ADD_PENDING ||
@@ -215,9 +219,23 @@ contract StakePool is Ownable, Config {
         emit Stake(msg.sender, nftTokenId);
     }
 
+    /// @notice Add liquidity to zkLink and then stake ZKLinkNFT to pool for reward allocation
+    /// @param token Token added
+    /// @param amount Amount of token
+    /// @param pair L2 cross chain pair address
+    /// @param minLpAmount L2 lp token amount min received
+    function addLiquidityAndStake(IERC20 token, uint104 amount, address pair, uint104 minLpAmount) external {
+        // token transfer to pool firstly and then transfer from pool to zkLink
+        token.transferFrom(msg.sender, address(this), amount);
+        token.approve(address(zkLink), amount);
+        uint32 nftTokenId = zkLink.addLiquidity(msg.sender, token, amount, pair, minLpAmount);
+        // user should have approved all nft to pool
+        stake(nftTokenId);
+    }
+
     /// @notice UnStake ZklNft tokens from pool
     /// @param nftTokenId token id of ZKLinkNFT
-    function unStake(uint32 nftTokenId) external {
+    function unStake(uint32 nftTokenId) public {
         require(nftDepositor[nftTokenId] == msg.sender, 'StakePool: not depositor');
 
         // nft token status may be ADD_PENDING, FINAL or ADD_FAIL
@@ -248,6 +266,16 @@ contract StakePool is Ownable, Config {
         _updateRewardDebts(pool, user);
         _transferNftToDepositor(nftTokenId, msg.sender);
         emit UnStake(msg.sender, nftTokenId);
+    }
+
+    /// @notice UnStake ZklNft tokens from pool and then remove liquidity from zkLink
+    /// @param nftTokenId token id of ZKLinkNFT
+    /// @param minAmount Token amount min received
+    function unStakeAndRemoveLiquidity(uint32 nftTokenId, uint104 minAmount) external {
+        unStake(nftTokenId);
+        // user should have approved all nft to pool
+        nft.transferFrom(msg.sender, address(this), nftTokenId);
+        zkLink.removeLiquidity(msg.sender, nftTokenId, minAmount);
     }
 
     /// @notice Emergency unStake ZklNft tokens from pool without caring about rewards

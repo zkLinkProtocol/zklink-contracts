@@ -13,11 +13,12 @@ import "./Operations.sol";
 
 import "./UpgradeableMaster.sol";
 import "./ZkSyncBase.sol";
+import "./IZKLink.sol";
 
 /// @title zkSync main contract part 1: deposit, withdraw
 /// @author Matter Labs
 /// @author ZkLink Labs
-contract ZkSync is UpgradeableMaster, ZkSyncBase {
+contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -227,7 +228,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
     /// @param _amount Amount of token
     /// @param _pair L2 cross chain pair address
     /// @param _minLpAmount L2 lp token amount min received
-    function addLiquidity(address _zkSyncAddress, IERC20 _token, uint104 _amount, address _pair, uint104 _minLpAmount) external {
+    function addLiquidity(address _zkSyncAddress, IERC20 _token, uint104 _amount, address _pair, uint104 _minLpAmount) override external returns (uint32) {
         requireActive();
         require(_amount > 0, 'ZkSync: amount');
 
@@ -243,13 +244,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase {
         // mint a pending nft to user
         uint32 nftTokenId = governance.nft().addLq(_zkSyncAddress, tokenId, _amount, _pair);
         registerAddLiquidity(_zkSyncAddress, tokenId, _amount, _pair, _minLpAmount, nftTokenId);
+        return nftTokenId;
     }
 
     /// @notice Remove liquidity from l1 and get token back from l2 cross chain pair
     /// @param _zkSyncAddress Receiver Layer 2 address if remove liquidity success
     /// @param _nftTokenId Nft token that contains info about the liquidity
     /// @param _minAmount Token amount min received
-    function removeLiquidity(address _zkSyncAddress, uint32 _nftTokenId, uint104 _minAmount) external {
+    function removeLiquidity(address _zkSyncAddress, uint32 _nftTokenId, uint104 _minAmount) override external {
         requireActive();
         // nft must exist
         require(address(governance.nft()) != address(0), 'ZkSync: nft not exist');

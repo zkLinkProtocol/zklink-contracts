@@ -8,7 +8,7 @@ contract StakePoolTest is StakePool {
 
     uint256 public currentBlock;
 
-    constructor(address _nft, address _zkl, address _masterAddress) StakePool(_nft, _zkl, _masterAddress) {
+    constructor(address _nft, address _zkl, address _zkLink, address _masterAddress) StakePool(_nft, _zkl, _zkLink, _masterAddress) {
 
     }
 

@@ -6,6 +6,7 @@ pragma experimental ABIEncoderV2;
 
 import "../ZkSync.sol";
 import "../SafeCast.sol";
+import "../IZKL.sol";
 
 contract ZkSyncTest is ZkSync {
 
@@ -39,5 +40,21 @@ contract ZkSyncTest is ZkSync {
 
     function getStoredBlockHashes(uint32 height) external view returns (bytes32) {
         return storedBlockHashes[height];
+    }
+
+    function addLq(IZKLinkNFT nft, address to, uint16 tokenId, uint128 amount, address pair) external returns (uint32) {
+        return nft.addLq(to, tokenId, amount, pair);
+    }
+
+    function confirmAddLq(IZKLinkNFT nft, uint32 nftTokenId, uint128 lpTokenAmount) external {
+        nft.confirmAddLq(nftTokenId, lpTokenAmount);
+    }
+
+    function revokeAddLq(IZKLinkNFT nft, uint32 nftTokenId) external {
+        nft.revokeAddLq(nftTokenId);
+    }
+
+    function mintZKL(IZKL zkl, address to, uint256 amount) external {
+        zkl.mint(to, amount);
     }
 }
