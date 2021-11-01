@@ -367,15 +367,13 @@ library Operations {
         uint16 tokenId;
         uint128 amount;
         address pair; // l2 pair address
-        // lpAmount has two meanings:
-        // l2 lp amount min received when add liquidity from l1 to l2
-        // l2 pair lp amount really produced from l2 to l1, if lp amount is zero it means add liquidity failed
-        uint128 lpAmount;
+        uint128 minLpAmount; // l2 lp amount min received when add liquidity from l1 to l2
+        uint128 lpAmount; // l2 pair lp amount really produced from l2 to l1, if lp amount is zero it means add liquidity failed
         uint32 nftTokenId;
     }
 
     uint256 public constant PACKED_L1ADDLQ_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
 
     /// Deserialize pubdata
     function readL1AddLQPubdata(bytes memory _data) internal pure returns (L1AddLQ memory parsed) {
@@ -386,6 +384,7 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.pair) = Bytes.readAddress(_data, offset);
+        (offset, parsed.minLpAmount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.lpAmount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.nftTokenId) = Bytes.readUInt32(_data, offset);
 
@@ -401,6 +400,7 @@ library Operations {
             op.tokenId,
             op.amount,
             op.pair,
+            op.minLpAmount,
             uint128(0), // lp amount ignored
             op.nftTokenId
         );
@@ -420,17 +420,15 @@ library Operations {
         address owner; // token receiver after remove liquidity
         uint8 chainId;
         uint16 tokenId;
-        // amount has two meanings:
-        // l2 token amount min received when remove liquidity from l1 to l2
-        // l2 token amount really return back from l2 to l1, if amount is zero it means remove liquidity failed
-        uint128 amount;
+        uint128 minAmount; // l2 token amount min received when remove liquidity from l1 to l2
+        uint128 amount; // l2 token amount really return back from l2 to l1, if amount is zero it means remove liquidity failed
         address pair; // l2 pair address
         uint128 lpAmount;
         uint32 nftTokenId;
     }
 
     uint256 public constant PACKED_L1REMOVELQ_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
 
     /// Deserialize pubdata
     function readL1RemoveLQPubdata(bytes memory _data) internal pure returns (L1RemoveLQ memory parsed) {
@@ -439,6 +437,7 @@ library Operations {
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.minAmount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.pair) = Bytes.readAddress(_data, offset);
         (offset, parsed.lpAmount) = Bytes.readUInt128(_data, offset);
@@ -454,6 +453,7 @@ library Operations {
             op.owner,
             op.chainId,
             op.tokenId,
+            op.minAmount,
             uint128(0),  // amount ignored
             op.pair,
             op.lpAmount,

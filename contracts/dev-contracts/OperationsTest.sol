@@ -122,6 +122,7 @@ contract OperationsTest {
         require(_example.tokenId == parsed.tokenId);
         require(_example.amount == parsed.amount);
         require(_example.pair == parsed.pair);
+        require(_example.minLpAmount == parsed.minLpAmount);
         require(_example.lpAmount == parsed.lpAmount);
         require(_example.nftTokenId == parsed.nftTokenId);
     }
@@ -134,6 +135,7 @@ contract OperationsTest {
         require(_example.tokenId == parsed.tokenId);
         require(_example.amount == parsed.amount);
         require(_example.pair == parsed.pair);
+        require(_example.minLpAmount == parsed.minLpAmount);
         require(0 == parsed.lpAmount);
         require(_example.nftTokenId == parsed.nftTokenId);
     }
@@ -143,6 +145,7 @@ contract OperationsTest {
         require(_example.owner == parsed.owner);
         require(_example.chainId == parsed.chainId);
         require(_example.tokenId == parsed.tokenId);
+        require(_example.minAmount == parsed.minAmount);
         require(_example.amount == parsed.amount);
         require(_example.pair == parsed.pair);
         require(_example.lpAmount == parsed.lpAmount);
@@ -155,6 +158,7 @@ contract OperationsTest {
         require(_example.owner == parsed.owner);
         require(_example.chainId == parsed.chainId);
         require(_example.tokenId == parsed.tokenId);
+        require(_example.minAmount == parsed.minAmount);
         require(0 == parsed.amount);
         require(_example.pair == parsed.pair);
         require(_example.lpAmount == parsed.lpAmount);

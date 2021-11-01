@@ -396,7 +396,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
                 tokenId: _tokenId,
                 amount: _amount,
                 pair: _pair,
-                lpAmount: _minLpAmount,
+                minLpAmount: _minLpAmount,
+                lpAmount: 0,
                 nftTokenId: _nftTokenId
             }
         );
@@ -417,13 +418,14 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         // Priority Queue request
         Operations.L1RemoveLQ memory op =
         Operations.L1RemoveLQ({
-        owner: _owner,
-        chainId: CHAIN_ID,
-        tokenId: _tokenId,
-        amount: _minAmount,
-        pair: _pair,
-        lpAmount: _lpAmount,
-        nftTokenId: _nftTokenId
+            owner: _owner,
+            chainId: CHAIN_ID,
+            tokenId: _tokenId,
+            minAmount: _minAmount,
+            amount: 0,
+            pair: _pair,
+            lpAmount: _lpAmount,
+            nftTokenId: _nftTokenId
         }
         );
         bytes memory pubData = Operations.writeL1RemoveLQPubdataForPriorityQueue(op);
