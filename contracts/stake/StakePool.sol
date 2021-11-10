@@ -13,10 +13,12 @@ import "../Config.sol";
 import "../IStrategy.sol";
 import "../IZKLinkNFT.sol";
 import "../IZKLink.sol";
+import "../EnumerableSet.sol";
 
 contract StakePool is Ownable, Config {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     /// @dev UINT256.max = 1.15 * 1e77, if reward amount is bigger than 1e65 and power is 1 overflow will happen when update accPerShare
     uint256 constant public MUL_FACTOR = 1e12;
@@ -25,8 +27,8 @@ contract StakePool is Ownable, Config {
     struct UserInfo {
         uint128 power; // How many final nft mine power the user has provided
         mapping(address => uint256) rewardDebt; // Final nft reward debt of each reward token(include zkl)
-        mapping(uint32 => bool) pendingNft; // Pending nft the user has provided
         mapping(uint32 => mapping(address => uint256)) pendingRewardDebt; // Pending nft reward debt of each reward token(include zkl)
+        mapping(address => uint256) rewardedAmount; // Rewarded amount of each reward token(include zkl)
     }
 
     /// @notice Info of each pool
@@ -54,8 +56,14 @@ contract StakePool is Ownable, Config {
     mapping(uint32 => address) public nftDepositor;
     /// @notice Info of each user that stakes tokens, zkl token id => user address => user info
     mapping(uint16 => mapping(address => UserInfo)) public userInfo;
+    // Pending nft set of each user that stakes tokens, zkl token id => user address => final nft set
+    mapping(uint16 => mapping(address => EnumerableSet.UintSet)) private userFinalNftSet;
+    // Pending nft set of each user that stakes tokens, zkl token id => user address => pending nft set
+    mapping(uint16 => mapping(address => EnumerableSet.UintSet)) private userPendingNftSet;
     /// @notice Info of each pool, zkl token id => pool info
     mapping(uint16 => PoolInfo) public poolInfo;
+    // All pool ids
+    EnumerableSet.UintSet private poolIdSet;
 
     event Stake(address indexed user, uint32 indexed nftTokenId);
     event UnStake(address indexed user, uint32 indexed nftTokenId);
@@ -67,6 +75,15 @@ contract StakePool is Ownable, Config {
         nft = IZKLinkNFT(_nft);
         zkl = IERC20(_zkl);
         zkLink = IZKLink(_zkLink);
+    }
+
+    /// @notice Get all pool ids
+    function poolIds() external view returns (uint16[] memory) {
+        uint16[] memory pids = new uint16[](poolIdSet.length());
+        for(uint256 i = 0; i < pids.length; i++) {
+            pids[i] = uint16(poolIdSet.at(i));
+        }
+        return pids;
     }
 
     function poolRewardAccPerShare(uint16 zklTokenId, address rewardToken) external view returns (uint256) {
@@ -85,12 +102,70 @@ contract StakePool is Ownable, Config {
         return userInfo[zklTokenId][user].rewardDebt[rewardToken];
     }
 
-    function userPendingNft(uint16 zklTokenId, address user, uint32 nftTokenId) external view returns (bool) {
-        return userInfo[zklTokenId][user].pendingNft[nftTokenId];
+    function isUserFinalNft(uint16 zklTokenId, address user, uint32 nftTokenId) public view returns (bool) {
+        return userFinalNftSet[zklTokenId][user].contains(nftTokenId);
+    }
+
+    function isUserPendingNft(uint16 zklTokenId, address user, uint32 nftTokenId) public view returns (bool) {
+        return userPendingNftSet[zklTokenId][user].contains(nftTokenId);
+    }
+
+    function isUserNft(uint16 zklTokenId, address user, uint32 nftTokenId) external view returns (bool) {
+        return isUserFinalNft(zklTokenId, user, nftTokenId) || isUserPendingNft(zklTokenId, user, nftTokenId);
+    }
+
+    /// @notice Get user all staked nft tokens
+    /// @param zklTokenId token id managed by Governance of ZkLink
+    /// @param user address of user
+    function userNfts(uint16 zklTokenId, address user) public view returns (uint32[] memory) {
+        EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][user];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][user];
+        uint256 finalNum = finalNftSet.length();
+        uint256 pendingNum = pendingNftSet.length();
+        uint32[] memory nftTokenIds = new uint32[](finalNum+pendingNum);
+        for(uint256 i = 0; i < finalNum; i++) {
+            nftTokenIds[i] = uint32(finalNftSet.at(i));
+        }
+        for(uint256 i = 0; i < pendingNum; i++) {
+            nftTokenIds[i+finalNum] = uint32(pendingNftSet.at(i));
+        }
+        return nftTokenIds;
+    }
+
+    /// @notice Get user all staked token amount
+    /// @param zklTokenId token id managed by Governance of ZkLink
+    /// @param user address of user
+    function userStakedAmount(uint16 zklTokenId, address user) external view returns (uint256) {
+        uint256 amount = 0;
+        uint32[] memory nfts = userNfts(zklTokenId, user);
+        for(uint256 i = 0; i < nfts.length; i++) {
+            uint32 nftId = nfts[i];
+            amount = amount.add(nft.tokenLq(nftId).amount);
+        }
+        return amount;
     }
 
     function userPendingRewardDebt(uint16 zklTokenId, address user, uint32 nftTokenId, address rewardToken) external view returns (uint256) {
         return userInfo[zklTokenId][user].pendingRewardDebt[nftTokenId][rewardToken];
+    }
+
+    /// @notice Get user all rewarded token and amount
+    /// @param zklTokenId token id managed by Governance of ZkLink
+    /// @param userAddr address of user
+    function userRewarded(uint16 zklTokenId, address userAddr) external view returns (address[] memory, uint256[] memory) {
+        PoolInfo storage pool = poolInfo[zklTokenId];
+        UserInfo storage user = userInfo[zklTokenId][userAddr];
+        address[] memory strategyRewardTokens = pool.strategy.rewardTokens();
+        address[] memory allTokens = new address[](1+strategyRewardTokens.length);
+        allTokens[0] = address(zkl);
+        for(uint256 i = 0; i < strategyRewardTokens.length; i++) {
+            allTokens[1+i] = strategyRewardTokens[i];
+        }
+        uint256[] memory allAmounts = new uint256[](allTokens.length);
+        for(uint256 i = 0; i < allAmounts.length; i++) {
+            allAmounts[i] = user.rewardedAmount[allTokens[i]];
+        }
+        return (allTokens, allAmounts);
     }
 
     /// @notice Add a stake pool
@@ -119,6 +194,8 @@ contract StakePool is Ownable, Config {
         p.bonusEndBlock = bonusEndBlock;
         p.zklPerBlock = zklPerBlock;
         p.discardRewardReleaseBlocks = discardRewardReleaseBlocks;
+
+        poolIdSet.add(zklTokenId);
     }
 
     /// @notice Update stake pool zkl reward schedule after last schedule finish
@@ -198,6 +275,8 @@ contract StakePool is Ownable, Config {
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
         updatePool(zklTokenId);
 
         if (user.power > 0) {
@@ -209,9 +288,10 @@ contract StakePool is Ownable, Config {
         if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
             // add nft power to user power only if nft status is final
             user.power = user.power.add(lq.amount);
+            finalNftSet.add(nftTokenId);
         } else {
             // record pending nft reward debt
-            user.pendingNft[nftTokenId] = true;
+            pendingNftSet.add(nftTokenId);
             _updatePendingAccShareDebts(pool, user, nftTokenId, lq.amount);
         }
         _updateRewardDebts(pool, user);
@@ -243,6 +323,8 @@ contract StakePool is Ownable, Config {
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
         updatePool(zklTokenId);
 
         if (user.power > 0) {
@@ -250,7 +332,7 @@ contract StakePool is Ownable, Config {
         }
         // remove nft power from pool total power whether nft status is final or not
         pool.power = pool.power.sub(lq.amount);
-        if (user.pendingNft[nftTokenId]) {
+        if (pendingNftSet.contains(nftTokenId)) {
             if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
                 // transfer pending reward to user
                 _transferPendingRewards(pool, user, nftTokenId, lq.amount);
@@ -258,10 +340,11 @@ contract StakePool is Ownable, Config {
                 // discard this pending nft acc reward and release slowly to final nft depositors
                 _updateDiscardReward(pool, user, nftTokenId, lq.amount);
             }
-            delete user.pendingNft[nftTokenId];
+            pendingNftSet.remove(nftTokenId);
         } else {
             // remove nft power from user power only if nft status is final when staked
             user.power = user.power.sub(lq.amount);
+            finalNftSet.remove(nftTokenId);
         }
         _updateRewardDebts(pool, user);
         _transferNftToDepositor(nftTokenId, msg.sender);
@@ -290,14 +373,17 @@ contract StakePool is Ownable, Config {
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
 
         // remove nft power from pool total power whether nft status is final or not
         pool.power = pool.power.sub(lq.amount);
-        if (user.pendingNft[nftTokenId]) {
-            delete user.pendingNft[nftTokenId];
+        if (pendingNftSet.contains(nftTokenId)) {
+            pendingNftSet.remove(nftTokenId);
         } else {
             // remove nft power from user power only if nft status is final when staked
             user.power = user.power.sub(lq.amount);
+            finalNftSet.remove(nftTokenId);
         }
         _transferNftToDepositor(nftTokenId, msg.sender);
         emit EmergencyUnStake(msg.sender, nftTokenId);
@@ -316,12 +402,13 @@ contract StakePool is Ownable, Config {
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][depositor];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][depositor];
         // no need to update pool
         // remove nft power from pool total power
         pool.power = pool.power.sub(lq.amount);
         // discard this pending nft acc reward and release slowly to final nft depositors
         _updateDiscardReward(pool, user, nftTokenId, lq.amount);
-        delete user.pendingNft[nftTokenId];
+        pendingNftSet.remove(nftTokenId);
         _transferNftToDepositor(nftTokenId, depositor);
 
         emit RevokePendingNft(nftTokenId);
@@ -331,10 +418,10 @@ contract StakePool is Ownable, Config {
     /// @param zklTokenId token id managed by Governance of ZkLink
     /// @param rewardToken reward token address
     /// @param account user address
-    /// @param pendingNftTokens array of pending nft tokens when staked but latest status is final
-    function pendingReward(uint16 zklTokenId, address rewardToken, address account, uint32[] memory pendingNftTokens) public view returns (uint256) {
+    function pendingReward(uint16 zklTokenId, address rewardToken, address account) public view returns (uint256) {
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][account];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][account];
         uint256 accPerShare = pool.accPerShare[rewardToken];
         // acc per share should update to current block
         if (pool.power > 0) {
@@ -343,13 +430,10 @@ contract StakePool is Ownable, Config {
         }
         uint256 pending = _calPending(user.power, accPerShare, user.rewardDebt[rewardToken]);
 
-        for(uint256 i = 0; i < pendingNftTokens.length; i++) {
-            uint32 nftTokenId = pendingNftTokens[i];
-            require(nftDepositor[nftTokenId] == account, 'StakePool: not depositor');
-            require(user.pendingNft[nftTokenId], 'StakePool: not pending');
-
+        uint256 pendingNftLength = pendingNftSet.length();
+        for(uint256 i = 0; i < pendingNftLength; i++) {
+            uint32 nftTokenId = uint32(pendingNftSet.at(i));
             IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
-            require(lq.tokenId == zklTokenId, 'StakePool: zklTokenId');
             // only final status nft will transfer pending acc reward to user
             if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
                 uint256 debt = user.pendingRewardDebt[nftTokenId][rewardToken];
@@ -363,8 +447,7 @@ contract StakePool is Ownable, Config {
     /// @notice Get all pending reward of user
     /// @param zklTokenId token id managed by Governance of ZkLink
     /// @param account user address
-    /// @param pendingNftTokens array of pending nft tokens when staked but latest status is final
-    function pendingRewards(uint16 zklTokenId, address account, uint32[] memory pendingNftTokens) external view returns (address[] memory, uint256[] memory) {
+    function pendingRewards(uint16 zklTokenId, address account) external view returns (address[] memory, uint256[] memory) {
         uint256 rewardTokenLen = 1;
         address[] memory harvestRewardTokens;
         PoolInfo storage pool = poolInfo[zklTokenId];
@@ -375,39 +458,40 @@ contract StakePool is Ownable, Config {
         address[] memory rewardTokens = new address[](rewardTokenLen);
         uint256[] memory rewardAmounts = new uint256[](rewardTokenLen);
         rewardTokens[0] = address(zkl);
-        rewardAmounts[0] = pendingReward(zklTokenId, rewardTokens[0], account, pendingNftTokens);
+        rewardAmounts[0] = pendingReward(zklTokenId, rewardTokens[0], account);
         for (uint256 i = 1; i < rewardTokenLen; i++) {
             rewardTokens[i] = harvestRewardTokens[i-1];
-            rewardAmounts[i] = pendingReward(zklTokenId, rewardTokens[i], account, pendingNftTokens);
+            rewardAmounts[i] = pendingReward(zklTokenId, rewardTokens[i], account);
         }
         return (rewardTokens, rewardAmounts);
     }
 
     /// @notice Harvest reward tokens from pool
     /// @param zklTokenId token id managed by Governance of ZkLink
-    /// @param pendingNftTokens array of pending nft tokens when staked but latest status is final
-    function harvest(uint16 zklTokenId, uint32[] memory pendingNftTokens) external {
+    function harvest(uint16 zklTokenId) external {
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
+        EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
         updatePool(zklTokenId);
 
         if (user.power > 0) {
             _transferRewards(pool, user);
         }
 
-        for(uint256 i = 0; i < pendingNftTokens.length; i++) {
-            uint32 nftTokenId = pendingNftTokens[i];
-            require(nftDepositor[nftTokenId] == msg.sender, 'StakePool: not depositor');
-            require(user.pendingNft[nftTokenId], 'StakePool: not pending');
-
+        uint256 pendingNftLength = pendingNftSet.length();
+        // NOTE: check from the last item of pendingNftSet to ensure correct removal
+        // NOTE: pendingNftLength may be zero so pendingNftLength - 1 will be uint.MAX and
+        // when i decrease to zero the next i-- will be uint.MAX
+        for(uint256 i = pendingNftLength - 1; i < pendingNftLength; i--) {
+            uint32 nftTokenId = uint32(pendingNftSet.at(i));
             IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
-            require(lq.tokenId == zklTokenId, 'StakePool: zklTokenId');
-
             if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
                 // transfer pending reward to user
                 _transferPendingRewards(pool, user, nftTokenId, lq.amount);
                 user.power = user.power.add(lq.amount);
-                delete user.pendingNft[nftTokenId];
+                finalNftSet.add(nftTokenId);
+                pendingNftSet.remove(nftTokenId);
             }
         }
 
@@ -463,12 +547,14 @@ contract StakePool is Ownable, Config {
 
     function _transferRewards(PoolInfo storage pool, UserInfo storage user) internal {
         uint256 pending = _calPending(user.power, pool.accPerShare[address(zkl)], user.rewardDebt[address(zkl)]);
+        user.rewardedAmount[address(zkl)] = user.rewardedAmount[address(zkl)].add(pending);
         _safeRewardTransfer(zkl, msg.sender, pending);
         if (address(pool.strategy) != address(0)) {
             address[] memory rewardTokens = pool.strategy.rewardTokens();
             for(uint256 i = 0; i < rewardTokens.length; i++) {
                 address rewardToken = rewardTokens[i];
                 pending = _calPending(user.power, pool.accPerShare[rewardToken], user.rewardDebt[rewardToken]);
+                user.rewardedAmount[rewardToken] = user.rewardedAmount[rewardToken].add(pending);
                 _safeRewardTransfer(IERC20(rewardToken), msg.sender, pending);
             }
         }
@@ -487,6 +573,7 @@ contract StakePool is Ownable, Config {
 
     function _transferPendingReward(PoolInfo storage pool, UserInfo storage user, uint32 nftTokenId, uint128 nftPower, address rewardToken) internal {
         uint256 pending = _calPending(nftPower, pool.accPerShare[rewardToken], user.pendingRewardDebt[nftTokenId][rewardToken]);
+        user.rewardedAmount[rewardToken] = user.rewardedAmount[rewardToken].add(pending);
         _safeRewardTransfer(IERC20(rewardToken), msg.sender, pending);
         delete user.pendingRewardDebt[nftTokenId][rewardToken];
     }

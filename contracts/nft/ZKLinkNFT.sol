@@ -21,7 +21,7 @@ contract ZKLinkNFT is ERC721Tradable {
     // l2 confirm remove fail: set status to FINAL
     enum LqStatus { NONE, ADD_PENDING, FINAL, ADD_FAIL, REMOVE_PENDING }
 
-    // @notice event emit when nft status update
+    /// @notice event emit when nft status update
     event StatusUpdate(uint32 nftTokenId, LqStatus status);
 
     // liquidity info
@@ -44,8 +44,18 @@ contract ZKLinkNFT is ERC721Tradable {
         return "https://zk.link/api/nft/";
     }
 
+    /// @notice Get all tokens of owner
+    function totalOfOwner(address owner) external view returns (uint256[] memory) {
+        uint256 balance = balanceOf(owner);
+        uint256[] memory totalTokens = new uint256[](balance);
+        for(uint256 i = 0; i < balance; i++) {
+            totalTokens[i] = tokenOfOwnerByIndex(owner, i);
+        }
+        return totalTokens;
+    }
+
     /**
-     * @dev Mints a token to an address with a tokenURI.
+     * @notice Mints a token to an address with a tokenURI.
      * @param to address of the future owner of the token
      * @param tokenId token in l2 cross chain pair
      * @param amount token amount to add liquidity
@@ -66,7 +76,7 @@ contract ZKLinkNFT is ERC721Tradable {
     }
 
     /**
-     * @dev Confirm when L2 add liquidity success
+     * @notice Confirm when L2 add liquidity success
      * @param nftTokenId nft id
      * @param lpTokenAmount lp token amount
      */
@@ -80,7 +90,7 @@ contract ZKLinkNFT is ERC721Tradable {
     }
 
     /**
-     * @dev Confirm when L2 add liquidity fail
+     * @notice Confirm when L2 add liquidity fail
      * @param nftTokenId nft id
      */
     function revokeAddLq(uint32 nftTokenId) external onlyOwner {
@@ -92,7 +102,7 @@ contract ZKLinkNFT is ERC721Tradable {
     }
 
     /**
-     * @dev Remove liquidity
+     * @notice Remove liquidity
      * @param nftTokenId nft id
      */
     function removeLq(uint32 nftTokenId) external onlyOwner {
@@ -104,7 +114,7 @@ contract ZKLinkNFT is ERC721Tradable {
     }
 
     /**
-     * @dev Confirm when L2 remove liquidity success
+     * @notice Confirm when L2 remove liquidity success
      * @param nftTokenId nft id
      */
     function confirmRemoveLq(uint32 nftTokenId) external onlyOwner {
@@ -116,7 +126,7 @@ contract ZKLinkNFT is ERC721Tradable {
     }
 
     /**
-     * @dev Revoke when L2 remove liquidity fail
+     * @notice Revoke when L2 remove liquidity fail
      * @param nftTokenId nft id
      */
     function revokeRemoveLq(uint32 nftTokenId) external onlyOwner {

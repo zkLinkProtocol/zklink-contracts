@@ -113,7 +113,8 @@ describe('StakePool unit tests', function () {
         expect(poolInfo.power).to.eq(amount);
         // user power should be zero and flag this nft to pending
         expect(await pool.userPower(zklTokenId, alice.address)).to.eq(0);
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
+        expect(await pool.isUserFinalNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
     });
 
     it('stake FINAL nft should success', async () => {
@@ -135,7 +136,8 @@ describe('StakePool unit tests', function () {
         expect(poolInfo.power).to.eq(amount);
         // user power should increase amount and should not flag this nft to pending
         expect(await pool.userPower(zklTokenId, alice.address)).to.eq(amount);
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
+        expect(await pool.isUserFinalNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
     });
 
     it('stake ADD_FAIL nft should fail', async () => {
@@ -178,7 +180,7 @@ describe('StakePool unit tests', function () {
         const poolInfo = await pool.poolInfo(zklTokenId);
         expect(poolInfo.power).to.eq(0);
         // un flag this pending nft
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
         // this pending nft acc reward should move to discard reward per block
         expect(await pool.poolRewardDiscardPerBlock(zklTokenId, zkl.address)).to.eq(2000);
     });
@@ -210,7 +212,7 @@ describe('StakePool unit tests', function () {
         const poolInfo = await pool.poolInfo(zklTokenId);
         expect(poolInfo.power).to.eq(0);
         // un flag this pending nft
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
         // user should get pending nft acc reward
         expect(await zkl.balanceOf(alice.address)).to.eq(nftPendingReward);
     });
@@ -265,7 +267,7 @@ describe('StakePool unit tests', function () {
         const poolInfo = await pool.poolInfo(zklTokenId);
         expect(poolInfo.power).to.eq(0);
         // un flag this pending nft
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(false);
     });
 
     it('revoke invalid nft should fail', async () => {
@@ -315,7 +317,7 @@ describe('StakePool unit tests', function () {
         expect(await pool.nftDepositor(nftTokenId0)).to.eq(hardhat.ethers.constants.AddressZero);
         expect(await nft.ownerOf(nftTokenId0)).to.eq(alice.address);
         // un flag this pending nft
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId0)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId0)).to.eq(false);
         // discard reward info should update correctly
         // pending = 100*200*1e12/1e12-1000=19000
         // un released discard reward = 5*100=500
@@ -333,7 +335,7 @@ describe('StakePool unit tests', function () {
         expect(await pool.nftDepositor(nftTokenId1)).to.eq(hardhat.ethers.constants.AddressZero);
         expect(await nft.ownerOf(nftTokenId1)).to.eq(alice.address);
         // un flag this pending nft
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId1)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId1)).to.eq(false);
         // discard reward info should update correctly
         // pending = 200*200*1e12/1e12-2000=38000
         // un released discard reward = 5*3900=19500
@@ -378,7 +380,7 @@ describe('StakePool unit tests', function () {
         // reward amount = 20*215*1e12/1e12-0 = 4300
         // nft0 acc reward = 100*215*1e12/1e12-1000 = 20500
         // pending = 4300+20500 = 24800
-        expect(await pool.pendingReward(zklTokenId, zkl.address, alice.address, [nftTokenId0,nftTokenId1])).to.eq(24800);
+        expect(await pool.pendingReward(zklTokenId, zkl.address, alice.address)).to.eq(24800);
     });
 
     it('get other pending reward should success', async () => {
@@ -412,7 +414,7 @@ describe('StakePool unit tests', function () {
         // reward amount = 20*205*1e12/1e12-500 = 3600
         // nft0 acc reward = 100*205*1e12/1e12-1000 = 19500
         // pending = 3600+19500 = 23100
-        expect(await pool.pendingReward(zklTokenId, tokenB.address, alice.address, [nftTokenId0,nftTokenId1])).to.eq(23100);
+        expect(await pool.pendingReward(zklTokenId, tokenB.address, alice.address)).to.eq(23100);
     });
 
     it('get pending rewards should success', async () => {
@@ -447,7 +449,7 @@ describe('StakePool unit tests', function () {
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId0, tokenB.address, 1000);
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId1, tokenB.address, 2000);
         // get pending rewards
-        const rewardInfo = await pool.pendingRewards(zklTokenId, alice.address, [nftTokenId0,nftTokenId1]);
+        const rewardInfo = await pool.pendingRewards(zklTokenId, alice.address);
         const addressList = rewardInfo[0];
         const amountList = rewardInfo[1];
         expect(addressList[0]).to.eq(zkl.address);
@@ -492,7 +494,7 @@ describe('StakePool unit tests', function () {
         await zkLink.mintZKL(zkl.address, pool.address, 100000);
         await tokenB.mintTo(pool.address, 100000);
         await tokenC.mintTo(pool.address, 100000);
-        await pool.connect(alice).harvest(zklTokenId, [nftTokenId0,nftTokenId1]);
+        await pool.connect(alice).harvest(zklTokenId);
         // zkl reward
         expect(await zkl.balanceOf(alice.address)).to.eq(24800);
         // user pre power = 20, after harvest nft0 power add to user total power
@@ -512,7 +514,17 @@ describe('StakePool unit tests', function () {
         // reward debt = 120*3*1e12/1e12 = 360
         expect(await pool.userRewardDebt(zklTokenId, alice.address, tokenC.address)).to.eq(360);
         // un flag nft0
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId0)).to.eq(false);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId0)).to.eq(false);
+
+        let userRewarded = await pool.userRewarded(zklTokenId, alice.address);
+        let allRewardTokens = userRewarded[0];
+        let allRewardAmounts = userRewarded[1];
+        expect(allRewardTokens[0]).eq(zkl.address);
+        expect(allRewardTokens[1]).eq(tokenB.address);
+        expect(allRewardTokens[2]).eq(tokenC.address);
+        expect(allRewardAmounts[0]).eq(24800);
+        expect(allRewardAmounts[1]).eq(23220);
+        expect(allRewardAmounts[2]).eq(360);
     });
 
     it('stake and unStake atomic operations should success', async () => {
@@ -534,7 +546,7 @@ describe('StakePool unit tests', function () {
         expect(poolInfo.power).to.eq(amount);
         // user power should not increase amount and should flag this nft to pending
         expect(await pool.userPower(zklTokenId, alice.address)).to.eq(0);
-        expect(await pool.userPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
+        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
 
         // set nft to final
         await zkLink.confirmAddLq(nft.address, nftTokenId, 0);

@@ -74,4 +74,12 @@ describe('NFT tests', function () {
             .emit(nft, 'StatusUpdate')
             .withArgs(2, 2);
     });
+
+    it('get user all tokens should success', async () => {
+        await nft.connect(alice).addLq(bob.address, 1, 100, pair.address);
+        await nft.connect(alice).addLq(bob.address, 1, 100, pair.address);
+        let tokens = await nft.totalOfOwner(bob.address);
+        expect(tokens[0]).equal(1);
+        expect(tokens[1]).equal(2);
+    });
 });
