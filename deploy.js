@@ -401,7 +401,7 @@ task("deploy", "Deploy zklink")
         if (!('pool' in deployLog)) {
             console.log('deploy stake pool...');
             const poolFactory = await hardhat.ethers.getContractFactory('StakePool');
-            const poolContract = await poolFactory.connect(deployer).deploy(nftContractAddr, zklContractAddr, governor);
+            const poolContract = await poolFactory.connect(deployer).deploy(nftContractAddr, zklContractAddr, zkSyncProxyAddr, governor);
             await poolContract.deployed();
             poolContractAddr = poolContract.address;
             deployLog.pool = poolContractAddr;
