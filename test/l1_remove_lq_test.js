@@ -86,13 +86,4 @@ describe('L1RemoveLQ unit tests', function () {
         expect(nftInfo.status).to.be.equal(2);
         expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(0);
     });
-
-    it('only current chain will handle add lq op', async () => {
-        await zkSync.connect(bob).removeLiquidity(bob.address, 1, 0);
-
-        const pubdata = getL1RemoveLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', minAmount:'0x00000000000000000000000000000001', amount:'0x00000000000000000000000000000013', pair:pair.address, lpAmount:'0x00000000000000000000000000000005', nftTokenId:'0x00000001' });
-        await zkSyncBlock.testExecL1RemoveLQ(pubdata);
-        const nftInfo = await nft.tokenLq(1);
-        expect(nftInfo.status).to.be.equal(4);
-    });
 });

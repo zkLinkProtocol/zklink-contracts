@@ -102,16 +102,4 @@ describe('L1AddLQ unit tests', function () {
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(3);
     });
-
-    it('only current chain will handle add lq op', async () => {
-        const amount = 20;
-        await token.connect(bob).mint(amount);
-        await token.connect(bob).approve(zkSync.address, amount);
-        await zkSync.connect(bob).addLiquidity(bob.address, token.address, 20, pair.address, 1);
-
-        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000002', lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
-        await zkSyncBlock.testExecL1AddLQ(pubdata);
-        const nftInfo = await nft.tokenLq(1);
-        expect(nftInfo.status).to.be.equal(1);
-    });
 });
