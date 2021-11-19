@@ -337,16 +337,18 @@ contract ZkSyncBlock is ZkSyncBase {
             } else if (opType == Operations.OpType.L1AddLQ) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1ADDLQ_BYTES);
                 Operations.L1AddLQ memory l1AddLQData = Operations.readL1AddLQPubdata(opPubData);
-                require(l1AddLQData.chainId == CHAIN_ID, 'ZkSyncBlock: l1 add lq chain id');
-                Operations.checkPriorityOperation(l1AddLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                priorityOperationsProcessed++;
+                if (l1AddLQData.chainId == CHAIN_ID) {
+                    Operations.checkPriorityOperation(l1AddLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
+                    priorityOperationsProcessed++;
+                }
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else if (opType == Operations.OpType.L1RemoveLQ) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1REMOVELQ_BYTES);
                 Operations.L1RemoveLQ memory l1RemoveLQData = Operations.readL1RemoveLQPubdata(opPubData);
-                require(l1RemoveLQData.chainId == CHAIN_ID, 'ZkSyncBlock: l1 remove lq chain id');
-                Operations.checkPriorityOperation(l1RemoveLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                priorityOperationsProcessed++;
+                if (l1RemoveLQData.chainId == CHAIN_ID) {
+                    Operations.checkPriorityOperation(l1RemoveLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
+                    priorityOperationsProcessed++;
+                }
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else {
                 bytes memory opPubData;
@@ -579,6 +581,9 @@ contract ZkSyncBlock is ZkSyncBase {
 
     function execL1AddLQ(bytes memory pubData) internal {
         Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(pubData);
+        if (op.chainId != CHAIN_ID) {
+            return;
+        }
         // lpAmount is zero means add liquidity fail
         if (op.lpAmount > 0) {
             governance.nft().confirmAddLq(op.nftTokenId, op.lpAmount);
@@ -589,6 +594,9 @@ contract ZkSyncBlock is ZkSyncBase {
 
     function execL1RemoveLQ(bytes memory pubData) internal {
         Operations.L1RemoveLQ memory op = Operations.readL1RemoveLQPubdata(pubData);
+        if (op.chainId != CHAIN_ID) {
+            return;
+        }
         // token amount is zero means remove liquidity fail
         if (op.amount > 0) {
             governance.nft().confirmRemoveLq(op.nftTokenId);
