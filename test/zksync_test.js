@@ -135,7 +135,8 @@ describe('ZkSync unit tests', function () {
             pendingOnchainOperationsHash:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
             timestamp:0,
             stateHash: hardhat.ethers.utils.arrayify('0x26e6e312fd7a24967587edd956f7c932b56888c44186f903a39975d27d3473c7'),
-            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000')
+            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
+            crtCommitments:[0,0]
         }
         const newBlockData = {
             newStateHash:hardhat.ethers.utils.arrayify('0x1a2ef2aa9f890664ce7b3e412272495d45858b2443d9d375d9adcb3699630fcf'),
@@ -158,7 +159,8 @@ describe('ZkSync unit tests', function () {
             pendingOnchainOperationsHash:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
             timestamp:0,
             stateHash: hardhat.ethers.utils.arrayify('0x125ff49d4c0372404e289e31068166e0653064efb93b16e49706958707d083c1'),
-            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000')
+            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
+            crtCommitments:[0,0]
         }
         const newBlockData = {
             newStateHash:hardhat.ethers.utils.arrayify('0x032dd983f30763e0fc4664cc513a3832c7d6883382371732dbe3d9be14fb0cf3'),
