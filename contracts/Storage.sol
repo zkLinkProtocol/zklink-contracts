@@ -85,6 +85,7 @@ contract Storage {
         uint256 timestamp;
         bytes32 stateHash;
         bytes32 commitment;
+        uint256[] crtCommitments;
     }
 
     /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
@@ -120,4 +121,7 @@ contract Storage {
 
     /// @dev Broker allowance used in accept
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
+
+    /// @dev Block crt list
+    mapping(uint32 => uint256[]) public blockCrts;
 }

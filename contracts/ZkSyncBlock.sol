@@ -96,13 +96,16 @@ contract ZkSyncBlock is ZkSyncBase {
 
     /// @notice Blocks commitment verification.
     /// @notice Only verifies block commitments without any other processing
-    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof, uint32 storeCrtBlock) external nonReentrant {
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
             require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "o1");
             ++currentTotalBlocksProven;
 
             require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "o"); // incorrect block commitment in proof
+            if (_committedBlocks[i].blockNumber == storeCrtBlock) {
+                blockCrts[storeCrtBlock] = _committedBlocks[i].crtCommitments;
+            }
         }
 
         bool success =
@@ -129,6 +132,8 @@ contract ZkSyncBlock is ZkSyncBase {
         uint64 priorityRequestsExecuted = 0;
         uint32 nBlocks = uint32(_blocksData.length);
         for (uint32 i = 0; i < nBlocks; ++i) {
+            // crt must verified before exec
+            require(_blocksData[i].storedBlock.blockNumber <= governance.verifiedCrtBlock(), 'ZkSyncBlock: block crt not verified');
             executeOneBlock(_blocksData[i], i);
             priorityRequestsExecuted += _blocksData[i].storedBlock.priorityOperations;
             emit BlockVerification(_blocksData[i].storedBlock.blockNumber);
@@ -201,7 +206,8 @@ contract ZkSyncBlock is ZkSyncBase {
             pendingOnchainOpsHash,
             _newBlock.timestamp,
             _newBlock.newStateHash,
-            commitment
+            commitment,
+            _newBlock.crtCommitments
         );
     }
 

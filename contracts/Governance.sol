@@ -4,6 +4,7 @@ pragma solidity ^0.7.0;
 
 import "./Config.sol";
 import "./IZKLinkNFT.sol";
+import "./oracle/ICrtReporter.sol";
 
 /// @title Governance Contract
 /// @author Matter Labs
@@ -23,6 +24,12 @@ contract Governance is Config {
 
     /// @notice Nft address changed
     event NftUpdate(address indexed nft);
+
+    /// @notice Crt crt reporters changed
+    event CrtReporterUpdate(ICrtReporter[] crtReporters);
+
+    /// @notice Crt verified
+    event CrtVerified(uint256 indexed crtBlock);
 
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
@@ -45,8 +52,14 @@ contract Governance is Config {
     /// @notice Mapping tokens list
     mapping(uint16 => bool) public mappingTokens;
 
-    // @notice ZKLinkNFT mint to user when add liquidity
+    /// @notice ZKLinkNFT mint to user when add liquidity
     IZKLinkNFT public nft;
+
+    /// @notice Verified crt block height
+    uint32 public verifiedCrtBlock;
+
+    /// @notice Crt if verified reporters
+    ICrtReporter[] public crtReporters;
 
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
@@ -130,12 +143,22 @@ contract Governance is Config {
     /// @param _newNft ZKLinkNFT address
     function changeNft(address _newNft) external {
         requireGovernor(msg.sender);
-        require(_newNft != address(0), "Governance: zero address");
+        require(_newNft != address(0), "Governance: zero nft address");
 
         if (_newNft != address(nft)) {
             nft = IZKLinkNFT(_newNft);
             emit NftUpdate(_newNft);
         }
+    }
+
+    /// @notice Change crt reporters
+    /// @param _newCrtReporters Crt reporters
+    function changeCrtReporters(ICrtReporter[] memory _newCrtReporters) external {
+        requireGovernor(msg.sender);
+        require(_newCrtReporters.length > 1, "Governance: no crt reporter");
+
+        crtReporters = _newCrtReporters;
+        emit CrtReporterUpdate(_newCrtReporters);
     }
 
     /// @notice Check if specified address is is governor
@@ -164,5 +187,17 @@ contract Governance is Config {
         uint16 tokenId = tokenIds[_tokenAddr];
         require(tokenId != 0, "1i"); // 0 is not a valid token
         return tokenId;
+    }
+
+    /// @notice Update verified crt block
+    function updateVerifiedCrtBlock(uint32 crtBlock) external {
+        require(crtBlock > verifiedCrtBlock, 'Governance: crtBlock');
+
+        // every reporter of any chain should report the same verify result of target block number
+        for (uint256 i = 0; i < crtReporters.length; i++) {
+            require(crtReporters[i].isCrtVerified(crtBlock), 'Governance: crt not verify');
+        }
+        verifiedCrtBlock = crtBlock;
+        emit CrtVerified(verifiedCrtBlock);
     }
 }
