@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../Operations.sol";
+import "../zksync/Operations.sol";
 
 contract OperationsTest {
     function testDepositPubdata(Operations.Deposit calldata _example, bytes calldata _pubdata) external pure {

@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 
 import "../ZkSync.sol";
 import "../zksync/SafeCast.sol";
-import "../IZKL.sol";
+import "../token/IZKL.sol";
 
 contract ZkSyncTest is ZkSync {
 
