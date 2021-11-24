@@ -3,8 +3,8 @@
 pragma solidity ^0.7.0;
 
 import "../ZkSync.sol";
-import "../Utils.sol";
-import "../SafeCast.sol";
+import "../zksync/Utils.sol";
+import "../zksync/SafeCast.sol";
 
 contract SimpleZkSync {
 

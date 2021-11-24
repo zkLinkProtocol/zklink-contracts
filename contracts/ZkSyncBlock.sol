@@ -4,11 +4,11 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./SafeCast.sol";
-import "./Utils.sol";
+import "./zksync/SafeCast.sol";
+import "./zksync/Utils.sol";
 
-import "./Bytes.sol";
-import "./Operations.sol";
+import "./zksync/Bytes.sol";
+import "./zksync/Operations.sol";
 import "./ZkSyncBase.sol";
 
 /// @title zkSync main contract part 2: commit block, prove block, execute block

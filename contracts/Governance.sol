@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "./Config.sol";
+import "./zksync/Config.sol";
 import "./IZKLinkNFT.sol";
 import "./oracle/ICrtReporter.sol";
 

@@ -5,7 +5,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../ZkSync.sol";
-import "../SafeCast.sol";
+import "../zksync/SafeCast.sol";
 import "../IZKL.sol";
 
 contract ZkSyncTest is ZkSync {

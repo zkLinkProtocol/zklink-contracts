@@ -9,7 +9,7 @@ You can swap token(eg. UNI) in Ethereum for token(eg. CAKE) in Binance Smart Cha
 
 ## Prepare
 
-Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to contracts directory.You need to copy `hardhat.config.example.js` and rename it to `hardhat.config.js` and then to set api key and etherscan key.
+Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to `contracts/zksync` directory.You need to copy `hardhat.config.example.js` and rename it to `hardhat.config.js` and then to set api key and etherscan key.
 
 ## Compile Contracts
 

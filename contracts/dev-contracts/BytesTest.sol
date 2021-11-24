@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../Bytes.sol";
+import "../zksync/Bytes.sol";
 
 contract BytesTest {
     function read(

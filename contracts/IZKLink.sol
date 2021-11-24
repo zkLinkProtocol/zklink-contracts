@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 pragma solidity ^0.7.0;
-import "./IERC20.sol";
+import "./zksync/IERC20.sol";
 
 /// @title Interface of the ZKLink
 /// @author ZkLink Labs

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../Upgradeable.sol";
-import "../UpgradeableMaster.sol";
+import "../zksync/Upgradeable.sol";
+import "../zksync/UpgradeableMaster.sol";
 
 interface DummyTarget {
     function get_DUMMY_INDEX() external pure returns (uint256);

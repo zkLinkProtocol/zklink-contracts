@@ -4,8 +4,8 @@ pragma solidity ^0.7.0;
 
 import "../IStrategy.sol";
 import "../IVault.sol";
-import "../Utils.sol";
-import "../IERC20.sol";
+import "../zksync/Utils.sol";
+import "../zksync/IERC20.sol";
 
 import "./IWETH.sol";
 

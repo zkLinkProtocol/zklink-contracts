@@ -4,12 +4,12 @@ pragma solidity ^0.7.0;
 
 pragma abicoder v2;
 
-import "../IERC20.sol";
-import "../SafeMath.sol";
-import "../SafeMathUInt128.sol";
-import "../Utils.sol";
-import "../Ownable.sol";
-import "../Config.sol";
+import "../zksync/IERC20.sol";
+import "../zksync/SafeMath.sol";
+import "../zksync/SafeMathUInt128.sol";
+import "../zksync/Utils.sol";
+import "../zksync/Ownable.sol";
+import "../zksync/Config.sol";
 import "../IStrategy.sol";
 import "../IZKLinkNFT.sol";
 import "../IZKLink.sol";

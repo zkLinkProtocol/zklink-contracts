@@ -4,14 +4,14 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./SafeMath.sol";
-import "./SafeMathUInt128.sol";
-import "./SafeCast.sol";
-import "./Utils.sol";
+import "./zksync/SafeMath.sol";
+import "./zksync/SafeMathUInt128.sol";
+import "./zksync/SafeCast.sol";
+import "./zksync/Utils.sol";
 
-import "./Operations.sol";
+import "./zksync/Operations.sol";
 
-import "./UpgradeableMaster.sol";
+import "./zksync/UpgradeableMaster.sol";
 import "./ZkSyncBase.sol";
 import "./IZKLink.sol";
 

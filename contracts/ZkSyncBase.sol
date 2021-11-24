@@ -2,13 +2,13 @@
 
 pragma solidity ^0.7.0;
 
-import "./ReentrancyGuard.sol";
+import "./zksync/ReentrancyGuard.sol";
 import "./Storage.sol";
-import "./Config.sol";
-import "./Events.sol";
+import "./zksync/Config.sol";
+import "./zksync/Events.sol";
 import "./IMappingToken.sol";
-import "./SafeMath.sol";
-import "./SafeMathUInt128.sol";
+import "./zksync/SafeMath.sol";
+import "./zksync/SafeMathUInt128.sol";
 
 /// @title zkSync base contract
 /// @author ZkLink Labs

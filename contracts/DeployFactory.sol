@@ -3,10 +3,10 @@
 pragma solidity ^0.7.0;
 
 import "./Governance.sol";
-import "./Proxy.sol";
-import "./UpgradeGatekeeper.sol";
+import "./zksync/Proxy.sol";
+import "./zksync/UpgradeGatekeeper.sol";
 import "./ZkSync.sol";
-import "./Verifier.sol";
+import "./zksync/Verifier.sol";
 import "./Vault.sol";
 
 contract DeployFactory {

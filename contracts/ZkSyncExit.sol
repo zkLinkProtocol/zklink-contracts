@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./Utils.sol";
+import "./zksync/Utils.sol";
 import "./ZkSyncBase.sol";
 
 /// @title zkSync main contract part 3: exit, auth, accept, withdraw pending

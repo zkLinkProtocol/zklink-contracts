@@ -1,6 +1,6 @@
 node_modules
 
-contracts/KeysWithPlonkVerifier.sol
+contracts/zksync/KeysWithPlonkVerifier.sol
 hardhat.config.js
 log
 etc

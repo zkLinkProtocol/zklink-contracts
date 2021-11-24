@@ -4,11 +4,11 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./IERC20.sol";
+import "./zksync/IERC20.sol";
 
 import "./Governance.sol";
-import "./Verifier.sol";
-import "./Operations.sol";
+import "./zksync/Verifier.sol";
+import "./zksync/Operations.sol";
 import "./IVault.sol";
 
 /// @title zkSync storage contract
