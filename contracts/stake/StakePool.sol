@@ -10,7 +10,7 @@ import "../zksync/SafeMathUInt128.sol";
 import "../zksync/Utils.sol";
 import "../zksync/Ownable.sol";
 import "../zksync/Config.sol";
-import "../IStrategy.sol";
+import "../strategy/IStrategy.sol";
 import "../nft/IZKLinkNFT.sol";
 import "../IZKLink.sol";
 import "../EnumerableSet.sol";
