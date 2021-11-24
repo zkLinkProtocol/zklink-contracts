@@ -11,7 +11,7 @@ import "../zksync/Utils.sol";
 import "../zksync/Ownable.sol";
 import "../zksync/Config.sol";
 import "../IStrategy.sol";
-import "../IZKLinkNFT.sol";
+import "../nft/IZKLinkNFT.sol";
 import "../IZKLink.sol";
 import "../EnumerableSet.sol";
 

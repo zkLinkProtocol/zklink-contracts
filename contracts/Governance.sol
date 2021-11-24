@@ -3,7 +3,7 @@
 pragma solidity ^0.7.0;
 
 import "./zksync/Config.sol";
-import "./IZKLinkNFT.sol";
+import "./nft/IZKLinkNFT.sol";
 import "./oracle/ICrtReporter.sol";
 
 /// @title Governance Contract
