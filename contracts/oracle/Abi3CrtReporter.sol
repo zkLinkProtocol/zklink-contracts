@@ -5,7 +5,7 @@ pragma solidity 0.8.9;
 import "@api3/airnode-protocol/contracts/rrp/requesters/RrpRequester.sol";
 
 /// @title Abi3 oracle consumer
-/// @author ZkLink Labs
+/// @author zk.link
 contract Abi3CrtReporter is RrpRequester {
     mapping(bytes32 => bool) public incomingFulfillments;
     mapping(uint32 => bool) public crtVerified;

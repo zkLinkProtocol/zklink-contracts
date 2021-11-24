@@ -5,12 +5,11 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./zksync/Utils.sol";
-import "./ZkSyncBase.sol";
+import "./ZkLinkBase.sol";
 
-/// @title zkSync main contract part 3: exit, auth, accept, withdraw pending
-/// @author Matter Labs
-/// @author ZkLink Labs
-contract ZkSyncExit is ZkSyncBase {
+/// @title ZkLink main contract part 3: exit, auth, accept, withdraw pending
+/// @author zk.link
+contract ZkLinkExit is ZkLinkBase {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -33,7 +32,7 @@ contract ZkSyncExit is ZkSyncBase {
         }
     }
 
-    /// @notice Withdraws token from ZkSync to root chain in case of exodus mode. User must provide proof that he owns funds
+    /// @notice Withdraws token from ZkLink to root chain in case of exodus mode. User must provide proof that he owns funds
     /// @param _storedBlockInfo Last verified block
     /// @param _owner Owner of the account
     /// @param _accountId Id of the account in the tree
@@ -142,7 +141,7 @@ contract ZkSyncExit is ZkSyncBase {
     function accept(address accepter, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFee, uint32 nonce) external payable {
         uint128 fee = amount * withdrawFee / MAX_WITHDRAW_FEE;
         uint128 amountReceive = amount - fee;
-        require(amountReceive > 0 && amountReceive <= amount, 'ZkSync: amountReceive');
+        require(amountReceive > 0 && amountReceive <= amount, 'ZkLink: amountReceive');
 
         bytes32 hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce));
         _accept(accepter, receiver, tokenId, amountReceive, hash);
@@ -162,13 +161,13 @@ contract ZkSyncExit is ZkSyncBase {
     }
 
     function _accept(address accepter, address receiver, uint16 tokenId, uint128 amountReceive, bytes32 hash) internal {
-        require(accepts[hash] == address(0), 'ZkSync: accepted');
+        require(accepts[hash] == address(0), 'ZkLink: accepted');
         accepts[hash] = accepter;
 
         // send token to receiver from msg.sender
         if (tokenId == 0) {
             // accepter should transfer at least amountReceive platform token to this contract
-            require(msg.value >= amountReceive, 'ZkSync: accept msg value');
+            require(msg.value >= amountReceive, 'ZkLink: accept msg value');
             payable(receiver).transfer(amountReceive);
             // if there are any left return back to accepter
             if (msg.value > amountReceive) {
@@ -179,10 +178,10 @@ contract ZkSyncExit is ZkSyncBase {
             governance.validateTokenAddress(tokenAddress);
             // transfer erc20 token from accepter to receiver directly
             if (msg.sender != accepter) {
-                require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkSync: broker allowance');
+                require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkLink: broker allowance');
                 brokerAllowances[tokenId][accepter][msg.sender] -= amountReceive;
             }
-            require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkSync: transferFrom failed');
+            require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkLink: transferFrom failed');
         }
         emit Accept(accepter, receiver, tokenId, amountReceive);
     }
@@ -194,12 +193,12 @@ contract ZkSyncExit is ZkSyncBase {
     function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
         address tokenAddress = governance.tokenAddresses(tokenId);
         governance.validateTokenAddress(tokenAddress);
-        require(spender != address(0), "ZkSync: approve to the zero address");
+        require(spender != address(0), "ZkLink: approve to the zero address");
         brokerAllowances[tokenId][msg.sender][spender] = amount;
         return true;
     }
 
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
+    /// @notice Returns amount of tokens that can be withdrawn by `address` from ZkLink contract
     /// @param _address Address of the tokens owner
     /// @param _token Address of token, zero address is used for ETH
     function getPendingBalance(address _address, address _token) public view returns (uint128) {
@@ -210,7 +209,7 @@ contract ZkSyncExit is ZkSyncBase {
         return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
     }
 
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkSync contract
+    /// @notice Returns amount of tokens that can be withdrawn by `address` from ZkLink contract
     /// @param _address Address of the tokens owner
     /// @param _tokens Address of tokens, zero address is used for ETH
     function getPendingBalances(address _address, address[] memory _tokens) public view returns (uint128[] memory) {
@@ -221,7 +220,7 @@ contract ZkSyncExit is ZkSyncBase {
         return balances;
     }
 
-    /// @notice  Withdraws multiple tokens from zkSync contract to the owner
+    /// @notice  Withdraws multiple tokens from ZkLink contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _tokens Address of tokens, zero address is used for ETH
     /// @param _amounts Amount to withdraw to request.
@@ -230,17 +229,17 @@ contract ZkSyncExit is ZkSyncBase {
         address[] memory _tokens,
         uint128[] memory _amounts
     ) external nonReentrant {
-        require(_tokens.length > 0 && _tokens.length == _amounts.length, 'ZkSync: withdraw length');
+        require(_tokens.length > 0 && _tokens.length == _amounts.length, 'ZkLink: withdraw length');
         for(uint256 i = 0; i < _tokens.length; i++) {
             _withdrawPendingBalance(_owner, _tokens[i], _amounts[i]);
         }
     }
 
-    /// @notice  Withdraws tokens from zkSync contract to the owner
+    /// @notice  Withdraws tokens from ZkLink contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _token Address of tokens, zero address is used for ETH
     /// @param _amount Amount to withdraw to request.
-    ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkSync contract
+    ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token ZkLink contract
     ///         balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
     function withdrawPendingBalance(
         address payable _owner,
@@ -265,7 +264,7 @@ contract ZkSyncExit is ZkSyncBase {
         if (_amount > balance) {
             _amount = balance;
         }
-        require(_amount > 0, 'ZkSync: withdraw amount');
+        require(_amount > 0, 'ZkLink: withdraw amount');
 
         pendingBalances[packedBalanceKey].balanceToWithdraw = balance.sub(_amount);
         vault.withdraw(tokenId, _owner, _amount);

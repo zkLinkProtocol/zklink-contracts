@@ -2,11 +2,11 @@
 
 pragma solidity ^0.7.0;
 
-import "../ZkSync.sol";
+import "../ZkLink.sol";
 import "../Governance.sol";
 
-/// @title zkLink vault storage contract
-/// @author ZkLink Labs
+/// @title ZkLink vault storage contract
+/// @author zk.link
 contract VaultStorage {
     enum StrategyStatus { NONE, ADDED, ACTIVE, PREPARE_UPGRADE, EXIT }
 
@@ -19,8 +19,8 @@ contract VaultStorage {
     /// @dev token(valid by governance) vault
     mapping(uint16 => TokenVault) public tokenVaults;
 
-    /// @dev zkSync contract
-    ZkSync public zkSync;
+    /// @dev ZkLink contract
+    ZkLink public zkLink;
 
     /// @dev governance contract which used to validate token
     Governance public governance;

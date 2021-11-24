@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.7.0;
 
-/**
- * @dev Interface of the Mapping token.
- */
+/// @title Interface of the Mapping token
+/// @author zk.link
 interface IMappingToken {
 
     /// @notice mint amount of token to receiver

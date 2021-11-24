@@ -4,12 +4,9 @@ pragma solidity ^0.8.0;
 
 import "./ERC721Tradable.sol";
 
-/**
- * @title ZKLinkNFT
- * ZKLinkNFT - a contract for user add liquidity voucher
- * The owner of ZKLinkNFT is ZKLink contract
- */
-contract ZKLinkNFT is ERC721Tradable {
+/// @title ZkLinkNFT, a contract for user add liquidity voucher. The owner of ZkLinkNFT is ZkLink contract
+/// @author zk.link
+contract ZkLinkNFT is ERC721Tradable {
     using Address for address;
 
     // liquidity status

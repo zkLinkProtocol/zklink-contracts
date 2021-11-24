@@ -3,11 +3,11 @@
 pragma solidity ^0.7.0;
 
 import "./zksync/Config.sol";
-import "./nft/IZKLinkNFT.sol";
+import "./nft/IZkLinkNFT.sol";
 import "./oracle/ICrtReporter.sol";
 
 /// @title Governance Contract
-/// @author Matter Labs
+/// @author zk.link
 contract Governance is Config {
     /// @notice Token added to Franklin net
     event NewToken(address indexed token, uint16 indexed tokenId, bool mappable);
@@ -52,8 +52,8 @@ contract Governance is Config {
     /// @notice Mapping tokens list
     mapping(uint16 => bool) public mappingTokens;
 
-    /// @notice ZKLinkNFT mint to user when add liquidity
-    IZKLinkNFT public nft;
+    /// @notice ZkLinkNFT mint to user when add liquidity
+    IZkLinkNFT public nft;
 
     /// @notice Verified crt block height
     uint32 public verifiedCrtBlock;
@@ -146,7 +146,7 @@ contract Governance is Config {
         require(_newNft != address(0), "Governance: zero nft address");
 
         if (_newNft != address(nft)) {
-            nft = IZKLinkNFT(_newNft);
+            nft = IZkLinkNFT(_newNft);
             emit NftUpdate(_newNft);
         }
     }

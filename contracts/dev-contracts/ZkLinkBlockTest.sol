@@ -5,9 +5,9 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../zksync/SafeCast.sol";
-import "../ZkSyncBlock.sol";
+import "../ZkLinkBlock.sol";
 
-contract ZkSyncBlockTest is ZkSyncBlock {
+contract ZkLinkBlockTest is ZkLinkBlock {
 
     function testBlockCommitment(
         StoredBlockInfo memory _previousBlock,

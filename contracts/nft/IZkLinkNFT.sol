@@ -4,9 +4,9 @@ pragma solidity ^0.7.0;
 
 pragma abicoder v2;
 
-/// @title Interface of the ZKLinkNFT
-/// @author ZkLink Labs
-interface IZKLinkNFT {
+/// @title Interface of the ZkLinkNFT
+/// @author zk.link
+interface IZkLinkNFT {
 
     enum LqStatus { NONE, ADD_PENDING, FINAL, ADD_FAIL, REMOVE_PENDING }
 

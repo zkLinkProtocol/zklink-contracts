@@ -5,7 +5,7 @@ pragma solidity ^0.7.0;
 import "@chainlink/contracts/src/v0.7/ChainlinkClient.sol";
 
 /// @title Chainlink oracle consumer
-/// @author ZkLink Labs
+/// @author zk.link
 contract ChainlinkCrtReporter is ChainlinkClient {
     using Chainlink for Chainlink.Request;
 

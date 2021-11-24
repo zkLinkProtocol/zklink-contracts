@@ -9,6 +9,8 @@ import "../zksync/IERC20.sol";
 
 import "./IWETH.sol";
 
+/// @title Base strategy contract
+/// @author zk.link
 abstract contract BaseStrategy is IStrategy {
 
     event Harvest(uint256 want, address rewardToken, uint256 amount);

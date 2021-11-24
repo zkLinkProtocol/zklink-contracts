@@ -9,12 +9,11 @@ import "./zksync/Utils.sol";
 
 import "./zksync/Bytes.sol";
 import "./zksync/Operations.sol";
-import "./ZkSyncBase.sol";
+import "./ZkLinkBase.sol";
 
-/// @title zkSync main contract part 2: commit block, prove block, execute block
-/// @author Matter Labs
-/// @author ZkLink Labs
-contract ZkSyncBlock is ZkSyncBase {
+/// @title ZkLink main contract part 2: commit block, prove block, execute block
+/// @author zk.link
+contract ZkLinkBlock is ZkLinkBase {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -60,12 +59,12 @@ contract ZkSyncBlock is ZkSyncBase {
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
-        _fallback(zkSyncExit);
+        _fallback(zkLinkExit);
     }
 
     /// @notice Same as fallback but called when calldata is empty
     receive() external payable {
-        _fallback(zkSyncExit);
+        _fallback(zkLinkExit);
     }
 
     /// @notice Commit block
@@ -133,7 +132,7 @@ contract ZkSyncBlock is ZkSyncBase {
         uint32 nBlocks = uint32(_blocksData.length);
         for (uint32 i = 0; i < nBlocks; ++i) {
             // crt must verified before exec
-            require(_blocksData[i].storedBlock.blockNumber <= governance.verifiedCrtBlock(), 'ZkSyncBlock: block crt not verified');
+            require(_blocksData[i].storedBlock.blockNumber <= governance.verifiedCrtBlock(), 'ZkLink: block crt not verified');
             executeOneBlock(_blocksData[i], i);
             priorityRequestsExecuted += _blocksData[i].storedBlock.priorityOperations;
             emit BlockVerification(_blocksData[i].storedBlock.blockNumber);
@@ -320,7 +319,7 @@ contract ZkSyncBlock is ZkSyncBase {
             } else if (opType == Operations.OpType.QuickSwap) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
                 Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
-                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkSyncBlock: quick swap chain id');
+                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkLink: quick swap chain id');
                 // fromChainId and toChainId may be the same
                 if (quickSwapData.fromChainId == CHAIN_ID) {
                     Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
@@ -333,7 +332,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 Operations.Mapping memory mappingData = Operations.readMappingPubdata(opPubData);
                 // fromChainId and toChainId will not be the same
                 require(mappingData.fromChainId != mappingData.toChainId &&
-                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkSyncBlock: mapping chain id');
+                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkLink: mapping chain id');
                 if (mappingData.fromChainId == CHAIN_ID) {
                     Operations.checkPriorityOperation(mappingData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
@@ -569,7 +568,7 @@ contract ZkSyncBlock is ZkSyncBase {
         address tokenAddress = governance.tokenAddresses(op.tokenId);
         uint128 burnAmount = op.amount.sub(op.fee);
         if (op.fromChainId == CHAIN_ID) {
-            // burn token from ZkSync
+            // burn token from ZkLink
             vault.withdraw(op.tokenId, address(this), burnAmount);
             IMappingToken(tokenAddress).burn(burnAmount);
         } else {

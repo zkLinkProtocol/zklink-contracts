@@ -2,10 +2,8 @@
 
 pragma solidity ^0.7.0;
 
-pragma abicoder v2;
-
 /// @title Interface of the ZKL token
-/// @author ZkLink Labs
+/// @author zk.link
 interface IZKL {
 
     function mint(address to, uint256 amount) external;

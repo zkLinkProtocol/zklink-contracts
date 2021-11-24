@@ -10,9 +10,9 @@ import "./IMappingToken.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 
-/// @title zkSync base contract
-/// @author ZkLink Labs
-contract ZkSyncBase is Storage, Config, Events, ReentrancyGuard {
+/// @title ZkLink base contract
+/// @author zk.link
+contract ZkLinkBase is Storage, Config, Events, ReentrancyGuard {
     using SafeMathUInt128 for uint128;
 
     /// @notice Checks that current state not is exodus mode
@@ -29,7 +29,7 @@ contract ZkSyncBase is Storage, Config, Events, ReentrancyGuard {
     /// @dev Fallback function allowing to perform a delegatecall to the given implementation
     /// This function will return whatever the implementation call returns
     function _fallback(address _target) internal {
-        require(_target != address(0), "ZkSync: fallback target");
+        require(_target != address(0), "ZkLink: fallback target");
         assembly {
             // The pointer to the free memory slot
             let ptr := mload(0x40)
