@@ -3,7 +3,7 @@
 pragma solidity ^0.7.0;
 
 import "./IStrategy.sol";
-import "../IVault.sol";
+import "../vault/IVault.sol";
 import "../zksync/Utils.sol";
 import "../zksync/IERC20.sol";
 

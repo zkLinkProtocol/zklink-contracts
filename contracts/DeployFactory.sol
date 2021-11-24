@@ -7,7 +7,7 @@ import "./zksync/Proxy.sol";
 import "./zksync/UpgradeGatekeeper.sol";
 import "./ZkSync.sol";
 import "./zksync/Verifier.sol";
-import "./Vault.sol";
+import "./vault/Vault.sol";
 
 contract DeployFactory {
     // Why do we deploy contracts in the constructor?

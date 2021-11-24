@@ -2,11 +2,11 @@
 
 pragma solidity ^0.7.0;
 
-import "./strategy/IStrategy.sol";
-import "./zksync/SafeMath.sol";
-import "./zksync/IERC20.sol";
-import "./ZkSync.sol";
-import "./zksync/Utils.sol";
+import "../strategy/IStrategy.sol";
+import "../zksync/SafeMath.sol";
+import "../zksync/IERC20.sol";
+import "../ZkSync.sol";
+import "../zksync/Utils.sol";
 import "./VaultStorage.sol";
 import "./IVault.sol";
 

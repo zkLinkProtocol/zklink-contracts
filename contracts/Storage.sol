@@ -9,7 +9,7 @@ import "./zksync/IERC20.sol";
 import "./Governance.sol";
 import "./zksync/Verifier.sol";
 import "./zksync/Operations.sol";
-import "./IVault.sol";
+import "./vault/IVault.sol";
 
 /// @title zkSync storage contract
 /// @author Matter Labs

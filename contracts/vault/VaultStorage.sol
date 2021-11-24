@@ -2,8 +2,8 @@
 
 pragma solidity ^0.7.0;
 
-import "./ZkSync.sol";
-import "./Governance.sol";
+import "../ZkSync.sol";
+import "../Governance.sol";
 
 /// @title zkLink vault storage contract
 /// @author ZkLink Labs
