@@ -131,11 +131,11 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
-        // zkSyncBlock
+        // zkLinkBlock
         let zkSyncBlockAddr;
         if (!('zkSyncBlock' in deployLog)) {
-            console.log('deploy zkSyncBlock...');
-            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+            console.log('deploy zkLinkBlock...');
+            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlock');
             const zkSyncBlock = await zkSyncBlockFactory.connect(deployer).deploy();
             await zkSyncBlock.deployed();
             zkSyncBlockAddr = zkSyncBlock.address;
@@ -144,9 +144,9 @@ task("deploy", "Deploy zklink")
         } else {
             zkSyncBlockAddr = deployLog.zkSyncBlock;
         }
-        console.log('zkSyncBlock', zkSyncBlockAddr);
+        console.log('zkLinkBlock', zkSyncBlockAddr);
         if (!('zkSyncBlockVerified' in deployLog) && !skipVerify) {
-            console.log('verify zkSyncBlock...');
+            console.log('verify zkLinkBlock...');
             await hardhat.run("verify:verify", {
                 address: zkSyncBlockAddr
             });
@@ -154,11 +154,11 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
-        // zkSyncExit
+        // zkLinkExit
         let zkSyncExitAddr;
         if (!('zkSyncExit' in deployLog)) {
-            console.log('deploy zkSyncExit...');
-            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+            console.log('deploy zkLinkExit...');
+            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
             const zkSyncExit = await zkSyncExitFactory.connect(deployer).deploy();
             await zkSyncExit.deployed();
             zkSyncExitAddr = zkSyncExit.address;
@@ -167,9 +167,9 @@ task("deploy", "Deploy zklink")
         } else {
             zkSyncExitAddr = deployLog.zkSyncExit;
         }
-        console.log('zkSyncExit', zkSyncExitAddr);
+        console.log('zkLinkExit', zkSyncExitAddr);
         if (!('zkSyncExitVerified' in deployLog) && !skipVerify) {
-            console.log('verify zkSyncExit...');
+            console.log('verify zkLinkExit...');
             await hardhat.run("verify:verify", {
                 address: zkSyncExitAddr
             });
@@ -177,11 +177,11 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
-        // zkSync
+        // zkLink
         let zkSyncTarget;
         if (!('zkSyncTarget' in deployLog)) {
-            console.log('deploy zkSync target...');
-            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+            console.log('deploy zkLink target...');
+            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
             const zkSync = await zkSyncFactory.connect(deployer).deploy();
             await zkSync.deployed();
             zkSyncTarget = zkSync.address;
@@ -190,9 +190,9 @@ task("deploy", "Deploy zklink")
         } else {
             zkSyncTarget = deployLog.zkSyncTarget;
         }
-        console.log('zkSync target', zkSyncTarget);
+        console.log('zkLink target', zkSyncTarget);
         if (!('zkSyncTargetVerified' in deployLog) && !skipVerify) {
-            console.log('verify zkSync target...');
+            console.log('verify zkLink target...');
             await hardhat.run("verify:verify", {
                 address: zkSyncTarget
             });
@@ -243,7 +243,7 @@ task("deploy", "Deploy zklink")
             const events = await deployFactory.queryFilter(filter, deployFactoryBlockHash);
             const event = events[0];
             governanceProxyAddr = event.args.governance;
-            zkSyncProxyAddr = event.args.zksync;
+            zkSyncProxyAddr = event.args.zkLink;
             verifierProxyAddr = event.args.verifier;
             vaultProxyAddr = event.args.vault;
             gatekeeperAddr = event.args.gatekeeper;
@@ -262,7 +262,7 @@ task("deploy", "Deploy zklink")
             gatekeeperAddr = deployLog.gatekeeper;
         }
         console.log('governanceProxy', governanceProxyAddr);
-        console.log('zkSyncProxy', zkSyncProxyAddr);
+        console.log('zkLinkProxy', zkSyncProxyAddr);
         console.log('verifierProxy', verifierProxyAddr);
         console.log('vaultProxy', vaultProxyAddr);
         console.log('gatekeeper', gatekeeperAddr);
@@ -280,7 +280,7 @@ task("deploy", "Deploy zklink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
         if (!('zkSyncProxyVerified' in deployLog) && !skipVerify) {
-            console.log('verify zkSync proxy...');
+            console.log('verify zkLink proxy...');
             await hardhat.run("verify:verify", {
                 address: zkSyncProxyAddr,
                 constructorArguments:[
@@ -365,14 +365,14 @@ task("deploy", "Deploy zklink")
         console.log('nft proxyRegistryAddress', proxyRegistryAddress);
         if (!('nft' in deployLog)) {
             console.log('deploy nft...');
-            const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+            const nftFactory = await hardhat.ethers.getContractFactory('ZkLinkNFT');
             const nftContract = await nftFactory.connect(deployer).deploy(proxyRegistryAddress);
             await nftContract.deployed();
             nftContractAddr = nftContract.address;
             deployLog.nft = nftContractAddr;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            // set ZkSync Proxy as the owner of nft
-            console.log('transfer nft ownership to zkSyncProxy...');
+            // set ZkLink Proxy as the owner of nft
+            console.log('transfer nft ownership to zkLinkProxy...');
             await nftContract.connect(deployer).transferOwnership(zkSyncProxyAddr);
         } else {
             nftContractAddr = deployLog.nft;
@@ -421,12 +421,12 @@ task("deploy", "Deploy zklink")
         }
 });
 
-task("upgrade", "Upgrade zklink on testnet")
+task("upgrade", "Upgrade zkKink on testnet")
     .addParam("key", "The deployer key", undefined, types.string, true)
     .addParam("upgradeGovernance", "Upgrade governance, default is false", undefined, types.boolean, true)
     .addParam("upgradeVerifier", "Upgrade verifier, default is false", undefined, types.boolean, true)
     .addParam("upgradeVault", "Upgrade vault, default is false", undefined, types.boolean, true)
-    .addParam("upgradeZksync", "Upgrade zksync, default is false", undefined, types.boolean, true)
+    .addParam("upgradeZkLink", "Upgrade zkLink, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         let deployer;
@@ -439,13 +439,13 @@ task("upgrade", "Upgrade zklink on testnet")
         let upgradeGovernance = taskArgs.upgradeGovernance === undefined ? false : taskArgs.upgradeGovernance;
         let upgradeVerifier = taskArgs.upgradeVerifier === undefined ? false : taskArgs.upgradeVerifier;
         let upgradeVault = taskArgs.upgradeVault === undefined ? false : taskArgs.upgradeVault;
-        let upgradeZksync = taskArgs.upgradeZksync === undefined ? false : taskArgs.upgradeZksync;
+        let upgradeZksync = taskArgs.upgradeZkLink === undefined ? false : taskArgs.upgradeZkLink;
         let skipVerify = taskArgs.skipVerify === undefined ? false : taskArgs.skipVerify;
         console.log('deployer', deployer.address);
         console.log('upgrade governance?', upgradeGovernance);
         console.log('upgrade verifier?', upgradeVerifier);
         console.log('upgrade vault?', upgradeVault);
-        console.log('upgrade zksync?', upgradeZksync);
+        console.log('upgrade zkLink?', upgradeZksync);
         console.log('skip verify contracts?', skipVerify);
         if (!upgradeGovernance && !upgradeVerifier && !upgradeVault && !upgradeZksync) {
             console.log('no need upgrade');
@@ -465,10 +465,10 @@ task("upgrade", "Upgrade zklink on testnet")
         // check if upgrade at testnet
         let zkSyncProxyAddr = deployLog.zkSyncProxy;
         if (zkSyncProxyAddr === undefined) {
-            console.log('ZkSync proxy address not exist');
+            console.log('ZkLink proxy address not exist');
             return;
         }
-        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
         let zkSyncProxy = await zkSyncFactory.attach(zkSyncProxyAddr);
         const noticePeriod = await zkSyncProxy.connect(deployer).getNoticePeriod();
         if (noticePeriod > 0) {
@@ -549,47 +549,47 @@ task("upgrade", "Upgrade zklink on testnet")
             }
         }
 
-        // zkSync
+        // zkLink
         if (upgradeZksync) {
-            console.log('deploy zkSyncBlock...');
-            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+            console.log('deploy zkLinkBlock...');
+            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlock');
             const zkSyncBlock = await zkSyncBlockFactory.connect(deployer).deploy();
             await zkSyncBlock.deployed();
             deployLog.zkSyncBlock = zkSyncBlock.address;
-            console.log('zkSyncBlock', deployLog.zkSyncBlock);
+            console.log('zkLinkBlock', deployLog.zkSyncBlock);
 
-            console.log('deploy zkSyncExit...');
-            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+            console.log('deploy zkLinkExit...');
+            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
             const zkSyncExit = await zkSyncExitFactory.connect(deployer).deploy();
             await zkSyncExit.deployed();
             deployLog.zkSyncExit = zkSyncExit.address;
-            console.log('zkSyncExit', deployLog.zkSyncExit);
+            console.log('zkLinkExit', deployLog.zkSyncExit);
 
             if (!skipVerify) {
-                console.log('verify zkSyncBlock...');
+                console.log('verify zkLinkBlock...');
                 await hardhat.run("verify:verify", {
                     address: deployLog.zkSyncBlock
                 });
                 deployLog.zkSyncBlockVerified = true;
 
-                console.log('verify zkSyncExit...');
+                console.log('verify zkLinkExit...');
                 await hardhat.run("verify:verify", {
                     address: deployLog.zkSyncExit
                 });
                 deployLog.zkSyncExitVerified = true;
             }
 
-            console.log('deploy zkSync target...');
-            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+            console.log('deploy zkLink target...');
+            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
             const zkSync = await zkSyncFactory.connect(deployer).deploy();
             await zkSync.deployed();
             deployLog.zkSyncTarget = zkSync.address;
             upgradeTargets[3] = deployLog.zkSyncTarget;
             upgradeParameters[3] = hardhat.ethers.utils.defaultAbiCoder.encode(['address','address'], [deployLog.zkSyncBlock, deployLog.zkSyncExit]);
-            console.log('zkSync target', deployLog.zkSyncTarget);
+            console.log('zkLink target', deployLog.zkSyncTarget);
 
             if (!skipVerify) {
-                console.log('verify zkSync target...');
+                console.log('verify zkLink target...');
                 await hardhat.run("verify:verify", {
                     address: deployLog.zkSyncTarget
                 });
