@@ -58,7 +58,7 @@ describe('Governance unit tests', function () {
     });
 
     it('Change nft should success', async () => {
-        const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+        const nftFactory = await hardhat.ethers.getContractFactory('ZkLinkNFT');
         const newNft = await nftFactory.deploy(hardhat.ethers.constants.AddressZero);
 
         await expect(testContract.connect(bob).changeNft(newNft.address)).to

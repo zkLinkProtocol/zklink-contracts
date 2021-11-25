@@ -16,13 +16,13 @@ describe('DeployFactory unit tests', function () {
         const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
         const vault = await vaultFactory.deploy();
         // zkSyncBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlock');
         const zkSyncBlock = await zkSyncBlockFactory.deploy();
         // zkSyncExit
-        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
         const zkSyncExit = await zkSyncExitFactory.deploy();
         // zkSync
-        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSync');
+        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
         const zkSync = await zkSyncFactory.deploy();
 
         const genesisRoot = hardhat.ethers.utils.arrayify("0x209d742ecb062db488d20e7f8968a40673d718b24900ede8035e05a78351d956");
@@ -43,7 +43,7 @@ describe('DeployFactory unit tests', function () {
         );
         const txr = await deployer.deployTransaction.wait();
         const log = deployer.interface.parseLog(txr.logs[4]);
-        const zksyncAddr = log.args.zksync;
+        const zksyncAddr = log.args.zkLink;
         const vaultAddr = log.args.vault;
         zkSyncProxy = zkSyncFactory.attach(zksyncAddr);
         vaultProxy = vaultFactory.attach(vaultAddr);

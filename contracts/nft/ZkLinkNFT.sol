@@ -34,7 +34,7 @@ contract ZkLinkNFT is ERC721Tradable {
     mapping(uint32 => Lq) public tokenLq;
 
     constructor(address _proxyRegistryAddress)
-        ERC721Tradable("ZKLinkNFT", "ZKLNFT", _proxyRegistryAddress)
+        ERC721Tradable("ZkLinkNFT", "ZKLNFT", _proxyRegistryAddress)
     {}
 
     function baseTokenURI() override public pure returns (string memory) {
@@ -60,7 +60,7 @@ contract ZkLinkNFT is ERC721Tradable {
      */
     function addLq(address to, uint16 tokenId, uint128 amount, address pair) external onlyOwner returns (uint32) {
         uint256 nftTokenIdRaw = mintTo(to);
-        require(nftTokenIdRaw < 2**32, 'ZKLinkNFT: nftTokenId');
+        require(nftTokenIdRaw < 2**32, 'ZkLinkNFT: nftTokenId');
         uint32 nftTokenId = uint32(nftTokenIdRaw);
 
         Lq storage lq = tokenLq[nftTokenId];
@@ -78,8 +78,8 @@ contract ZkLinkNFT is ERC721Tradable {
      * @param lpTokenAmount lp token amount
      */
     function confirmAddLq(uint32 nftTokenId, uint128 lpTokenAmount) external onlyOwner {
-        require(_exists(nftTokenId), "ZKLinkNFT: nonexistent token");
-        require(tokenLq[nftTokenId].status == LqStatus.ADD_PENDING, 'ZKLinkNFT: require ADD_PENDING');
+        require(_exists(nftTokenId), "ZkLinkNFT: nonexistent token");
+        require(tokenLq[nftTokenId].status == LqStatus.ADD_PENDING, 'ZkLinkNFT: require ADD_PENDING');
 
         tokenLq[nftTokenId].status = LqStatus.FINAL;
         tokenLq[nftTokenId].lpTokenAmount = lpTokenAmount;
@@ -91,8 +91,8 @@ contract ZkLinkNFT is ERC721Tradable {
      * @param nftTokenId nft id
      */
     function revokeAddLq(uint32 nftTokenId) external onlyOwner {
-        require(_exists(nftTokenId), "ZKLinkNFT: nonexistent token");
-        require(tokenLq[nftTokenId].status == LqStatus.ADD_PENDING, 'ZKLinkNFT: require ADD_PENDING');
+        require(_exists(nftTokenId), "ZkLinkNFT: nonexistent token");
+        require(tokenLq[nftTokenId].status == LqStatus.ADD_PENDING, 'ZkLinkNFT: require ADD_PENDING');
 
         tokenLq[nftTokenId].status = LqStatus.ADD_FAIL;
         emit StatusUpdate(nftTokenId, LqStatus.ADD_FAIL);
@@ -103,8 +103,8 @@ contract ZkLinkNFT is ERC721Tradable {
      * @param nftTokenId nft id
      */
     function removeLq(uint32 nftTokenId) external onlyOwner {
-        require(_exists(nftTokenId), "ZKLinkNFT: nonexistent token");
-        require(tokenLq[nftTokenId].status == LqStatus.FINAL, 'ZKLinkNFT: require FINAL');
+        require(_exists(nftTokenId), "ZkLinkNFT: nonexistent token");
+        require(tokenLq[nftTokenId].status == LqStatus.FINAL, 'ZkLinkNFT: require FINAL');
 
         tokenLq[nftTokenId].status = LqStatus.REMOVE_PENDING;
         emit StatusUpdate(nftTokenId, LqStatus.REMOVE_PENDING);
@@ -115,8 +115,8 @@ contract ZkLinkNFT is ERC721Tradable {
      * @param nftTokenId nft id
      */
     function confirmRemoveLq(uint32 nftTokenId) external onlyOwner {
-        require(_exists(nftTokenId), "ZKLinkNFT: nonexistent token");
-        require(tokenLq[nftTokenId].status == LqStatus.REMOVE_PENDING, 'ZKLinkNFT: require REMOVE_PENDING');
+        require(_exists(nftTokenId), "ZkLinkNFT: nonexistent token");
+        require(tokenLq[nftTokenId].status == LqStatus.REMOVE_PENDING, 'ZkLinkNFT: require REMOVE_PENDING');
 
         _burn(nftTokenId);
         delete tokenLq[nftTokenId];
@@ -127,8 +127,8 @@ contract ZkLinkNFT is ERC721Tradable {
      * @param nftTokenId nft id
      */
     function revokeRemoveLq(uint32 nftTokenId) external onlyOwner {
-        require(_exists(nftTokenId), "ZKLinkNFT: nonexistent token");
-        require(tokenLq[nftTokenId].status == LqStatus.REMOVE_PENDING, 'ZKLinkNFT: require REMOVE_PENDING');
+        require(_exists(nftTokenId), "ZkLinkNFT: nonexistent token");
+        require(tokenLq[nftTokenId].status == LqStatus.REMOVE_PENDING, 'ZkLinkNFT: require REMOVE_PENDING');
 
         tokenLq[nftTokenId].status = LqStatus.FINAL;
         emit StatusUpdate(nftTokenId, LqStatus.FINAL);
@@ -139,7 +139,7 @@ contract ZkLinkNFT is ERC721Tradable {
 
         // nft can burn but not transfer when at REMOVE_PENDING status
         if (to != address(0)) {
-            require(tokenLq[uint32(tokenId)].status != LqStatus.REMOVE_PENDING, 'ZKLinkNFT: require !REMOVE_PENDING');
+            require(tokenLq[uint32(tokenId)].status != LqStatus.REMOVE_PENDING, 'ZkLinkNFT: require !REMOVE_PENDING');
         }
     }
 }

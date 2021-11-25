@@ -26,9 +26,9 @@ describe('Vault unit tests', function () {
                 [governance.address])
         );
         // zkSync
-        const zkSyncFactory = await hardhat.ethers.getContractFactory('SimpleZkSync');
+        const zkSyncFactory = await hardhat.ethers.getContractFactory('SimpleZkLink');
         zkSync = await zkSyncFactory.deploy(governance.address, vault.address);
-        await vault.setZkSyncAddress(zkSync.address);
+        await vault.setZkLinkAddress(zkSync.address);
         // tokenA
         const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         tokenA = await erc20Factory.deploy(10000);
@@ -40,13 +40,13 @@ describe('Vault unit tests', function () {
         // strategyB
         strategyB = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address, pool.address, []);
         // ZkSyncUser
-        const zkSyncUserFactor = await hardhat.ethers.getContractFactory('ZkSyncUser');
+        const zkSyncUserFactor = await hardhat.ethers.getContractFactory('ZkLinkUser');
         zkSyncUser = await zkSyncUserFactor.deploy(zkSync.address);
     });
 
-    it('should revert when need to call from zkSync', async () => {
-        await expect(vault.recordDeposit(tokenAId)).to.be.revertedWith('Vault: require ZkSync');
-        await expect(vault.withdraw(tokenAId, alice.address, 10)).to.be.revertedWith('Vault: require ZkSync');
+    it('should revert when need to call from zkLink', async () => {
+        await expect(vault.recordDeposit(tokenAId)).to.be.revertedWith('Vault: require ZkLink');
+        await expect(vault.withdraw(tokenAId, alice.address, 10)).to.be.revertedWith('Vault: require ZkLink');
     });
 
     it('should revert when need to call from governor', async () => {
@@ -57,18 +57,18 @@ describe('Vault unit tests', function () {
         await expect(vault.emergencyExit(tokenAId)).to.be.revertedWith('1g');
     });
 
-    it('deposit eth from zksync should success', async () => {
+    it('deposit eth from zkLink should success', async () => {
         await zkSync.depositETH(alice.address, {value:50});
         expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(50);
     });
 
-    it('deposit erc20 from zksync should success', async () => {
+    it('deposit erc20 from zkLink should success', async () => {
         await tokenA.approve(zkSync.address, 100);
         await zkSync.depositERC20(tokenA.address, 100, alice.address);
         expect(await tokenA.balanceOf(vault.address)).to.equal(100);
     });
 
-    it('eoa address withdraw eth from zksync should success', async () => {
+    it('eoa address withdraw eth from zkLink should success', async () => {
         await zkSync.depositETH(alice.address, {value:50});
         let b0 = await alice.getBalance();
         let tx = await zkSync.connect(alice).withdrawPendingBalance(alice.address, hardhat.ethers.constants.AddressZero, 20);
@@ -78,7 +78,7 @@ describe('Vault unit tests', function () {
         expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(30);
     });
 
-    it('contract address withdraw eth from zksync should success', async () => {
+    it('contract address withdraw eth from zkLink should success', async () => {
         await zkSync.depositETH(zkSyncUser.address, {value:50});
         let b0 = await hardhat.ethers.provider.getBalance(zkSyncUser.address);
         await zkSyncUser.withdrawETH(20);
@@ -87,7 +87,7 @@ describe('Vault unit tests', function () {
         expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(30);
     });
 
-    it('withdraw erc20 from zksync should success', async () => {
+    it('withdraw erc20 from zkLink should success', async () => {
         await tokenA.approve(zkSync.address, 100);
         await zkSync.depositERC20(tokenA.address, 100, alice.address);
         let b0 = await tokenA.balanceOf(alice.address);
