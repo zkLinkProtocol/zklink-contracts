@@ -319,13 +319,11 @@ contract ZkLinkBlock is ZkLinkBase {
             } else if (opType == Operations.OpType.QuickSwap) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
                 Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
-                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkLink: quick swap chain id');
-                // fromChainId and toChainId may be the same
+                // fromChain should check priority operation
                 if (quickSwapData.fromChainId == CHAIN_ID) {
                     Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                 }
-                // fromChain and toChain both will handle QuickSwap in exec
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else if (opType == Operations.OpType.Mapping) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, MAPPING_BYTES);
