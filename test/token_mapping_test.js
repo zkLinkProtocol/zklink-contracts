@@ -53,14 +53,14 @@ describe('Token mapping unit tests', function () {
     });
 
     it('token mapping should success', async () => {
-        const toChainId = 1;
+        const toChainId = 2;
         const amount = hardhat.ethers.utils.parseEther("1");
         const to = bob.address;
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
 
-        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 0, 1, 100)).to.be.revertedWith("ZkLink: toChainId");
-        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 1, 1, 100)).to.be.revertedWith("ZkLink: not mapping token");
+        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 1, 1, 100)).to.be.revertedWith("ZkLink: toChainId");
+        await expect(zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, 2, 1, 100)).to.be.revertedWith("ZkLink: not mapping token");
 
         await governance.connect(alice).setTokenMapping(token.address, true);
         await zkSync.connect(bob).mappingToken(bob.address, to, amount, token.address, toChainId, 1, 100);
@@ -72,10 +72,10 @@ describe('Token mapping unit tests', function () {
         await token.connect(bob).mint(amount);
         await token.connect(bob).approve(zkSync.address, amount);
         await governance.connect(alice).setTokenMapping(token.address, true);
-        await zkSync.connect(bob).mappingToken(bob.address, bob.address, amount, token.address, 1, 1, 1);
+        await zkSync.connect(bob).mappingToken(bob.address, bob.address, amount, token.address, 2, 1, 1);
 
-        const pubdata = getMappingPubdata({ fromChainId:'0x00',
-            toChainId:'0x01',
+        const pubdata = getMappingPubdata({ fromChainId:'0x01',
+            toChainId:'0x02',
             owner:bob.address,
             to:bob.address,
             tokenId:'0x0001',
@@ -93,8 +93,8 @@ describe('Token mapping unit tests', function () {
     it('burn in from chain should success', async () => {
         const amount = 20;
         await zkl.connect(alice).mint(vault.address, amount);
-        const pubdata = getMappingPubdata({ fromChainId:'0x00',
-            toChainId:'0x01',
+        const pubdata = getMappingPubdata({ fromChainId:'0x01',
+            toChainId:'0x02',
             owner:bob.address,
             to:bob.address,
             tokenId:'0x0002',
@@ -107,8 +107,8 @@ describe('Token mapping unit tests', function () {
     });
 
     it('mint in to chain should success', async () => {
-        const pubdata = getMappingPubdata({ fromChainId:'0x01',
-            toChainId:'0x00',
+        const pubdata = getMappingPubdata({ fromChainId:'0x02',
+            toChainId:'0x01',
             owner:bob.address,
             to:bob.address,
             tokenId:'0x0002',

@@ -70,7 +70,7 @@ describe('L1AddLQ unit tests', function () {
             .emit(nft, 'StatusUpdate')
             .withArgs(1, 1);
 
-        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x00', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000001', lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
+        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000001', lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
         await zkSync.setExodusMode(true);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
@@ -84,7 +84,7 @@ describe('L1AddLQ unit tests', function () {
         await token.connect(bob).approve(zkSync.address, amount);
         await zkSync.connect(bob).addLiquidity(bob.address, token.address, 20, pair.address, 1);
 
-        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x00', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000002', lpAmount:'0x00000000000000000000000000000005', nftTokenId:'0x00000001' });
+        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000002', lpAmount:'0x00000000000000000000000000000005', nftTokenId:'0x00000001' });
         await zkSyncBlock.testExecL1AddLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(2);
@@ -97,7 +97,7 @@ describe('L1AddLQ unit tests', function () {
         await token.connect(bob).approve(zkSync.address, amount);
         await zkSync.connect(bob).addLiquidity(bob.address, token.address, 20, pair.address, 1);
 
-        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x00', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000002',lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
+        const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000002',lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
         await zkSyncBlock.testExecL1AddLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(3);

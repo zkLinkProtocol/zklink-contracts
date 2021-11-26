@@ -52,7 +52,7 @@ describe('Quick swap unit tests', function () {
     it('quick swap eth should success', async () => {
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-        const toChainId = 1;
+        const toChainId = 2;
         const toTokenId = 1;
         const to = bob.address;
         const acceptTokenId = toTokenId;
@@ -65,7 +65,7 @@ describe('Quick swap unit tests', function () {
     it('quick swap erc20 should success', async () => {
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-        const toChainId = 1;
+        const toChainId = 2;
         const toTokenId = 1;
         const to = bob.address;
         const acceptTokenId = toTokenId;
@@ -78,15 +78,15 @@ describe('Quick swap unit tests', function () {
 
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
         await zkSync.connect(bob).depositETH(bob.address, {value:30});
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 1, 1, bob.address, 0, pair.address, 1, 1, {value:20});
+        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 2, 1, bob.address, 0, pair.address, 1, 1, {value:20});
 
         const tokenId = '0x0000';
         const amount = '0x0000000000000000000000000000001e';
         const owner = bob.address;
         const pubdata0 = writeDepositPubdata({ tokenId, amount, owner });
 
-        const fromChainId = '0x00';
-        const toChainId = '0x01';
+        const fromChainId = '0x01';
+        const toChainId = '0x02';
         const toTokenId = '0x0001';
         const amountIn = '0x00000000000000000000000000000014';
         const amountOutMin = '0x00000000000000000000000000000000';
@@ -144,8 +144,8 @@ describe('Quick swap unit tests', function () {
 
     it('if swap fail owner in from chain should store pending balance', async () => {
         const opType = 12;
-        const fromChainId = 0;
-        const toChainId = 1;
+        const fromChainId = 1;
+        const toChainId = 2;
         const fromTokenId = 0;
         const toTokenId = 0;
         const nonce = 134;
@@ -165,8 +165,8 @@ describe('Quick swap unit tests', function () {
 
     it('if swap success and no accepter owner in to chain should store pending balance', async () => {
         const opType = 12;
-        const fromChainId = 1;
-        const toChainId = 0;
+        const fromChainId = 2;
+        const toChainId = 1;
         const fromTokenId = 0;
         const toTokenId = 0;
         const nonce = 134;
@@ -186,8 +186,8 @@ describe('Quick swap unit tests', function () {
 
     it('if swap success and accepter exist accepter in to chain should store pending balance', async () => {
         const opType = 12;
-        const fromChainId = 1;
-        const toChainId = 0;
+        const fromChainId = 2;
+        const toChainId = 1;
         const fromTokenId = 0;
         const toTokenId = 0;
         const nonce = 134;
