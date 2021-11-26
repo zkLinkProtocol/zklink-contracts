@@ -57,7 +57,7 @@ function getChangePubkeyPubdata({ accountId, pubKeyHash, owner, nonce}) {
 
 function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x0c'),
+        ethers.utils.arrayify('0x0b'),
         ethers.utils.arrayify(fromChainId),
         ethers.utils.arrayify(toChainId),
         ethers.utils.arrayify(owner),
@@ -76,7 +76,7 @@ function getQuickSwapPubdata({fromChainId, toChainId, owner, fromTokenId, amount
 
 function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x0d'),
+        ethers.utils.arrayify('0x09'),
         ethers.utils.arrayify(fromChainId),
         ethers.utils.arrayify(toChainId),
         ethers.utils.arrayify(owner),
@@ -91,7 +91,7 @@ function getMappingPubdata({ fromChainId, toChainId, owner, to, tokenId, amount,
 
 function getL1AddLQPubdata({ owner, chainId, tokenId, amount, pair, minLpAmount, lpAmount, nftTokenId }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x0e'),
+        ethers.utils.arrayify('0x0a'),
         ethers.utils.arrayify(owner),
         ethers.utils.arrayify(chainId),
         ethers.utils.arrayify(tokenId),
@@ -105,7 +105,7 @@ function getL1AddLQPubdata({ owner, chainId, tokenId, amount, pair, minLpAmount,
 
 function getL1RemoveLQPubdata({ owner, chainId, tokenId, minAmount, amount, pair, lpAmount, nftTokenId }) {
     return ethers.utils.concat([
-        ethers.utils.arrayify('0x0f'),
+        ethers.utils.arrayify('0x0c'),
         ethers.utils.arrayify(owner),
         ethers.utils.arrayify(chainId),
         ethers.utils.arrayify(tokenId),

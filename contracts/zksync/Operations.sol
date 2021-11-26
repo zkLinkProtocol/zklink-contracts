@@ -22,13 +22,13 @@ library Operations {
         FullExit, // 6 L1 Op
         ChangePubKey, // 7 L2 Op
         ForcedExit, // 8 L2 Op
-        AddLiquidity, // 9 L2 Op
-        RemoveLiquidity, // 10 L2 Op
-        Swap, // 11 L2 Op
-        QuickSwap, // 12 L1 Op
-        Mapping, // 13 L1 Op
-        L1AddLQ, // 14 L1 Op
-        L1RemoveLQ // 15 L1 Op
+        Mapping, // 9 L1 Op
+        L1AddLQ, // 10 L1 Curve add Op
+        QuickSwap, // 11 L1 Curve swap Op
+        L1RemoveLQ, // 12 L1 Curve remove Op
+        AddLiquidity, // 13 L2 Curve add Op
+        Swap, // 14 L2 Curve swap Op
+        RemoveLiquidity // 15 L2 Curve remove Op
     }
 
     // Byte lengths
