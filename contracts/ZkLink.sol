@@ -84,7 +84,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
-            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0), new uint256[](0));
+            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0));
 
         storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
     }
