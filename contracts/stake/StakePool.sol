@@ -4,17 +4,19 @@ pragma solidity ^0.7.0;
 
 pragma abicoder v2;
 
-import "../IERC20.sol";
-import "../SafeMath.sol";
-import "../SafeMathUInt128.sol";
-import "../Utils.sol";
-import "../Ownable.sol";
-import "../Config.sol";
-import "../IStrategy.sol";
-import "../IZKLinkNFT.sol";
-import "../IZKLink.sol";
-import "../EnumerableSet.sol";
+import "../zksync/IERC20.sol";
+import "../zksync/SafeMath.sol";
+import "../zksync/SafeMathUInt128.sol";
+import "../zksync/Utils.sol";
+import "../zksync/Ownable.sol";
+import "../zksync/Config.sol";
+import "../strategy/IStrategy.sol";
+import "../nft/IZkLinkNFT.sol";
+import "../IZkLink.sol";
+import "./EnumerableSet.sol";
 
+/// @title Stake pool contract, stake ZkLinkNft and get rewards
+/// @author zk.link
 contract StakePool is Ownable, Config {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
@@ -47,11 +49,11 @@ contract StakePool is Ownable, Config {
     }
 
     /// @notice ZKL NFT staked to pool
-    IZKLinkNFT public nft;
+    IZkLinkNFT public nft;
     /// @notice Zkl token
     IERC20 public zkl;
     /// @notice zkLink contract
-    IZKLink public zkLink;
+    IZkLink public zkLink;
     /// @notice Nft depositor info, nft token id => address
     mapping(uint32 => address) public nftDepositor;
     /// @notice Info of each user that stakes tokens, zkl token id => user address => user info
@@ -72,9 +74,9 @@ contract StakePool is Ownable, Config {
     event RevokePendingNft(uint32 indexed nftTokendId);
 
     constructor(address _nft, address _zkl, address _zkLink, address _masterAddress) Ownable(_masterAddress) {
-        nft = IZKLinkNFT(_nft);
+        nft = IZkLinkNFT(_nft);
         zkl = IERC20(_zkl);
-        zkLink = IZKLink(_zkLink);
+        zkLink = IZkLink(_zkLink);
     }
 
     /// @notice Get all pool ids
@@ -265,10 +267,10 @@ contract StakePool is Ownable, Config {
     /// @notice Stake ZKLinkNFT to pool for reward allocation
     /// @param nftTokenId token id of ZKLinkNFT
     function stake(uint32 nftTokenId) public {
-        IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+        IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
         // only ADD_PENDING and FINAL nft can be staked
-        require(lq.status == IZKLinkNFT.LqStatus.ADD_PENDING ||
-            lq.status == IZKLinkNFT.LqStatus.FINAL, 'StakePool: invalid nft status');
+        require(lq.status == IZkLinkNFT.LqStatus.ADD_PENDING ||
+            lq.status == IZkLinkNFT.LqStatus.FINAL, 'StakePool: invalid nft status');
         nft.transferFrom(msg.sender, address(this), nftTokenId);
         nftDepositor[nftTokenId] = msg.sender;
 
@@ -285,7 +287,7 @@ contract StakePool is Ownable, Config {
 
         // add nft power to pool total power whether nft status is final or not
         pool.power = pool.power.add(lq.amount);
-        if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
+        if (lq.status == IZkLinkNFT.LqStatus.FINAL) {
             // add nft power to user power only if nft status is final
             user.power = user.power.add(lq.amount);
             finalNftSet.add(nftTokenId);
@@ -319,7 +321,7 @@ contract StakePool is Ownable, Config {
         require(nftDepositor[nftTokenId] == msg.sender, 'StakePool: not depositor');
 
         // nft token status may be ADD_PENDING, FINAL or ADD_FAIL
-        IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+        IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
@@ -333,7 +335,7 @@ contract StakePool is Ownable, Config {
         // remove nft power from pool total power whether nft status is final or not
         pool.power = pool.power.sub(lq.amount);
         if (pendingNftSet.contains(nftTokenId)) {
-            if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
+            if (lq.status == IZkLinkNFT.LqStatus.FINAL) {
                 // transfer pending reward to user
                 _transferPendingRewards(pool, user, nftTokenId, lq.amount);
             } else {
@@ -367,8 +369,8 @@ contract StakePool is Ownable, Config {
         require(nftDepositor[nftTokenId] == msg.sender, 'StakePool: not depositor');
 
         // only FINAL nft can emergency unStake
-        IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
-        require(lq.status == IZKLinkNFT.LqStatus.FINAL, 'StakePool: only FINAL nft can emergency unStake');
+        IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+        require(lq.status == IZkLinkNFT.LqStatus.FINAL, 'StakePool: only FINAL nft can emergency unStake');
 
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
@@ -396,8 +398,8 @@ contract StakePool is Ownable, Config {
         require(depositor != address(0), 'StakePool: nft not staked');
 
         // nft token status must be ADD_FAIL
-        IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
-        require(lq.status == IZKLinkNFT.LqStatus.ADD_FAIL, 'StakePool: require nft ADD_FAIL');
+        IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+        require(lq.status == IZkLinkNFT.LqStatus.ADD_FAIL, 'StakePool: require nft ADD_FAIL');
 
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
@@ -433,9 +435,9 @@ contract StakePool is Ownable, Config {
         uint256 pendingNftLength = pendingNftSet.length();
         for(uint256 i = 0; i < pendingNftLength; i++) {
             uint32 nftTokenId = uint32(pendingNftSet.at(i));
-            IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+            IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
             // only final status nft will transfer pending acc reward to user
-            if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
+            if (lq.status == IZkLinkNFT.LqStatus.FINAL) {
                 uint256 debt = user.pendingRewardDebt[nftTokenId][rewardToken];
                 uint256 nftPending = _calPending(lq.amount, accPerShare, debt);
                 pending = pending.add(nftPending);
@@ -485,8 +487,8 @@ contract StakePool is Ownable, Config {
         // when i decrease to zero the next i-- will be uint.MAX
         for(uint256 i = pendingNftLength - 1; i < pendingNftLength; i--) {
             uint32 nftTokenId = uint32(pendingNftSet.at(i));
-            IZKLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
-            if (lq.status == IZKLinkNFT.LqStatus.FINAL) {
+            IZkLinkNFT.Lq memory lq = nft.tokenLq(nftTokenId);
+            if (lq.status == IZkLinkNFT.LqStatus.FINAL) {
                 // transfer pending reward to user
                 _transferPendingRewards(pool, user, nftTokenId, lq.amount);
                 user.power = user.power.add(lq.amount);

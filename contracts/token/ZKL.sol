@@ -7,9 +7,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "openzeppelin-solidity/contracts/access/AccessControlEnumerable.sol";
 
-/**
- * @title ZKL token contract
- */
+/// @title ZkLink token contract
+/// @author zk.link
 contract ZKL is AccessControlEnumerable, ERC20Capped, ERC20Permit{
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 

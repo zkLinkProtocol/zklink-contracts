@@ -3,7 +3,7 @@
 pragma solidity ^0.7.0;
 
 /// @title Interface of the strategy contract
-/// @author ZkLink Labs
+/// @author zk.link
 /// @notice IStrategy implement must has default receive function
 interface IStrategy {
 

@@ -27,21 +27,21 @@ describe('StakePool unit tests', function () {
         vault = await vaultFactory.deploy();
         await vault.initialize(hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [governance.address]));
         // ZkSync
-        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkSyncTest');
+        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
         zkLink = await zkSyncFactory.deploy();
         // ZkSyncCommitBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlock');
+        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlock');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         // ZkSyncExit
-        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
         const zkSyncExitRaw = await zkSyncExitFactory.deploy();
         await zkLink.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
                 [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
-        await vault.setZkSyncAddress(zkLink.address);
+        await vault.setZkLinkAddress(zkLink.address);
         // nft
-        const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+        const nftFactory = await hardhat.ethers.getContractFactory('ZkLinkNFT');
         nft = await nftFactory.deploy(hardhat.ethers.constants.AddressZero);
         await nft.transferOwnership(zkLink.address);
         await governance.connect(networkGovernor).changeNft(nft.address);

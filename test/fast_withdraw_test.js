@@ -25,21 +25,21 @@ describe('Fast withdraw unit tests', function () {
         vault = await vaultFactory.deploy();
         await vault.initialize(hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [governance.address]));
         // ZkSync
-        const contractFactory = await hardhat.ethers.getContractFactory('ZkSyncTest');
+        const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
         zkSync = await contractFactory.deploy();
         // ZkSyncCommitBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
+        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
         // ZkSyncExit
-        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
         const zkSyncExitRaw = await zkSyncExitFactory.deploy();
         zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
                 [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
-        await vault.setZkSyncAddress(zkSync.address);
+        await vault.setZkLinkAddress(zkSync.address);
     });
 
     it('fast withdraw erc20 token should success', async () => {

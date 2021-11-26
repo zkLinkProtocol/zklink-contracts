@@ -4,17 +4,16 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./SafeCast.sol";
-import "./Utils.sol";
+import "./zksync/SafeCast.sol";
+import "./zksync/Utils.sol";
 
-import "./Bytes.sol";
-import "./Operations.sol";
-import "./ZkSyncBase.sol";
+import "./zksync/Bytes.sol";
+import "./zksync/Operations.sol";
+import "./ZkLinkBase.sol";
 
-/// @title zkSync main contract part 2: commit block, prove block, execute block
-/// @author Matter Labs
-/// @author ZkLink Labs
-contract ZkSyncBlock is ZkSyncBase {
+/// @title ZkLink main contract part 2: commit block, prove block, execute block
+/// @author zk.link
+contract ZkLinkBlock is ZkLinkBase {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -60,12 +59,12 @@ contract ZkSyncBlock is ZkSyncBase {
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
-        _fallback(zkSyncExit);
+        _fallback(zkLinkExit);
     }
 
     /// @notice Same as fallback but called when calldata is empty
     receive() external payable {
-        _fallback(zkSyncExit);
+        _fallback(zkLinkExit);
     }
 
     /// @notice Commit block
@@ -96,13 +95,16 @@ contract ZkSyncBlock is ZkSyncBase {
 
     /// @notice Blocks commitment verification.
     /// @notice Only verifies block commitments without any other processing
-    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof, uint32 storeCrtBlock) external nonReentrant {
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
             require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "o1");
             ++currentTotalBlocksProven;
 
             require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "o"); // incorrect block commitment in proof
+            if (_committedBlocks[i].blockNumber == storeCrtBlock) {
+                blockCrts[storeCrtBlock] = _committedBlocks[i].crtCommitments;
+            }
         }
 
         bool success =
@@ -129,6 +131,8 @@ contract ZkSyncBlock is ZkSyncBase {
         uint64 priorityRequestsExecuted = 0;
         uint32 nBlocks = uint32(_blocksData.length);
         for (uint32 i = 0; i < nBlocks; ++i) {
+            // crt must verified before exec
+            require(_blocksData[i].storedBlock.blockNumber <= governance.verifiedCrtBlock(), 'ZkLink: block crt not verified');
             executeOneBlock(_blocksData[i], i);
             priorityRequestsExecuted += _blocksData[i].storedBlock.priorityOperations;
             emit BlockVerification(_blocksData[i].storedBlock.blockNumber);
@@ -201,7 +205,8 @@ contract ZkSyncBlock is ZkSyncBase {
             pendingOnchainOpsHash,
             _newBlock.timestamp,
             _newBlock.newStateHash,
-            commitment
+            commitment,
+            _newBlock.crtCommitments
         );
     }
 
@@ -314,7 +319,7 @@ contract ZkSyncBlock is ZkSyncBase {
             } else if (opType == Operations.OpType.QuickSwap) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
                 Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
-                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkSyncBlock: quick swap chain id');
+                require(quickSwapData.fromChainId == CHAIN_ID || quickSwapData.toChainId == CHAIN_ID, 'ZkLink: quick swap chain id');
                 // fromChainId and toChainId may be the same
                 if (quickSwapData.fromChainId == CHAIN_ID) {
                     Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
@@ -327,7 +332,7 @@ contract ZkSyncBlock is ZkSyncBase {
                 Operations.Mapping memory mappingData = Operations.readMappingPubdata(opPubData);
                 // fromChainId and toChainId will not be the same
                 require(mappingData.fromChainId != mappingData.toChainId &&
-                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkSyncBlock: mapping chain id');
+                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkLink: mapping chain id');
                 if (mappingData.fromChainId == CHAIN_ID) {
                     Operations.checkPriorityOperation(mappingData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
@@ -563,7 +568,7 @@ contract ZkSyncBlock is ZkSyncBase {
         address tokenAddress = governance.tokenAddresses(op.tokenId);
         uint128 burnAmount = op.amount.sub(op.fee);
         if (op.fromChainId == CHAIN_ID) {
-            // burn token from ZkSync
+            // burn token from ZkLink
             vault.withdraw(op.tokenId, address(this), burnAmount);
             IMappingToken(tokenAddress).burn(burnAmount);
         } else {

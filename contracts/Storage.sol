@@ -4,15 +4,15 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./IERC20.sol";
+import "./zksync/IERC20.sol";
 
 import "./Governance.sol";
-import "./Verifier.sol";
-import "./Operations.sol";
-import "./IVault.sol";
+import "./zksync/Verifier.sol";
+import "./zksync/Operations.sol";
+import "./vault/IVault.sol";
 
-/// @title zkSync storage contract
-/// @author Matter Labs
+/// @title ZkLink storage contract
+/// @author zk.link
 contract Storage {
     /// @dev Flag indicates that upgrade preparation status is active
     /// @dev Will store false in case of not active upgrade mode
@@ -77,7 +77,7 @@ contract Storage {
     /// @member pendingOnchainOperationsHash Hash of all operations that must be processed after verify
     /// @member timestamp Rollup block timestamp, have the same format as Ethereum block constant
     /// @member stateHash Root hash of the rollup state
-    /// @member commitment Verified input for the zkSync circuit
+    /// @member commitment Verified input for the ZkLink circuit
     struct StoredBlockInfo {
         uint32 blockNumber;
         uint64 priorityOperations;
@@ -85,6 +85,7 @@ contract Storage {
         uint256 timestamp;
         bytes32 stateHash;
         bytes32 commitment;
+        uint256[] crtCommitments;
     }
 
     /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
@@ -107,17 +108,20 @@ contract Storage {
     /// @dev Used when user wants to reset `authFacts` for some nonce.
     mapping(address => mapping(uint32 => uint256)) internal authFactsResetTimer;
 
-    /// @dev zkSync contract part 2
-    address public zkSyncBlock;
+    /// @dev ZkLink contract part 2
+    address public zkLinkBlock;
 
     /// @dev Accept infos of fast withdraw
     /// @dev Key is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce))
     /// @dev Value is the accepter address
     mapping(bytes32 => address) public accepts;
 
-    /// @dev zkSync contract part 3
-    address public zkSyncExit;
+    /// @dev ZkLink contract part 3
+    address public zkLinkExit;
 
     /// @dev Broker allowance used in accept
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
+
+    /// @dev Block crt list
+    mapping(uint32 => uint256[]) public blockCrts;
 }

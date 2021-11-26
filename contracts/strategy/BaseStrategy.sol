@@ -2,13 +2,15 @@
 
 pragma solidity ^0.7.0;
 
-import "../IStrategy.sol";
-import "../IVault.sol";
-import "../Utils.sol";
-import "../IERC20.sol";
+import "./IStrategy.sol";
+import "../vault/IVault.sol";
+import "../zksync/Utils.sol";
+import "../zksync/IERC20.sol";
 
 import "./IWETH.sol";
 
+/// @title Base strategy contract
+/// @author zk.link
 abstract contract BaseStrategy is IStrategy {
 
     event Harvest(uint256 want, address rewardToken, uint256 amount);

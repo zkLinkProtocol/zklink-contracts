@@ -4,21 +4,20 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./SafeMath.sol";
-import "./SafeMathUInt128.sol";
-import "./SafeCast.sol";
-import "./Utils.sol";
+import "./zksync/SafeMath.sol";
+import "./zksync/SafeMathUInt128.sol";
+import "./zksync/SafeCast.sol";
+import "./zksync/Utils.sol";
 
-import "./Operations.sol";
+import "./zksync/Operations.sol";
 
-import "./UpgradeableMaster.sol";
-import "./ZkSyncBase.sol";
-import "./IZKLink.sol";
+import "./zksync/UpgradeableMaster.sol";
+import "./ZkLinkBase.sol";
+import "./IZkLink.sol";
 
-/// @title zkSync main contract part 1: deposit, withdraw
-/// @author Matter Labs
-/// @author ZkLink Labs
-contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
+/// @title ZkLink main contract part 1: deposit, withdraw, add or remove liquidity, swap
+/// @author zk.link
+contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -62,64 +61,65 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         return !exodusMode;
     }
 
-    /// @notice zkSync contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
+    /// @notice ZkLink contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
     /// @dev _governanceAddress The address of Governance contract
     /// @dev _verifierAddress The address of Verifier contract
-    /// @dev _zkSyncBlock The address of ZkSyncBlock contract
+    /// @dev _zkLinkBlock The address of ZkLinkBlock contract
+    /// @dev _zkLinkExit The address of ZkLinkExit contract
     /// @dev _pairManagerAddress The address of UniswapV2Factory contract
     /// @dev _vaultAddress The address of Vault contract
     /// @dev _genesisStateHash Genesis blocks (first block) state tree root hash
     function initialize(bytes calldata initializationParameters) external {
         initializeReentrancyGuard();
 
-        (address _governanceAddress, address _verifierAddress, address payable _vaultAddress, address _zkSyncBlock, address _zkSyncExit, bytes32 _genesisStateHash) =
+        (address _governanceAddress, address _verifierAddress, address payable _vaultAddress, address _zkLinkBlock, address _zkLinkExit, bytes32 _genesisStateHash) =
             abi.decode(initializationParameters, (address, address, address, address, address, bytes32));
 
         verifier = Verifier(_verifierAddress);
         governance = Governance(_governanceAddress);
         vault = IVault(_vaultAddress);
-        zkSyncBlock = _zkSyncBlock;
-        zkSyncExit = _zkSyncExit;
+        zkLinkBlock = _zkLinkBlock;
+        zkLinkExit = _zkLinkExit;
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
-            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0));
+            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0), new uint256[](0));
 
         storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
     }
 
-    /// @notice zkSync contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
+    /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {
-        (address _zkSyncBlock, address _zkSyncExit) = abi.decode(upgradeParameters, (address, address));
-        zkSyncBlock = _zkSyncBlock;
-        zkSyncExit = _zkSyncExit;
+        (address _zkLinkBlock, address _zkLinkExit) = abi.decode(upgradeParameters, (address, address));
+        zkLinkBlock = _zkLinkBlock;
+        zkLinkExit = _zkLinkExit;
     }
 
     /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
-    /// @param _zkSyncAddress The receiver Layer 2 address
-    function depositETH(address _zkSyncAddress) external payable {
+    /// @param _zkLinkAddress The receiver Layer 2 address
+    function depositETH(address _zkLinkAddress) external payable {
         requireActive();
-        require(msg.value > 0, 'ZkSync: deposit amount');
+        require(msg.value > 0, 'ZkLink: deposit amount');
 
         (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkSync: eth transfer failed");
+        require(success, "ZkLink: eth transfer failed");
         vault.recordDeposit(0);
-        registerDeposit(0, SafeCast.toUint128(msg.value), _zkSyncAddress);
+        registerDeposit(0, SafeCast.toUint128(msg.value), _zkLinkAddress);
     }
 
     /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
     /// @param _token Token address
     /// @param _amount Token amount
-    /// @param _zkSyncAddress Receiver Layer 2 address
+    /// @param _zkLinkAddress Receiver Layer 2 address
     function depositERC20(
         IERC20 _token,
         uint104 _amount,
-        address _zkSyncAddress
+        address _zkLinkAddress
     ) external nonReentrant {
         requireActive();
-        require(_amount > 0, 'ZkSync: deposit amount');
+        require(_amount > 0, 'ZkLink: deposit amount');
 
         // Get token id by its address
         uint16 tokenId = governance.validateTokenAddress(address(_token));
@@ -128,11 +128,11 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
         vault.recordDeposit(tokenId);
-        registerDeposit(tokenId, _amount, _zkSyncAddress);
+        registerDeposit(tokenId, _amount, _zkLinkAddress);
     }
 
     /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
-    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
+    /// @param _zkLinkAddress Receiver Layer 2 address if swap failed
     /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
     /// @param _toChainId Chain id of to token
     /// @param _toTokenId Swap token to
@@ -141,7 +141,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
     /// @param _pair L2 cross chain pair address
     /// @param _acceptTokenId Accept token user really want to receive
     /// @param _acceptAmountOutMin Accept token min amount user really want to receive
-    function swapExactETHForTokens(address _zkSyncAddress,
+    function swapExactETHForTokens(address _zkLinkAddress,
         uint104 _amountOutMin,
         uint8 _toChainId,
         uint16 _toTokenId,
@@ -151,17 +151,17 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         uint16 _acceptTokenId,
         uint128 _acceptAmountOutMin) external payable {
         requireActive();
-        require(msg.value > 0, 'ZkSync: amountIn');
-        require(_acceptAmountOutMin> 0, 'ZkSync: acceptAmountOutMin');
+        require(msg.value > 0, 'ZkLink: amountIn');
+        require(_acceptAmountOutMin> 0, 'ZkLink: acceptAmountOutMin');
 
         (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkSync: eth transfer failed");
+        require(success, "ZkLink: eth transfer failed");
         vault.recordDeposit(0);
-        registerQuickSwap(_zkSyncAddress, SafeCast.toUint128(msg.value), _amountOutMin, 0, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
+        registerQuickSwap(_zkLinkAddress, SafeCast.toUint128(msg.value), _amountOutMin, 0, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
-    /// @param _zkSyncAddress Receiver Layer 2 address if swap failed
+    /// @param _zkLinkAddress Receiver Layer 2 address if swap failed
     /// @param _amountIn Swap amount of from token
     /// @param _amountOutMin Minimum swap out amount of to token
     /// @param _fromToken Swap token from
@@ -172,7 +172,7 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
     /// @param _pair L2 cross chain pair address
     /// @param _acceptTokenId Accept token user really want to receive
     /// @param _acceptAmountOutMin Accept token min amount user really want to receive
-    function swapExactTokensForTokens(address _zkSyncAddress,
+    function swapExactTokensForTokens(address _zkLinkAddress,
         uint104 _amountIn,
         uint104 _amountOutMin,
         IERC20 _fromToken,
@@ -184,8 +184,8 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         uint16 _acceptTokenId,
         uint128 _acceptAmountOutMin) external {
         requireActive();
-        require(_amountIn > 0, 'ZkSync: amountIn');
-        require(_acceptAmountOutMin> 0, 'ZkSync: acceptAmountOutMin');
+        require(_amountIn > 0, 'ZkLink: amountIn');
+        require(_acceptAmountOutMin> 0, 'ZkLink: acceptAmountOutMin');
 
         // Get token id by its address
         uint16 fromTokenId = governance.validateTokenAddress(address(_fromToken));
@@ -194,73 +194,73 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit
         vault.recordDeposit(fromTokenId);
-        registerQuickSwap(_zkSyncAddress, _amountIn, _amountOutMin, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
+        registerQuickSwap(_zkLinkAddress, _amountIn, _amountOutMin, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Mapping ERC20 from this chain to another chain - transfer ERC20 tokens from user into contract, validate it, register mapping
-    /// @param _zkSyncAddress Receiver Layer 2 address if mapping failed
+    /// @param _zkLinkAddress Receiver Layer 2 address if mapping failed
     /// @param _to Address in to chain to receive token
     /// @param _amount Mapping amount of token
     /// @param _token Mapping token
     /// @param _toChainId Chain id of to token
     /// @param _nonce Used to produce unique accept info
     /// @param _withdrawFee Accept withdraw fee, 100 means 1%
-    function mappingToken(address _zkSyncAddress, address _to, uint104 _amount, IERC20 _token, uint8 _toChainId, uint32 _nonce, uint16 _withdrawFee) external {
+    function mappingToken(address _zkLinkAddress, address _to, uint104 _amount, IERC20 _token, uint8 _toChainId, uint32 _nonce, uint16 _withdrawFee) external {
         requireActive();
-        require(_amount > 0, 'ZkSync: amount');
-        require(_toChainId != CHAIN_ID, 'ZkSync: toChainId');
-        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkSync: withdrawFee');
+        require(_amount > 0, 'ZkLink: amount');
+        require(_toChainId != CHAIN_ID, 'ZkLink: toChainId');
+        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkLink: withdrawFee');
 
         // Get token id by its address
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
-        require(governance.mappingTokens(tokenId), 'ZkSync: not mapping token');
+        require(governance.mappingTokens(tokenId), 'ZkLink: not mapping token');
 
         // token must not be taken fees when transfer
         // just transfer to vault, do not call vault.recordDeposit
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
-        registerTokenMapping(_zkSyncAddress, _to, _amount, tokenId, _toChainId, _nonce, _withdrawFee);
+        registerTokenMapping(_zkLinkAddress, _to, _amount, tokenId, _toChainId, _nonce, _withdrawFee);
     }
 
     /// @notice Add token to l2 cross chain pair
-    /// @param _zkSyncAddress Receiver Layer 2 address if add liquidity failed
+    /// @param _zkLinkAddress Receiver Layer 2 address if add liquidity failed
     /// @param _token Token added
     /// @param _amount Amount of token
     /// @param _pair L2 cross chain pair address
     /// @param _minLpAmount L2 lp token amount min received
-    function addLiquidity(address _zkSyncAddress, IERC20 _token, uint104 _amount, address _pair, uint104 _minLpAmount) override external returns (uint32) {
+    function addLiquidity(address _zkLinkAddress, IERC20 _token, uint104 _amount, address _pair, uint104 _minLpAmount) override external returns (uint32) {
         requireActive();
-        require(_amount > 0, 'ZkSync: amount');
+        require(_amount > 0, 'ZkLink: amount');
 
         // Get token id by its address
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
         // nft must exist
-        require(address(governance.nft()) != address(0), 'ZkSync: nft not exist');
+        require(address(governance.nft()) != address(0), 'ZkLink: nft not exist');
 
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
         vault.recordDeposit(tokenId);
         // mint a pending nft to user
-        uint32 nftTokenId = governance.nft().addLq(_zkSyncAddress, tokenId, _amount, _pair);
-        registerAddLiquidity(_zkSyncAddress, tokenId, _amount, _pair, _minLpAmount, nftTokenId);
+        uint32 nftTokenId = governance.nft().addLq(_zkLinkAddress, tokenId, _amount, _pair);
+        registerAddLiquidity(_zkLinkAddress, tokenId, _amount, _pair, _minLpAmount, nftTokenId);
         return nftTokenId;
     }
 
     /// @notice Remove liquidity from l1 and get token back from l2 cross chain pair
-    /// @param _zkSyncAddress Receiver Layer 2 address if remove liquidity success
+    /// @param _zkLinkAddress Receiver Layer 2 address if remove liquidity success
     /// @param _nftTokenId Nft token that contains info about the liquidity
     /// @param _minAmount Token amount min received
-    function removeLiquidity(address _zkSyncAddress, uint32 _nftTokenId, uint104 _minAmount) override external {
+    function removeLiquidity(address _zkLinkAddress, uint32 _nftTokenId, uint104 _minAmount) override external {
         requireActive();
         // nft must exist
-        require(address(governance.nft()) != address(0), 'ZkSync: nft not exist');
-        require(governance.nft().ownerOf(_nftTokenId) == msg.sender, 'ZkSync: not nft owner');
+        require(address(governance.nft()) != address(0), 'ZkLink: nft not exist');
+        require(governance.nft().ownerOf(_nftTokenId) == msg.sender, 'ZkLink: not nft owner');
         // update nft status
         governance.nft().removeLq(_nftTokenId);
         // register request
-        IZKLinkNFT.Lq memory lq = governance.nft().tokenLq(_nftTokenId);
-        registerRemoveLiquidity(_zkSyncAddress, lq.tokenId, _minAmount, lq.pair, lq.lpTokenAmount, _nftTokenId);
+        IZkLinkNFT.Lq memory lq = governance.nft().tokenLq(_nftTokenId);
+        registerRemoveLiquidity(_zkLinkAddress, lq.tokenId, _minAmount, lq.pair, lq.lpTokenAmount, _nftTokenId);
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request
@@ -460,11 +460,11 @@ contract ZkSync is UpgradeableMaster, ZkSyncBase, IZKLink {
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
-        _fallback(zkSyncBlock);
+        _fallback(zkLinkBlock);
     }
 
     /// @notice Same as fallback but called when calldata is empty
     receive() external payable {
-        _fallback(zkSyncBlock);
+        _fallback(zkLinkBlock);
     }
 }

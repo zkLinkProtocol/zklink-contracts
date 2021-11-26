@@ -2,16 +2,15 @@
 
 pragma solidity ^0.7.0;
 
-import "./IStrategy.sol";
-import "./SafeMath.sol";
-import "./IERC20.sol";
-import "./ZkSync.sol";
-import "./Utils.sol";
+import "../strategy/IStrategy.sol";
+import "../zksync/SafeMath.sol";
+import "../zksync/IERC20.sol";
+import "../zksync/Utils.sol";
 import "./VaultStorage.sol";
 import "./IVault.sol";
 
 /// @title zkLink vault contract. eth or erc20 token deposited from user will transfer to vault and vault use strategy to earn more token.
-/// @author ZkLink Labs
+/// @author zk.link
 contract Vault is VaultStorage, IVault {
     using SafeMath for uint256;
 
@@ -25,8 +24,8 @@ contract Vault is VaultStorage, IVault {
     event StrategyMigrate(uint16 tokenId);
     event StrategyExit(uint16 tokenId);
 
-    modifier onlyZkSync {
-        require(msg.sender == address(zkSync), 'Vault: require ZkSync');
+    modifier onlyZkLink {
+        require(msg.sender == address(zkLink), 'Vault: require ZkLink');
         _;
     }
 
@@ -47,14 +46,14 @@ contract Vault is VaultStorage, IVault {
 
     function upgrade(bytes calldata upgradeParameters) external {}
 
-    /// @notice Set zkSync contract(can only be set once)
-    /// @param zkSyncAddress ZkSync contract address
-    function setZkSyncAddress(address payable zkSyncAddress) external {
-        require(address(zkSync) == address(0), "Vault: zkSync initialized");
-        zkSync = ZkSync(zkSyncAddress);
+    /// @notice Set ZkLink contract(can only be set once)
+    /// @param zkLinkAddress ZkLink contract address
+    function setZkLinkAddress(address payable zkLinkAddress) external {
+        require(address(zkLink) == address(0), "Vault: zkLink initialized");
+        zkLink = ZkLink(zkLinkAddress);
     }
 
-    function recordDeposit(uint16 tokenId) override onlyZkSync external {
+    function recordDeposit(uint16 tokenId) override onlyZkLink external {
         TokenVault memory tv = tokenVaults[tokenId];
         address strategy = tv.strategy;
         // deposit token to strategy if strategy is active
@@ -66,7 +65,7 @@ contract Vault is VaultStorage, IVault {
         }
     }
 
-    function withdraw(uint16 tokenId, address to, uint256 amount) override onlyZkSync external {
+    function withdraw(uint16 tokenId, address to, uint256 amount) override onlyZkLink external {
         uint256 balance = _tokenBalance(tokenId);
         if (balance < amount) {
             // withdraw from strategy when token balance of vault can not satisfy withdraw

@@ -4,11 +4,11 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../ZkSync.sol";
-import "../SafeCast.sol";
-import "../IZKL.sol";
+import "../ZkLink.sol";
+import "../zksync/SafeCast.sol";
+import "../token/IZKL.sol";
 
-contract ZkSyncTest is ZkSync {
+contract ZkLinkTest is ZkLink {
 
     function setExodusMode(bool _exodusMode) external {
         exodusMode = _exodusMode;
@@ -42,15 +42,15 @@ contract ZkSyncTest is ZkSync {
         return storedBlockHashes[height];
     }
 
-    function addLq(IZKLinkNFT nft, address to, uint16 tokenId, uint128 amount, address pair) external returns (uint32) {
+    function addLq(IZkLinkNFT nft, address to, uint16 tokenId, uint128 amount, address pair) external returns (uint32) {
         return nft.addLq(to, tokenId, amount, pair);
     }
 
-    function confirmAddLq(IZKLinkNFT nft, uint32 nftTokenId, uint128 lpTokenAmount) external {
+    function confirmAddLq(IZkLinkNFT nft, uint32 nftTokenId, uint128 lpTokenAmount) external {
         nft.confirmAddLq(nftTokenId, lpTokenAmount);
     }
 
-    function revokeAddLq(IZKLinkNFT nft, uint32 nftTokenId) external {
+    function revokeAddLq(IZkLinkNFT nft, uint32 nftTokenId) external {
         nft.revokeAddLq(nftTokenId);
     }
 

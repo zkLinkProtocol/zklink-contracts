@@ -2,11 +2,11 @@
 
 pragma solidity ^0.7.0;
 
-import "../ZkSync.sol";
-import "../Utils.sol";
-import "../SafeCast.sol";
+import "../ZkLink.sol";
+import "../zksync/Utils.sol";
+import "../zksync/SafeCast.sol";
 
-contract SimpleZkSync {
+contract SimpleZkLink {
 
     Governance public governance;
     IVault public vault;
@@ -16,7 +16,7 @@ contract SimpleZkSync {
         vault = IVault(_vault);
     }
 
-    function depositETH(address /*_zkSyncAddress*/) external payable {
+    function depositETH(address /*_zkLinkAddress*/) external payable {
         payable(address(vault)).transfer(msg.value);
         vault.recordDeposit(0);
     }
@@ -24,7 +24,7 @@ contract SimpleZkSync {
     function depositERC20(
         IERC20 _token,
         uint104 _amount,
-        address /*_zkSyncAddress*/
+        address /*_zkLinkAddress*/
     ) external {
         uint16 tokenId = governance.validateTokenAddress(address(_token));
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), SafeCast.toUint128(_amount)), "fd012"); // token transfer failed deposit

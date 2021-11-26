@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../Vault.sol";
+import "../vault/Vault.sol";
 
 contract VaultTest is Vault {
     using SafeMath for uint256;

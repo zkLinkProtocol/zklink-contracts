@@ -19,7 +19,7 @@ describe('L1RemoveLQ unit tests', function () {
         await governance.connect(alice).addToken(token.address, false); // tokenId = 1
         await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
         // nft
-        const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+        const nftFactory = await hardhat.ethers.getContractFactory('ZkLinkNFT');
         nft = await nftFactory.deploy(hardhat.ethers.constants.AddressZero);
         await governance.connect(alice).changeNft(nft.address);
         // verifier
@@ -30,21 +30,21 @@ describe('L1RemoveLQ unit tests', function () {
         vault = await vaultFactory.deploy();
         await vault.initialize(hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [governance.address]));
         // ZkSync
-        const contractFactory = await hardhat.ethers.getContractFactory('ZkSyncTest');
+        const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
         zkSync = await contractFactory.deploy();
         // ZkSyncCommitBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkSyncBlockTest');
+        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlockTest');
         const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
         zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
         // ZkSyncExit
-        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkSyncExit');
+        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
         const zkSyncExitRaw = await zkSyncExitFactory.deploy();
         zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
         await zkSync.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
                 [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
         );
-        await vault.setZkSyncAddress(zkSync.address);
+        await vault.setZkLinkAddress(zkSync.address);
         await nft.transferOwnership(zkSync.address);
         // add lq
         const amount = 20;
@@ -61,7 +61,7 @@ describe('L1RemoveLQ unit tests', function () {
     });
 
     it('remove lq should success', async () => {
-        await expect(zkSync.connect(alice).removeLiquidity(bob.address, 1, 0)).to.be.revertedWith('ZkSync: not nft owner');
+        await expect(zkSync.connect(alice).removeLiquidity(bob.address, 1, 0)).to.be.revertedWith('ZkLink: not nft owner');
         await expect(zkSync.connect(bob).removeLiquidity(bob.address, 1, 0)).to
             .emit(zkSync, 'RemoveLiquidity')
             .withArgs(pair.address, 1, 5);

@@ -7,7 +7,7 @@ describe('NFT tests', function () {
     beforeEach(async () => {
         [wallet,alice,bob,pair] = await hardhat.ethers.getSigners();
         // nft
-        const nftFactory = await hardhat.ethers.getContractFactory('ZKLinkNFT');
+        const nftFactory = await hardhat.ethers.getContractFactory('ZkLinkNFT');
         nft = await nftFactory.deploy(hardhat.ethers.constants.AddressZero);
         await nft.transferOwnership(alice.address);
     });
@@ -28,7 +28,7 @@ describe('NFT tests', function () {
         // ADD_PENDING nft can transfer
         await nft.connect(bob).transferFrom(bob.address, alice.address, 1);
 
-        await expect(nft.connect(alice).confirmAddLq(2, 10)).to.be.revertedWith("ZKLinkNFT: nonexistent token");
+        await expect(nft.connect(alice).confirmAddLq(2, 10)).to.be.revertedWith("ZkLinkNFT: nonexistent token");
         await nft.connect(alice).confirmAddLq(1, 10);
         expect((await nft.tokenLq(1)).status).equal(2);
         // FINAL nft can transfer
@@ -48,13 +48,13 @@ describe('NFT tests', function () {
         expect((await nft.tokenLq(1)).status).equal(1);
 
         // remove nft require FINAL
-        await expect(nft.connect(alice).removeLq(1)).to.be.revertedWith("ZKLinkNFT: require FINAL");
+        await expect(nft.connect(alice).removeLq(1)).to.be.revertedWith("ZkLinkNFT: require FINAL");
         await nft.connect(alice).confirmAddLq(1, 10);
         await nft.connect(alice).removeLq(1);
         expect((await nft.tokenLq(1)).status).equal(4);
 
         // REMOVE_PENDING can not transfer
-        await expect(nft.connect(bob).transferFrom(bob.address, alice.address, 1)).to.be.revertedWith("ZKLinkNFT: require !REMOVE_PENDING");
+        await expect(nft.connect(bob).transferFrom(bob.address, alice.address, 1)).to.be.revertedWith("ZkLinkNFT: require !REMOVE_PENDING");
 
         // confirm remove
         await nft.connect(alice).confirmRemoveLq(1);
