@@ -2,34 +2,64 @@
 
 This document covers the structure of ZkLink Contracts.
 
-## Core Modules
+## Core
 
 ZkLink consists of two core modules：
 
-* ZkSync：User deposit and withdraw in L1，blocks commit and verify from L2.
-* Earn：Use part of  funds in ZkSync to invest and get high returns.
+* ZkLink：User deposit and withdraw in L1，blocks commit and verify from L2.
+* Earn：Stake funds of ZkLink to get returns without security.
 
-![image-20210525193838814](./contracts-structure.png)
+![image-20211128200745367](./contracts-structure.png)
 
-### ZkSync
+### ZkLink
 
-* User deposit and withdraw
-* Create pair
+ZkLink module contains files in`contracts` and `contratcs/zksync`
+
+* Deposit and withdraw
+* Add liquidity, remove liquidity and swap
 * Block commit, verify and execute
 * Emergency exit
 
 ### Earn
 
-* Transfer part of funds to strategy
+Earn module contains files in `contracts/vault` and `contracts/strategy`
+
+* Transfer funds to strategy
 * Withdraw funds from strategy
-* Transfer profit to user reward address and protocol reward address
+* Manage strategies
 
 ### Fund FLows
 
-* Deposit: User -> ZkSync -> Vault
-* Invest: Vault -> Strategy
-* Withdraw: User <- ZkSync <- Vault <- Strategy
-* Settle reward: Vault -> reward address
+* Deposit: User -> ZkLink -> Vault -> Strategy
+* Withdraw: User <- ZkLink <- Vault <- Strategy
+* Harvest: Strategy -> Stake Pool
+
+## Stake
+
+Stake consists of three modules:
+
+* Stake pool: user stake or unstake nft produced by add liquidity
+* ZkLinkNft: manage the life cycle of nft
+* ZKL: token reward to liuqidity provider
+
+### StakePool
+
+StakePool module contains files in `contract/stake`
+
+* Manage pools
+* User stake and unstake nft
+* Allocate rewards to staker users
+
+### ZkLinkNft
+
+ZkLinkNft module contains files in `contracts/nft`
+
+* Mint new nft when user add liquidity to zklink
+* Change status when layer2 msg executed at layer1
+
+### ZKL
+
+ZKL module contains files in `contract/token`
 
 ## Permissions
 
@@ -69,4 +99,4 @@ Contrats contain business permission are：
 | **ZkSync**            | Create pair                      | governor             |
 |                       | Block commit, verify and execute | validator            |
 
-governorwill be a multiowner wallet or a timelock executor controlled by dao.
+governor will be a multiowner wallet or a timelock executor controlled by dao.

@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 
 import "../ZkLink.sol";
 import "../zksync/SafeCast.sol";
-import "../token/IZKL.sol";
+import "../token/IMappingToken.sol";
 
 contract ZkLinkTest is ZkLink {
 
@@ -54,7 +54,7 @@ contract ZkLinkTest is ZkLink {
         nft.revokeAddLq(nftTokenId);
     }
 
-    function mintZKL(IZKL zkl, address to, uint256 amount) external {
+    function mintZKL(IMappingToken zkl, address to, uint256 amount) external {
         zkl.mint(to, amount);
     }
 }

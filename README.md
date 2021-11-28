@@ -44,17 +44,19 @@ We add a custom deploy task to hardhat environment
 ```shell
 $ npx hardhat help deploy
 
-Hardhat version 2.3.0
+Hardhat version 2.6.1
 
-Usage: hardhat [GLOBAL OPTIONS] deploy --fee-account <STRING> --genesis-root <STRING> --governor <STRING> --key <STRING> --validator <STRING>
+Usage: hardhat [GLOBAL OPTIONS] deploy --fee-account <STRING> --force <BOOLEAN> --genesis-root <STRING> --governor <STRING> --key <STRING> --skip-verify <BOOLEAN> --validator <STRING>
 
 OPTIONS:
 
-  --fee-account 	The feeAccount address
+  --fee-account 	The feeAccount address, default is same as deployer
+  --force       	Fore redeploy all contracts, default is false
   --genesis-root	The genesis root hash
-  --governor    	The governor address
+  --governor    	The governor address, default is same as deployer
   --key         	The deployer key
-  --validator   	The validator address
+  --skip-verify 	Skip verify, default is false
+  --validator   	The validator address, default is same as deployer
 
 deploy: Deploy zklink
 
