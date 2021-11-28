@@ -414,7 +414,7 @@ task("deploy", "Deploy zklink")
             console.log('verify pool...');
             await hardhat.run("verify:verify", {
                 address: poolContractAddr,
-                constructorArguments: [nftContractAddr, zklContractAddr, governor]
+                constructorArguments: [nftContractAddr, zklContractAddr, zkSyncProxyAddr, governor]
             });
             deployLog.poolVerified = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
