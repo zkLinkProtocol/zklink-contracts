@@ -142,7 +142,7 @@ describe('Quick swap unit tests', function () {
         expect(await token.balanceOf(bob.address)).to.eq(acceptAmountOutMin);
     });
 
-    it('if swap fail owner in from chain should store pending balance', async () => {
+    it('if swap fail owner in from chain should not store pending balance', async () => {
         const opType = 12;
         const fromChainId = 1;
         const toChainId = 2;
@@ -160,7 +160,7 @@ describe('Quick swap unit tests', function () {
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
         let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountIn);
+        expect(pendingBalance).to.eq(0);
     });
 
     it('if swap success and no accepter owner in to chain should store pending balance', async () => {
