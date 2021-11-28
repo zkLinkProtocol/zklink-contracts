@@ -4,10 +4,11 @@ This document covers the structure of ZkLink Contracts.
 
 ## Core
 
-ZkLink consists of two core modules：
+ZkLink consists of three core modules：
 
 * ZkLink：User deposit and withdraw in L1，blocks commit and verify from L2.
 * Earn：Stake funds of ZkLink to get returns without security.
+* Oracle:  Report the consistency of all crts(cross chain Zero-knowledge aggregation verification)
 
 ![image-20211128200745367](./contracts-structure.png)
 
@@ -28,11 +29,12 @@ Earn module contains files in `contracts/vault` and `contracts/strategy`
 * Withdraw funds from strategy
 * Manage strategies
 
-### Fund FLows
+### Oracle
 
-* Deposit: User -> ZkLink -> Vault -> Strategy
-* Withdraw: User <- ZkLink <- Vault <- Strategy
-* Harvest: Strategy -> Stake Pool
+Oracle module contains files in `contracts/oracle`
+
+* Different oracle reporters such as ChainLink, Api3
+* All reporters should return the same result of a crt verify request
 
 ## Stake
 
@@ -61,6 +63,9 @@ ZkLinkNft module contains files in `contracts/nft`
 
 ZKL module contains files in `contract/token`
 
+* ZKL token is a capped erc20 token
+* ZKL implement `IMappingToken` interface which can be cross brided
+
 ## Permissions
 
 There are two permissions：
@@ -71,32 +76,27 @@ There are two permissions：
 All upgradeable contracts must be proxied by Proxy contract. Upgradeable contracts in ZkLink:
 
 * Governance
-* UniswapV2Factory
 * Verifier
 * Vault
-* ZkSync
+* ZkLink
 
-All Proxy contracts are managered by UpgradeGatekeeper，UpgradeGatekeeper can call upgradeTarget of these proxies。ZkSync is a little special，ZkSync  implement UpgradeableMaster，UpgradeableMaster is used as mainContract in UpgradeGatekeeper。
+All Proxy contracts are managered by UpgradeGatekeeper，UpgradeGatekeeper can call upgradeTarget of these proxies。ZkLink is a little special，ZkLink  implement UpgradeableMaster，UpgradeableMaster is used as mainContract in UpgradeGatekeeper。
 
 Contrats contain business permission are：
-
-* UpgradeGatekeeper
-* Governance
-* UniswapV2Factory
-* Vault
-* ZkSync
 
 | **Contract**          | **Business description**         | **Permission Owner** |
 | --------------------- | -------------------------------- | -------------------- |
 | **UpgradeGatekeeper** | Upgrade Proxy                    | governor             |
 | **Governance**        | Token manage                     | governor             |
 |                       | Validator manage                 | governor             |
-| **UniswapV2Factory**  | Create pair                      | zkSync               |
-|                       | Token mint and burn              | zkSync               |
-| **Vault**             | Deposit record and withdraw      | zkSync               |
+|                       | Nft manage                       | governor             |
+|                       | Oracle reporter manage           | governor             |
+| **Vault**             | Deposit record and withdraw      | zkLink               |
 |                       | Strategy manage                  | governor             |
-|                       | Fund manage                      | governor             |
-| **ZkSync**            | Create pair                      | governor             |
-|                       | Block commit, verify and execute | validator            |
+| **ZkLink**            | Block commit, verify and execute | validator            |
+| **ZKL**               | Mint                             | governor and zkLink  |
+| **Strategy**          | Harvest                          | stakePool            |
+| **StakePool**         | Pool manage                      | governor             |
+| **ZkLinkNFT**         | NFT status manage                | zkLink               |
 
 governor will be a multiowner wallet or a timelock executor controlled by dao.
