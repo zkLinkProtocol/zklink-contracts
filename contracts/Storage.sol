@@ -123,5 +123,9 @@ contract Storage {
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
 
     /// @dev Block crt list
-    mapping(uint32 => uint256[]) public blockCrts;
+    mapping(uint32 => uint256[]) internal blockCrts;
+
+    function getBlockCrts(uint32 crtBlock) external view returns (uint256[] memory) {
+        return blockCrts[crtBlock];
+    }
 }
