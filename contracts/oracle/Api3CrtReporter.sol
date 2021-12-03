@@ -4,9 +4,9 @@ pragma solidity 0.8.9;
 
 import "@api3/airnode-protocol/contracts/rrp/requesters/RrpRequester.sol";
 
-/// @title Abi3 oracle consumer
+/// @title Api3 oracle consumer
 /// @author zk.link
-contract Abi3CrtReporter is RrpRequester {
+contract Api3CrtReporter is RrpRequester {
     mapping(bytes32 => bool) public incomingFulfillments;
     mapping(uint32 => bool) public crtVerified;
 
@@ -48,7 +48,7 @@ contract Abi3CrtReporter is RrpRequester {
     }
 
     function fulfillCrt(bytes32 _requestId, bytes calldata _data) external onlyAirnodeRrp {
-        require(incomingFulfillments[_requestId], "Abi3CrtReporter: No such request made");
+        require(incomingFulfillments[_requestId], "Api3CrtReporter: No such request made");
         delete incomingFulfillments[_requestId];
         uint32 _crtBlock = uint32(abi.decode(_data, (uint256)));
         crtVerified[_crtBlock] = true;

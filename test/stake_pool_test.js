@@ -95,6 +95,17 @@ describe('StakePool unit tests', function () {
         expect(poolInfo.lastRewardBlock).to.eq(120);
     });
 
+    it('stake when no pool should fail', async () => {
+        const zklTokenId = 1;
+        const amount = 100;
+        // mint nft
+        await zkLink.addLq(nft.address, alice.address, zklTokenId, amount, hardhat.ethers.constants.AddressZero);
+        const nftTokenId = await nft.tokenOfOwnerByIndex(alice.address, 0);
+        // approve nft to pool and then stake
+        await nft.connect(alice).approve(pool.address, nftTokenId);
+        await expect(pool.connect(alice).stake(nftTokenId)).to.be.revertedWith('StakePool: pool not existed');
+    });
+
     it('stake ADD_PENDING nft should success', async () => {
         const zklTokenId = 1;
         const amount = 100;
@@ -274,6 +285,8 @@ describe('StakePool unit tests', function () {
         await expect(pool.connect(alice).revokePendingNft(0)).to.be.revertedWith("StakePool: nft not staked");
         const zklTokenId = 1;
         const amount = 100;
+        // add pool
+        await expect(pool.connect(networkGovernor).addPool(zklTokenId, hardhat.ethers.constants.AddressZero, 100000, 200000, 100, 5));
         // mint nft
         await zkLink.addLq(nft.address, alice.address, zklTokenId, amount, hardhat.ethers.constants.AddressZero);
         const nftTokenId = await nft.tokenOfOwnerByIndex(alice.address, 0);

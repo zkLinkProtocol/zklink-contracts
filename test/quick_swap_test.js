@@ -49,6 +49,11 @@ describe('Quick swap unit tests', function () {
         await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("L");
     });
 
+    it('should revert when swap to the same token', async () => {
+        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 1, 0, wallet.address, 0, pair.address, 1, 1, {value:1})).to.be.revertedWith("ZkLink: can not swap to the same token");
+        await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("ZkLink: can not swap to the same token");
+    });
+
     it('quick swap eth should success', async () => {
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("3000");
@@ -142,7 +147,7 @@ describe('Quick swap unit tests', function () {
         expect(await token.balanceOf(bob.address)).to.eq(acceptAmountOutMin);
     });
 
-    it('if swap fail owner in from chain should store pending balance', async () => {
+    it('if swap fail owner in from chain should not store pending balance', async () => {
         const opType = 12;
         const fromChainId = 1;
         const toChainId = 2;
@@ -160,7 +165,7 @@ describe('Quick swap unit tests', function () {
         const pubdata = ethers.utils.arrayify(encodePubdata);
         await zkSyncBlock.testExecQuickSwap(pubdata);
         let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountIn);
+        expect(pendingBalance).to.eq(0);
     });
 
     it('if swap success and no accepter owner in to chain should store pending balance', async () => {

@@ -153,6 +153,9 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         requireActive();
         require(msg.value > 0, 'ZkLink: amountIn');
         require(_acceptAmountOutMin> 0, 'ZkLink: acceptAmountOutMin');
+        if (_toChainId == CHAIN_ID) {
+            require(_toTokenId != 0, 'ZkLink: can not swap to the same token');
+        }
 
         (bool success, ) = payable(address(vault)).call{value: msg.value}("");
         require(success, "ZkLink: eth transfer failed");
@@ -190,6 +193,9 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         // Get token id by its address
         uint16 fromTokenId = governance.validateTokenAddress(address(_fromToken));
         require(!governance.pausedTokens(fromTokenId), "b"); // token deposits are paused
+        if (_toChainId == CHAIN_ID) {
+            require(_toTokenId != fromTokenId, 'ZkLink: can not swap to the same token');
+        }
 
         // token must not be taken fees when transfer
         require(Utils.transferFromERC20(_fromToken, msg.sender, address(vault), _amountIn), "c"); // token transfer failed deposit

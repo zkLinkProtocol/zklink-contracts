@@ -519,11 +519,7 @@ contract ZkLinkBlock is ZkLinkBase {
 
     function execQuickSwap(bytes memory pubData) internal {
         Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
-        if (op.amountOut == 0 && op.fromChainId == CHAIN_ID) {
-            // only from chain need to process pubData when swap fail
-            // store amountIn of from token to owner
-            storePendingBalance(op.fromTokenId, op.owner, op.amountIn);
-        } else if (op.amountOut > 0 && op.toChainId == CHAIN_ID) {
+        if (op.amountOut > 0 && op.toChainId == CHAIN_ID) {
             // only to chain need to process pubData when swap success
             bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOut, op.acceptTokenId, op.acceptAmountOutMin, op.nonce));
             withdrawToAccepter(op.to, op.toTokenId, op.amountOut, hash);
@@ -585,7 +581,9 @@ contract ZkLinkBlock is ZkLinkBase {
         if (op.lpAmount > 0) {
             governance.nft().confirmAddLq(op.nftTokenId, op.lpAmount);
         } else {
+            // if fail add to owner's pending balance
             governance.nft().revokeAddLq(op.nftTokenId);
+            storePendingBalance(op.tokenId, op.owner, op.amount);
         }
     }
 
@@ -597,8 +595,8 @@ contract ZkLinkBlock is ZkLinkBase {
         // token amount is zero means remove liquidity fail
         if (op.amount > 0) {
             governance.nft().confirmRemoveLq(op.nftTokenId);
-            // add token amount to owner's pending balance
-            storePendingBalance(op.tokenId, op.owner, op.amount);
+            // withdraw to owner
+            vault.withdraw(op.tokenId, op.owner, op.amount);
         } else {
             governance.nft().revokeRemoveLq(op.nftTokenId);
         }

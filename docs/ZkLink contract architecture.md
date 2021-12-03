@@ -2,34 +2,69 @@
 
 This document covers the structure of ZkLink Contracts.
 
-## Core Modules
+## Core
 
-ZkLink consists of two core modules：
+ZkLink consists of three core modules：
 
-* ZkSync：User deposit and withdraw in L1，blocks commit and verify from L2.
-* Earn：Use part of  funds in ZkSync to invest and get high returns.
+* ZkLink：User deposit and withdraw in L1，blocks commit and verify from L2.
+* Earn：Stake funds of ZkLink to get returns without security.
+* Oracle:  Report the consistency of all crts(cross chain Zero-knowledge aggregation verification)
 
-![image-20210525193838814](./contracts-structure.png)
+![image-20211128200745367](./contracts-structure.png)
 
-### ZkSync
+### ZkLink
 
-* User deposit and withdraw
-* Create pair
+ZkLink module contains files in`contracts` and `contratcs/zksync`
+
+* Deposit and withdraw
+* Add liquidity, remove liquidity and swap
 * Block commit, verify and execute
 * Emergency exit
 
 ### Earn
 
-* Transfer part of funds to strategy
+Earn module contains files in `contracts/vault` and `contracts/strategy`
+
+* Transfer funds to strategy
 * Withdraw funds from strategy
-* Transfer profit to user reward address and protocol reward address
+* Manage strategies
 
-### Fund FLows
+### Oracle
 
-* Deposit: User -> ZkSync -> Vault
-* Invest: Vault -> Strategy
-* Withdraw: User <- ZkSync <- Vault <- Strategy
-* Settle reward: Vault -> reward address
+Oracle module contains files in `contracts/oracle`
+
+* Different oracle reporters such as ChainLink, Api3
+* All reporters should return the same result of a crt verify request
+
+## Stake
+
+Stake consists of three modules:
+
+* Stake pool: user stake or unstake nft produced by add liquidity
+* ZkLinkNft: manage the life cycle of nft
+* ZKL: token reward to liuqidity provider
+
+### StakePool
+
+StakePool module contains files in `contract/stake`
+
+* Manage pools
+* User stake and unstake nft
+* Allocate rewards to staker users
+
+### ZkLinkNft
+
+ZkLinkNft module contains files in `contracts/nft`
+
+* Mint new nft when user add liquidity to zklink
+* Change status when layer2 msg executed at layer1
+
+### ZKL
+
+ZKL module contains files in `contract/token`
+
+* ZKL token is a capped erc20 token
+* ZKL implement `IMappingToken` interface which can be cross brided
 
 ## Permissions
 
@@ -41,32 +76,27 @@ There are two permissions：
 All upgradeable contracts must be proxied by Proxy contract. Upgradeable contracts in ZkLink:
 
 * Governance
-* UniswapV2Factory
 * Verifier
 * Vault
-* ZkSync
+* ZkLink
 
-All Proxy contracts are managered by UpgradeGatekeeper，UpgradeGatekeeper can call upgradeTarget of these proxies。ZkSync is a little special，ZkSync  implement UpgradeableMaster，UpgradeableMaster is used as mainContract in UpgradeGatekeeper。
+All Proxy contracts are managered by UpgradeGatekeeper，UpgradeGatekeeper can call upgradeTarget of these proxies。ZkLink is a little special，ZkLink  implement UpgradeableMaster，UpgradeableMaster is used as mainContract in UpgradeGatekeeper。
 
 Contrats contain business permission are：
-
-* UpgradeGatekeeper
-* Governance
-* UniswapV2Factory
-* Vault
-* ZkSync
 
 | **Contract**          | **Business description**         | **Permission Owner** |
 | --------------------- | -------------------------------- | -------------------- |
 | **UpgradeGatekeeper** | Upgrade Proxy                    | governor             |
 | **Governance**        | Token manage                     | governor             |
 |                       | Validator manage                 | governor             |
-| **UniswapV2Factory**  | Create pair                      | zkSync               |
-|                       | Token mint and burn              | zkSync               |
-| **Vault**             | Deposit record and withdraw      | zkSync               |
+|                       | Nft manage                       | governor             |
+|                       | Oracle reporter manage           | governor             |
+| **Vault**             | Deposit record and withdraw      | zkLink               |
 |                       | Strategy manage                  | governor             |
-|                       | Fund manage                      | governor             |
-| **ZkSync**            | Create pair                      | governor             |
-|                       | Block commit, verify and execute | validator            |
+| **ZkLink**            | Block commit, verify and execute | validator            |
+| **ZKL**               | Mint                             | governor and zkLink  |
+| **Strategy**          | Harvest                          | stakePool            |
+| **StakePool**         | Pool manage                      | governor             |
+| **ZkLinkNFT**         | NFT status manage                | zkLink               |
 
-governorwill be a multiowner wallet or a timelock executor controlled by dao.
+governor will be a multiowner wallet or a timelock executor controlled by dao.

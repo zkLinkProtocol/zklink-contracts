@@ -74,7 +74,7 @@ describe('L1RemoveLQ unit tests', function () {
         await zkSyncBlock.testExecL1RemoveLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(0);
-        expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(19);
+        expect(await token.balanceOf(bob.address)).to.be.equal(19);
     });
 
     it('revoke remove lq should success', async () => {
@@ -84,6 +84,5 @@ describe('L1RemoveLQ unit tests', function () {
         await zkSyncBlock.testExecL1RemoveLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(2);
-        expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(0);
     });
 });

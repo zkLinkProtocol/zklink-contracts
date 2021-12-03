@@ -6,7 +6,7 @@ import "./zksync/ReentrancyGuard.sol";
 import "./Storage.sol";
 import "./zksync/Config.sol";
 import "./zksync/Events.sol";
-import "./IMappingToken.sol";
+import "./token/IMappingToken.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 

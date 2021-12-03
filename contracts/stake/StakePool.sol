@@ -157,11 +157,17 @@ contract StakePool is Ownable, Config {
     function userRewarded(uint16 zklTokenId, address userAddr) external view returns (address[] memory, uint256[] memory) {
         PoolInfo storage pool = poolInfo[zklTokenId];
         UserInfo storage user = userInfo[zklTokenId][userAddr];
-        address[] memory strategyRewardTokens = pool.strategy.rewardTokens();
-        address[] memory allTokens = new address[](1+strategyRewardTokens.length);
-        allTokens[0] = address(zkl);
-        for(uint256 i = 0; i < strategyRewardTokens.length; i++) {
-            allTokens[1+i] = strategyRewardTokens[i];
+        address[] memory allTokens;
+        if (address(pool.strategy) != address(0)) {
+            address[] memory strategyRewardTokens = pool.strategy.rewardTokens();
+            allTokens = new address[](1+strategyRewardTokens.length);
+            allTokens[0] = address(zkl);
+            for(uint256 i = 0; i < strategyRewardTokens.length; i++) {
+                allTokens[1+i] = strategyRewardTokens[i];
+            }
+        } else {
+            allTokens = new address[](1);
+            allTokens[0] = address(zkl);
         }
         uint256[] memory allAmounts = new uint256[](allTokens.length);
         for(uint256 i = 0; i < allAmounts.length; i++) {
@@ -276,6 +282,7 @@ contract StakePool is Ownable, Config {
 
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
+        require(pool.bonusStartBlock > 0, 'StakePool: pool not existed');
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
@@ -472,6 +479,7 @@ contract StakePool is Ownable, Config {
     /// @param zklTokenId token id managed by Governance of ZkLink
     function harvest(uint16 zklTokenId) external {
         PoolInfo storage pool = poolInfo[zklTokenId];
+        require(pool.bonusStartBlock > 0, 'StakePool: pool not existed');
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
