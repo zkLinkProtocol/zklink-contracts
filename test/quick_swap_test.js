@@ -49,6 +49,11 @@ describe('Quick swap unit tests', function () {
         await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("L");
     });
 
+    it('should revert when swap to the same token', async () => {
+        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 1, 0, wallet.address, 0, pair.address, 1, 1, {value:1})).to.be.revertedWith("ZkLink: can not swap to the same token");
+        await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("ZkLink: can not swap to the same token");
+    });
+
     it('quick swap eth should success', async () => {
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("3000");
