@@ -69,7 +69,7 @@ describe('StakePool unit tests', function () {
         const zklTokenId = 1;
         // add pool, start block should larger than current block number
         await pool.setBlockNumber(99);
-        await expect(pool.connect(networkGovernor).addPool(zklTokenId, strategy.address, 100, 200, 100, 10));
+        await pool.connect(networkGovernor).addPool(zklTokenId, strategy.address, 100, 200, 100, 10);
         // when no power pool just update lastRewardBlock
         await pool.updatePool(zklTokenId);
         let poolInfo = await pool.poolInfo(zklTokenId);

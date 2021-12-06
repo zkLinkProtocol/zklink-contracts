@@ -46,6 +46,7 @@ contract StakePool is Ownable, Config {
         uint256 discardRewardStartBlock; // Discard reward release start block
         uint256 discardRewardEndBlock; // Discard reward release end block
         mapping(address => uint256) discardRewardPerBlock; // Accumulated ZKLs and strategy reward tokens that pending nft power discard
+        bool active; // Governor can set active to false to prevent user staking
     }
 
     /// @notice ZKL NFT staked to pool
@@ -191,7 +192,7 @@ contract StakePool is Ownable, Config {
         uint256 zklPerBlock,
         uint256 discardRewardReleaseBlocks) external {
         requireMaster(msg.sender);
-        require(poolInfo[zklTokenId].bonusStartBlock == 0, 'StakePool: pool existed');
+        require(!poolInfo[zklTokenId].active, 'StakePool: pool existed');
         require(_blockNumber() < bonusStartBlock && bonusEndBlock > bonusStartBlock, 'StakePool: invalid bonus time interval');
         require(discardRewardReleaseBlocks > 0, 'StakePool: invalid discard reward release blocks');
         _checkStrategy(strategy);
@@ -202,6 +203,7 @@ contract StakePool is Ownable, Config {
         p.bonusEndBlock = bonusEndBlock;
         p.zklPerBlock = zklPerBlock;
         p.discardRewardReleaseBlocks = discardRewardReleaseBlocks;
+        p.active = true;
 
         poolIdSet.add(zklTokenId);
     }
@@ -217,7 +219,7 @@ contract StakePool is Ownable, Config {
         uint256 bonusEndBlock,
         uint256 zklPerBlock) external {
         requireMaster(msg.sender);
-        require(poolInfo[zklTokenId].bonusStartBlock > 0, 'StakePool: pool not existed');
+        require(poolInfo[zklTokenId].active, 'StakePool: pool not existed');
         // only last zkl reward schedule finish and then new schedule can start
         uint256 blockNumber = _blockNumber();
         require(poolInfo[zklTokenId].bonusEndBlock < blockNumber
@@ -238,7 +240,7 @@ contract StakePool is Ownable, Config {
     /// @param strategy stake token to other defi project to earn reward
     function updatePoolStrategy(uint16 zklTokenId, IStrategy strategy) external {
         requireMaster(msg.sender);
-        require(poolInfo[zklTokenId].bonusStartBlock > 0, 'StakePool: pool not existed');
+        require(poolInfo[zklTokenId].active, 'StakePool: pool not existed');
         _checkStrategy(strategy);
 
         poolInfo[zklTokenId].strategy = strategy;
@@ -250,7 +252,7 @@ contract StakePool is Ownable, Config {
     /// @param discardRewardReleaseBlocks the number of blocks discarded pending nft rewards distribute to user
     function updatePoolDiscardRewardReleaseBlocks(uint16 zklTokenId, uint256 discardRewardReleaseBlocks) external {
         requireMaster(msg.sender);
-        require(poolInfo[zklTokenId].bonusStartBlock > 0, 'StakePool: pool not existed');
+        require(poolInfo[zklTokenId].active, 'StakePool: pool not existed');
         require(discardRewardReleaseBlocks > 0, 'StakePool: invalid discard reward release blocks');
 
         poolInfo[zklTokenId].discardRewardReleaseBlocks = discardRewardReleaseBlocks;
@@ -282,7 +284,7 @@ contract StakePool is Ownable, Config {
 
         uint16 zklTokenId = lq.tokenId;
         PoolInfo storage pool = poolInfo[zklTokenId];
-        require(pool.bonusStartBlock > 0, 'StakePool: pool not existed');
+        require(pool.active, 'StakePool: pool not existed');
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
@@ -479,7 +481,7 @@ contract StakePool is Ownable, Config {
     /// @param zklTokenId token id managed by Governance of ZkLink
     function harvest(uint16 zklTokenId) external {
         PoolInfo storage pool = poolInfo[zklTokenId];
-        require(pool.bonusStartBlock > 0, 'StakePool: pool not existed');
+        require(pool.active, 'StakePool: pool not existed');
         UserInfo storage user = userInfo[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage finalNftSet = userFinalNftSet[zklTokenId][msg.sender];
         EnumerableSet.UintSet storage pendingNftSet = userPendingNftSet[zklTokenId][msg.sender];
@@ -513,6 +515,7 @@ contract StakePool is Ownable, Config {
     /// @param zklTokenId token id managed by Governance of ZkLink
     function updatePool(uint16 zklTokenId) public {
         PoolInfo storage pool = poolInfo[zklTokenId];
+        require(pool.active, 'StakePool: pool not existed');
         uint256 lastRewardBlock = pool.lastRewardBlock;
         uint256 blockNumber = _blockNumber();
         // only allocate once at the same block
