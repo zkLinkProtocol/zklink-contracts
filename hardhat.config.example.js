@@ -31,15 +31,15 @@ const bscConfig = {
   scan: "YOUR_ETHERSCAN_KEY"
 };
 
-const hecoConfig = {
+const avaxConfig = {
   macro: {
     MAX_AMOUNT_OF_REGISTERED_TOKENS: MAX_TOKEN_NUM,
-    BLOCK_PERIOD: '3 seconds',
+    BLOCK_PERIOD: '2 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
     STRATEGY_ACTIVE_WAIT: '7 days',
     CHAIN_ID: 3
   },
-  url: "https://http-mainnet.hecochain.com",
+  url: "https://api.avax.network/ext/bc/C/rpc",
   scan: "YOUR_ETHERSCAN_KEY"
 };
 
@@ -56,6 +56,30 @@ const polygonConfig = {
 };
 
 // testnet
+const polygonTestConfig = {
+  macro: {
+    MAX_AMOUNT_OF_REGISTERED_TOKENS: polygonConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
+    BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
+    UPGRADE_NOTICE_PERIOD: 0,
+    STRATEGY_ACTIVE_WAIT: '0 days',
+    CHAIN_ID: 1
+  },
+  url: "https://matic-mumbai.chainstacklabs.com",
+  scan: polygonConfig.scan
+};
+
+const avaxTestConfig = {
+  macro: {
+    MAX_AMOUNT_OF_REGISTERED_TOKENS: avaxConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
+    BLOCK_PERIOD: avaxConfig.macro.BLOCK_PERIOD,
+    UPGRADE_NOTICE_PERIOD: 0,
+    STRATEGY_ACTIVE_WAIT: '0 days',
+    CHAIN_ID: 2
+  },
+  url: "https://api.avax-test.network/ext/bc/C/rpc",
+  scan: avaxConfig.scan
+};
+
 const rinkebyConfig = {
   macro: {
     MAX_AMOUNT_OF_REGISTERED_TOKENS: ethConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
@@ -92,39 +116,15 @@ const bscTestConfig = {
   scan: bscConfig.scan
 };
 
-const hecoTestConfig = {
-  macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: hecoConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
-    BLOCK_PERIOD: hecoConfig.macro.BLOCK_PERIOD,
-    UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: 2
-  },
-  url: "https://http-testnet.hecochain.com",
-  scan: hecoConfig.scan
-};
-
-const polygonTestConfig = {
-  macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: polygonConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
-    BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
-    UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
-    CHAIN_ID: 1
-  },
-  url: "https://matic-mumbai.chainstacklabs.com",
-  scan: polygonConfig.scan
-};
-
 const allConfig = {
   ETH: ethConfig,
   BSC: bscConfig,
-  HECO: hecoConfig,
+  AVAX: avaxConfig,
   POLYGON: polygonConfig,
   RINKEBY: rinkebyConfig,
   GOERLI: goerliConfig,
   BSCTEST: bscTestConfig,
-  HECOTEST: hecoTestConfig,
+  AVAXTEST: avaxTestConfig,
   POLYGONTEST: polygonTestConfig,
   UNITTEST: polygonTestConfig
 }
