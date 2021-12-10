@@ -31,12 +31,12 @@ Before deploy you should complile contracts, and then set `NET` environment for 
 | ----------- | ---------------------------- |
 | ETH         | Ethereum main net            |
 | BSC         | Binance smart chain main net |
-| HECO        | Heco chain main net          |
+| AVAX        | Avalanch chain main net      |
 | POLYGON     | Polygon main net             |
 | RINKEBY     | Ethereum rinkeby testnet     |
 | GOERLI      | Ethereum goerli testnet      |
 | BSCTEST     | Binance smart chain testnet  |
-| HECOTEST    | Heco chain testnet           |
+| AVAXTEST    | Avalanch chain testnet       |
 | POLYGONTEST | Polygon testnet              |
 
 We add a custom deploy task to hardhat environment
