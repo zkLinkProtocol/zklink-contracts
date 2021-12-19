@@ -85,9 +85,7 @@ describe('Token mapping unit tests', function () {
             withdrawFee:'0x0001' });
         await zkSync.setExodusMode(true);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
-        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
-            .emit(zkSync, 'Withdrawal')
-            .withArgs(1, 20);
+        expect(await token.balanceOf(bob.address)).to.be.equal(20);
     });
 
     it('burn in from chain should success', async () => {

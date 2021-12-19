@@ -47,7 +47,6 @@ contract ZkLinkExit is ZkLinkBase {
         uint128 _amount,
         uint256[] memory _proof
     ) external nonReentrant {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
         require(exodusMode, "s"); // must be in exodus mode
         require(!performedExodus[_accountId][_tokenId], "t"); // already exited
         require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "u"); // incorrect sotred block info
@@ -56,8 +55,8 @@ contract ZkLinkExit is ZkLinkBase {
         verifier.verifyExitProof(_storedBlockInfo.stateHash, _accountId, _owner, _tokenId, _amount, _proof);
         require(proofCorrect, "x");
 
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
         performedExodus[_accountId][_tokenId] = true;
+        vault.withdraw(_tokenId, _owner, _amount);
     }
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
@@ -79,28 +78,21 @@ contract ZkLinkExit is ZkLinkBase {
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
                 ++currentDepositIdx;
 
-                bytes22 packedBalanceKey;
-                uint128 amount;
                 if (priorityRequests[id].opType == Operations.OpType.Deposit) {
                     Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
+                    vault.withdraw(op.tokenId, op.owner, op.amount);
                 } else if (priorityRequests[id].opType == Operations.OpType.QuickSwap) {
                     Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.fromTokenId);
-                    amount = op.amountIn;
+                    vault.withdraw(op.fromTokenId, op.owner, op.amountIn);
                 } else if (priorityRequests[id].opType == Operations.OpType.Mapping) {
                     Operations.Mapping memory op = Operations.readMappingPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
+                    vault.withdraw(op.tokenId, op.owner, op.amount);
                 } else {
                     Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(depositPubdata);
-                    packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
-                    amount = op.amount;
+                    vault.withdraw(op.tokenId, op.owner, op.amount);
                     // revoke nft
                     governance.nft().revokeAddLq(op.nftTokenId);
                 }
-                pendingBalances[packedBalanceKey].balanceToWithdraw += amount;
             }
             delete priorityRequests[id];
         }
@@ -196,78 +188,5 @@ contract ZkLinkExit is ZkLinkBase {
         require(spender != address(0), "ZkLink: approve to the zero address");
         brokerAllowances[tokenId][msg.sender][spender] = amount;
         return true;
-    }
-
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from ZkLink contract
-    /// @param _address Address of the tokens owner
-    /// @param _token Address of token, zero address is used for ETH
-    function getPendingBalance(address _address, address _token) public view returns (uint128) {
-        uint16 tokenId = 0;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
-        return pendingBalances[packAddressAndTokenId(_address, tokenId)].balanceToWithdraw;
-    }
-
-    /// @notice Returns amount of tokens that can be withdrawn by `address` from ZkLink contract
-    /// @param _address Address of the tokens owner
-    /// @param _tokens Address of tokens, zero address is used for ETH
-    function getPendingBalances(address _address, address[] memory _tokens) public view returns (uint128[] memory) {
-        uint128[] memory balances = new uint128[](_tokens.length);
-        for(uint256 i = 0; i < _tokens.length; i++) {
-            balances[i] = getPendingBalance(_address, _tokens[i]);
-        }
-        return balances;
-    }
-
-    /// @notice  Withdraws multiple tokens from ZkLink contract to the owner
-    /// @param _owner Address of the tokens owner
-    /// @param _tokens Address of tokens, zero address is used for ETH
-    /// @param _amounts Amount to withdraw to request.
-    function withdrawMultiplePendingBalance(
-        address payable _owner,
-        address[] memory _tokens,
-        uint128[] memory _amounts
-    ) external nonReentrant {
-        require(_tokens.length > 0 && _tokens.length == _amounts.length, 'ZkLink: withdraw length');
-        for(uint256 i = 0; i < _tokens.length; i++) {
-            _withdrawPendingBalance(_owner, _tokens[i], _amounts[i]);
-        }
-    }
-
-    /// @notice  Withdraws tokens from ZkLink contract to the owner
-    /// @param _owner Address of the tokens owner
-    /// @param _token Address of tokens, zero address is used for ETH
-    /// @param _amount Amount to withdraw to request.
-    ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token ZkLink contract
-    ///         balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    function withdrawPendingBalance(
-        address payable _owner,
-        address _token,
-        uint128 _amount
-    ) external nonReentrant {
-        _withdrawPendingBalance(_owner, _token, _amount);
-    }
-
-    function _withdrawPendingBalance(
-        address payable _owner,
-        address _token,
-        uint128 _amount
-    ) internal {
-        // eth and non lp erc20 token is managed by vault and withdraw from vault
-        uint16 tokenId;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, tokenId);
-        uint128 balance = pendingBalances[packedBalanceKey].balanceToWithdraw;
-        if (_amount > balance) {
-            _amount = balance;
-        }
-        require(_amount > 0, 'ZkLink: withdraw amount');
-
-        pendingBalances[packedBalanceKey].balanceToWithdraw = balance.sub(_amount);
-        vault.withdraw(tokenId, _owner, _amount);
-        emit Withdrawal(tokenId, _amount);
     }
 }

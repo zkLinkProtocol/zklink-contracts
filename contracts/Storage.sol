@@ -31,15 +31,6 @@ contract Storage {
     /// @dev Vault contract. Used to hold token user deposited to L1
     IVault public vault;
 
-    uint8 internal constant FILLED_GAS_RESERVE_VALUE = 0xff; // we use it to set gas revert value so slot will not be emptied with 0 balance
-    struct PendingBalance {
-        uint128 balanceToWithdraw;
-        uint8 gasReserveValue; // gives user opportunity to fill storage slot with nonzero value
-    }
-
-    /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
-    mapping(bytes22 => PendingBalance) internal pendingBalances;
-
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
 
@@ -65,11 +56,6 @@ contract Storage {
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
     uint64 public totalCommittedPriorityRequests;
-
-    /// @notice Packs address and token id into single word to use as a key in balances mapping
-    function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
-        return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
-    }
 
     /// @Rollup block stored data
     /// @member blockNumber Rollup block number

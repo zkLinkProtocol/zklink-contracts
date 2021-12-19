@@ -16,12 +16,22 @@ contract VaultStorage {
         uint256 takeEffectTime; // strategy take effect time
         StrategyStatus status; // strategy status
     }
-    /// @dev token(valid by governance) vault
+    /// @notice token(valid by governance) vault
     mapping(uint16 => TokenVault) public tokenVaults;
 
-    /// @dev ZkLink contract
+    /// @notice ZkLink contract
     ZkLink public zkLink;
 
-    /// @dev governance contract which used to validate token
+    /// @notice governance contract which used to validate token
     Governance public governance;
+
+    /// @notice Withdraw cache info
+    struct CommitWithdraw {
+        uint16 tokenId;
+        address to;
+        uint256 amount;
+    }
+    mapping(uint16 => uint256) internal tokenWithdrawCache;
+    uint16[] internal tokensCache;
+    CommitWithdraw[] internal withdrawsCache;
 }

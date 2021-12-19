@@ -291,11 +291,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
             });
         bytes memory pubData = Operations.writeFullExitPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.FullExit, pubData);
-
-        // User must fill storage slot of balancesToWithdraw(msg.sender, tokenId) with nonzero value
-        // In this case operator should just overwrite this slot during confirming withdrawal
-        bytes22 packedBalanceKey = packAddressAndTokenId(msg.sender, tokenId);
-        pendingBalances[packedBalanceKey].gasReserveValue = FILLED_GAS_RESERVE_VALUE;
     }
 
     /// @notice Register deposit request - pack pubdata, add priority request and emit OnchainDeposit event

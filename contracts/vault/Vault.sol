@@ -65,19 +65,33 @@ contract Vault is VaultStorage, IVault {
         }
     }
 
-    function withdraw(uint16 tokenId, address to, uint256 amount) override onlyZkLink external {
-        uint256 balance = _tokenBalance(tokenId);
-        if (balance < amount) {
-            // withdraw from strategy when token balance of vault can not satisfy withdraw
-            TokenVault memory tv = tokenVaults[tokenId];
-            address strategy = tv.strategy;
-            require(strategy != address(0), 'Vault: no strategy');
-            require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
-
-            uint256 withdrawNeeded = amount - balance;
-            // strategy guarantee to withdraw successfully with no loss or revert if it can not
-            IStrategy(strategy).withdraw(withdrawNeeded);
+    function commitWithdraw(uint16 tokenId, address to, uint256 amount) override onlyZkLink external {
+        if (tokenWithdrawCache[tokenId] == 0) {
+            tokensCache.push(tokenId);
         }
+        tokenWithdrawCache[tokenId] = tokenWithdrawCache[tokenId].add(amount);
+        withdrawsCache.push(CommitWithdraw(tokenId, to, amount));
+    }
+
+    function execWithdraw() override onlyZkLink external {
+        // Try to withdraw the total amount that needs to be withdrawn from the strategy at once
+        for(uint256 i = 0; i < tokensCache.length; i++) {
+            uint16 tokenId = tokensCache[i];
+            uint256 amount = tokenWithdrawCache[tokenId];
+            _withdrawFromStrategy(tokenId, amount);
+            delete tokenWithdrawCache[tokenId]; // clear cache
+        }
+        delete tokensCache; // clear cache
+        // And then withdraw one by one
+        for(uint256 i = 0; i < withdrawsCache.length; i++) {
+            CommitWithdraw memory cw = withdrawsCache[i];
+            _safeTransferToken(cw.tokenId, cw.to, cw.amount);
+        }
+        delete withdrawsCache; // clear cache
+    }
+
+    function withdraw(uint16 tokenId, address to, uint256 amount) override onlyZkLink external {
+        _withdrawFromStrategy(tokenId, amount);
         _safeTransferToken(tokenId, to, amount);
     }
 
@@ -205,6 +219,24 @@ contract Vault is VaultStorage, IVault {
         tokenVaults[tokenId].status = StrategyStatus.EXIT;
 
         emit StrategyExit(tokenId);
+    }
+
+    /// @notice Withdraw token from strategy if vault's token balance not enough
+    /// @param tokenId Token id
+    /// @param amount Amount need to withdraw from vault
+    function _withdrawFromStrategy(uint16 tokenId, uint256 amount) internal {
+        uint256 balance = _tokenBalance(tokenId);
+        if (balance < amount) {
+            // withdraw from strategy when token balance of vault can not satisfy withdraw
+            TokenVault memory tv = tokenVaults[tokenId];
+            address strategy = tv.strategy;
+            require(strategy != address(0), 'Vault: no strategy');
+            require(tv.status == StrategyStatus.ACTIVE, 'Vault: require active');
+
+            uint256 withdrawNeeded = amount - balance;
+            // strategy guarantee to withdraw successfully with no loss or revert if it can not
+            IStrategy(strategy).withdraw(withdrawNeeded);
+        }
     }
 
     /// @notice Return amount of token in this vault

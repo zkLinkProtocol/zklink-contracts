@@ -210,16 +210,6 @@ contract ZkLinkBlock is ZkLinkBase {
         );
     }
 
-    /// @dev Increment _recipients balance to withdraw.
-    function storePendingBalance(
-        uint16 _tokenId,
-        address _recipient,
-        uint128 _amount
-    ) internal {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
-    }
-
     /// @dev Executes one block
     /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// @dev 2. Finalizes block on Ethereum
@@ -242,10 +232,10 @@ contract ZkLinkBlock is ZkLinkBase {
                 execPartialExit(pubData);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                storePendingBalance(op.tokenId, op.target, op.amount);
+                vault.commitWithdraw(op.tokenId, op.target, op.amount);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                storePendingBalance(op.tokenId, op.owner, op.amount);
+                vault.commitWithdraw(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.QuickSwap) {
                 execQuickSwap(pubData);
             } else if (opType == Operations.OpType.Mapping) {
@@ -260,6 +250,8 @@ contract ZkLinkBlock is ZkLinkBase {
             pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
         }
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m"); // incorrect onchain ops executed
+        // Valut exec withdraw from cache
+        vault.execWithdraw();
     }
 
     /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
@@ -537,7 +529,7 @@ contract ZkLinkBlock is ZkLinkBase {
         if (op.isFastWithdraw) {
             withdrawToAccepter(op.owner, op.tokenId, op.amount, op.fastWithdrawFee, op.nonce);
         } else {
-            storePendingBalance(op.tokenId, op.owner, op.amount);
+            vault.commitWithdraw(op.tokenId, op.owner, op.amount);
         }
     }
 
@@ -551,9 +543,9 @@ contract ZkLinkBlock is ZkLinkBase {
         if (accepter == address(0)) {
             // receiver act as a accepter
             accepts[hash] = to;
-            storePendingBalance(tokenId, to, amount);
+            vault.commitWithdraw(tokenId, to, amount);
         } else {
-            storePendingBalance(tokenId, accepter, amount);
+            vault.commitWithdraw(tokenId, accepter, amount);
         }
     }
 
@@ -589,7 +581,7 @@ contract ZkLinkBlock is ZkLinkBase {
         } else {
             // if fail add to owner's pending balance
             governance.nft().revokeAddLq(op.nftTokenId);
-            storePendingBalance(op.tokenId, op.owner, op.amount);
+            vault.commitWithdraw(op.tokenId, op.owner, op.amount);
         }
     }
 
@@ -602,7 +594,7 @@ contract ZkLinkBlock is ZkLinkBase {
         if (op.amount > 0) {
             governance.nft().confirmRemoveLq(op.nftTokenId);
             // withdraw to owner
-            vault.withdraw(op.tokenId, op.owner, op.amount);
+            vault.commitWithdraw(op.tokenId, op.owner, op.amount);
         } else {
             governance.nft().revokeRemoveLq(op.nftTokenId);
         }

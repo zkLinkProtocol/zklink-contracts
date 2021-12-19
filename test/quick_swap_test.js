@@ -101,10 +101,10 @@ describe('Quick swap unit tests', function () {
         const acceptAmountOutMin = '0x00000000000000000000000000000001';
         const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, amountOut, nonce, pair:pair.address, acceptTokenId, acceptAmountOutMin});
         await zkSync.setExodusMode(true);
+        const b0 = await hardhat.ethers.provider.getBalance(bob.address);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
-            .emit(zkSync, 'Withdrawal')
-            .withArgs(0, 50);
+        const b1 = await hardhat.ethers.provider.getBalance(bob.address);
+        expect(b1.sub(b0)).to.be.equal(50);
     });
 
     it('accept eth should success', async () => {
@@ -147,7 +147,7 @@ describe('Quick swap unit tests', function () {
         expect(await token.balanceOf(bob.address)).to.eq(acceptAmountOutMin);
     });
 
-    it('if swap fail owner in from chain should not store pending balance', async () => {
+    it('if swap fail owner in from chain should not get token back', async () => {
         const opType = 12;
         const fromChainId = 1;
         const toChainId = 2;
@@ -160,15 +160,21 @@ describe('Quick swap unit tests', function () {
         const amountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountOut = 0;
 
+        await wallet.sendTransaction({
+                to: vault.address,
+                value: hardhat.ethers.utils.parseEther("1")
+            }
+        );
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await bob.getBalance();
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(0);
+        const b1 = await bob.getBalance();
+        expect(b1.sub(b0)).to.eq(0);
     });
 
-    it('if swap success and no accepter owner in to chain should store pending balance', async () => {
+    it('if swap success and no accepter owner in to chain should receive to token', async () => {
         const opType = 12;
         const fromChainId = 2;
         const toChainId = 1;
@@ -181,15 +187,21 @@ describe('Quick swap unit tests', function () {
         const amountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountOut = hardhat.ethers.utils.parseEther("0.995");
 
+        await wallet.sendTransaction({
+                to: vault.address,
+                value: amountOut
+            }
+        );
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await bob.getBalance();
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountOut);
+        const b1 = await bob.getBalance();
+        expect(b1.sub(b0)).to.eq(amountOut);
     });
 
-    it('if swap success and accepter exist accepter in to chain should store pending balance', async () => {
+    it('if swap success and accepter exist accepter in to chain should receive to token', async () => {
         const opType = 12;
         const fromChainId = 2;
         const toChainId = 1;
@@ -207,11 +219,17 @@ describe('Quick swap unit tests', function () {
         await token.connect(alice).approve(zkSync.address, amount);
         await zkSyncExit.connect(alice).acceptQuickSwap(alice.address, bob.address, toTokenId, amountOut, acceptTokenId, acceptAmountOutMin, nonce);
 
+        await wallet.sendTransaction({
+                to: vault.address,
+                value: amountOut
+            }
+        );
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await alice.getBalance();
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(alice.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountOut);
+        const b1 = await alice.getBalance();
+        expect(b1.sub(b0)).to.eq(amountOut);
     });
 });

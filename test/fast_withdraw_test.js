@@ -54,7 +54,6 @@ describe('Fast withdraw unit tests', function () {
         let amount = hardhat.ethers.utils.parseEther("1000");
         let fastWithdrawFeeRatio = 30; // 0.3%
         let bobReceive = hardhat.ethers.utils.parseEther("997");
-        let fastWithdrawFee = hardhat.ethers.utils.parseEther("3");
 
         await token.connect(alice).mint(amount);
         await token.connect(alice).approve(zkSync.address, amount);
@@ -63,10 +62,13 @@ describe('Fast withdraw unit tests', function () {
             .withArgs(accepter, receiver, tokenId, bobReceive);
         expect(await token.balanceOf(receiver)).to.eq(bobReceive);
 
+        await token.mintTo(vault.address, amount);
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint32","uint16","uint128","uint16","address","uint32","bool","uint16"],
             [opType,accountId,tokenId,amount,fee,receiver,nonce,true,fastWithdrawFeeRatio]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await token.balanceOf(accepter);
         await zkSyncBlock.testExecPartialExit(pubdata);
-        expect(await zkSyncExit.getPendingBalance(accepter, token.address)).to.eq(amount);
+        const b1 = await token.balanceOf(accepter);
+        expect(b1.sub(b0)).to.eq(amount);
     });
 });

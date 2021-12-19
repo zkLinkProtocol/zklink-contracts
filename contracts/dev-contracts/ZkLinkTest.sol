@@ -14,11 +14,6 @@ contract ZkLinkTest is ZkLink {
         exodusMode = _exodusMode;
     }
 
-    function setBalancesToWithdraw(address _account, uint16 _tokenId, uint _balance) external {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_account, _tokenId);
-        pendingBalances[packedBalanceKey].balanceToWithdraw = SafeCast.toUint128(_balance);
-    }
-
     function setPriorityExpirationBlock(uint64 index, uint64 eb) external {
         priorityRequests[index].expirationBlock = eb;
     }

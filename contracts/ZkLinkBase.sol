@@ -20,11 +20,6 @@ contract ZkLinkBase is Storage, Config, Events, ReentrancyGuard {
         require(!exodusMode, "L"); // exodus mode activated
     }
 
-    function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
-        uint128 balance = pendingBalances[_packedBalanceKey].balanceToWithdraw;
-        pendingBalances[_packedBalanceKey] = PendingBalance(balance.add(_amount), FILLED_GAS_RESERVE_VALUE);
-    }
-
     /// @notice Performs a delegatecall to the contract implementation
     /// @dev Fallback function allowing to perform a delegatecall to the given implementation
     /// This function will return whatever the implementation call returns
