@@ -158,30 +158,17 @@ describe('Vault unit tests', function () {
     });
 
     it('commit withdraw should success', async () => {
-        await zkSync.depositETH(alice.address, {value:50});
         await tokenA.approve(zkSync.address, 100);
         await zkSync.depositERC20(tokenA.address, 100, alice.address);
-        await zkSync.vaultCommitWithdraw(0, alice.address, 30);
-        await zkSync.vaultCommitWithdraw(0, bob.address, 10);
         await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 40);
         await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 20);
-        const aliceEthB0 = await alice.getBalance();
-        const bobEthB0 = await bob.getBalance();
         const aliceTokenAB0 = await tokenA.balanceOf(alice.address);
         await zkSync.vaultExecWithdraw();
-        const aliceEthB1 = await alice.getBalance();
-        const bobEthB1 = await bob.getBalance();
         const aliceTokenAB1 = await tokenA.balanceOf(alice.address);
-        expect(aliceEthB1.sub(aliceEthB0)).to.be.equal(30);
-        expect(bobEthB1.sub(bobEthB0)).to.be.equal(10);
         expect(aliceTokenAB1.sub(aliceTokenAB0)).to.be.equal(60);
         // cache has been cleared, the second time will have no token been withdrawn from vault
         await zkSync.vaultExecWithdraw();
-        const aliceEthB2 = await alice.getBalance();
-        const bobEthB2 = await bob.getBalance();
         const aliceTokenAB2 = await tokenA.balanceOf(alice.address);
-        expect(aliceEthB2).to.be.equal(aliceEthB1);
-        expect(bobEthB2).to.be.equal(bobEthB1);
         expect(aliceTokenAB2).to.be.equal(aliceTokenAB1);
         // commit and exec withdraw again
         await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 10);

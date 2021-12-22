@@ -243,27 +243,18 @@ contract Vault is VaultStorage, IVault {
     /// @param tokenId Token id
     function _tokenBalance(uint16 tokenId) internal view returns (uint256) {
         address account = address(this);
-        if (tokenId == 0) {
-            return account.balance;
-        } else {
-            address token = governance.tokenAddresses(tokenId);
-            return IERC20(token).balanceOf(account);
-        }
+        address token = governance.tokenAddresses(tokenId);
+        governance.validateTokenAddress(token);
+        return IERC20(token).balanceOf(account);
     }
 
     function _safeTransferToken(uint16 tokenId, address to,  uint256 amount) internal {
-        if (tokenId == 0) {
-            (bool success, ) = to.call{value: amount}("");
-            require(success, "Vault: eth transfer failed");
-        } else {
-            address token = governance.tokenAddresses(tokenId);
-            require(Utils.sendERC20(IERC20(token), to, amount), 'Vault: erc20 transfer failed');
-        }
+        address token = governance.tokenAddresses(tokenId);
+        governance.validateTokenAddress(token);
+        require(Utils.sendERC20(IERC20(token), to, amount), 'Vault: erc20 transfer failed');
     }
 
     function _validateToken(uint16 tokenId) internal view {
-        if (tokenId > 0) {
-            require(governance.tokenAddresses(tokenId) != address(0), 'Vault: token not exist');
-        }
+        require(governance.tokenAddresses(tokenId) != address(0), 'Vault: token not exist');
     }
 }

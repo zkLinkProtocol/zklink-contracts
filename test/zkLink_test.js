@@ -1,12 +1,11 @@
 const hardhat = require('hardhat');
 const { BigNumber } = require('ethers');
 const { expect } = require('chai');
-const {calFee, writeDepositPubdata} = require('./utils');
+const { writeDepositPubdata } = require('./utils');
 
 describe('ZkLink unit tests', function () {
     const tokenA = "0xe4815AE53B124e7263F08dcDBBB757d41Ed658c6";
     const tokenB = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-    const tokenC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599";
     let zkSync, zkSyncBlock, zkSyncExit, vault;
     let wallet,alice,bob;
     let tokenD;
@@ -52,17 +51,8 @@ describe('ZkLink unit tests', function () {
 
     it('should revert when exodusMode is active', async () => {
         await zkSync.setExodusMode(true);
-        await expect(zkSync.depositETH(wallet.address)).to.be.revertedWith("L");
         await expect(zkSync.depositERC20(tokenA, 100, wallet.address)).to.be.revertedWith("L");
         await expect(zkSync.requestFullExit(1, tokenA)).to.be.revertedWith("L");
-    });
-
-    it('deposit eth should success', async () => {
-        await expect(zkSync.connect(bob).depositETH(wallet.address, {value:30})).to
-            .emit(zkSync, 'Deposit')
-            .withArgs(0, 30);
-        let contractBalance = await hardhat.ethers.provider.getBalance(vault.address);
-        expect(contractBalance).equal(30);
     });
 
     it('deposit erc20 should success', async () => {
@@ -85,23 +75,22 @@ describe('ZkLink unit tests', function () {
         await expect(zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [])).to.be.revertedWith("9");
 
         await zkSync.setExodusMode(false);
-        await zkSync.connect(bob).depositETH(wallet.address, {value:30});
-        await zkSync.connect(bob).depositETH(wallet.address, {value:20});
+        await tokenD.approve(zkSync.address, 100);
+        await zkSync.depositERC20(tokenD.address, 30, alice.address);
+        await zkSync.depositERC20(tokenD.address, 20, alice.address);
 
-        const tokenId = '0x0000';
+        const tokenId = '0x0003';
         const amount0 = '0x0000000000000000000000000000001e';
         const amount1 = '0x00000000000000000000000000000014';
-        const owner = wallet.address;
+        const owner = alice.address;
         const pubdata0 = writeDepositPubdata({ tokenId, amount:amount0, owner });
         const pubdata1 = writeDepositPubdata({ tokenId, amount:amount1, owner });
 
         await zkSync.setExodusMode(true);
-        const b0 = await wallet.getBalance();
-        const tx = await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        const fee = await calFee(tx);
-        const b1 = await wallet.getBalance();
-        // b1 = b0 + 50 - tx.fee
-        expect(b1.add(fee).sub(b0)).to.be.equal(50);
+        const b0 = await tokenD.balanceOf(alice.address);
+        await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
+        const b1 = await tokenD.balanceOf(alice.address);
+        expect(b1.sub(b0)).to.be.equal(50);
     });
 
     it('requestFullExit should success', async () => {

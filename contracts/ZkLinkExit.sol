@@ -157,24 +157,14 @@ contract ZkLinkExit is ZkLinkBase {
         accepts[hash] = accepter;
 
         // send token to receiver from msg.sender
-        if (tokenId == 0) {
-            // accepter should transfer at least amountReceive platform token to this contract
-            require(msg.value >= amountReceive, 'ZkLink: accept msg value');
-            payable(receiver).transfer(amountReceive);
-            // if there are any left return back to accepter
-            if (msg.value > amountReceive) {
-                payable(msg.sender).transfer(msg.value - amountReceive);
-            }
-        } else {
-            address tokenAddress = governance.tokenAddresses(tokenId);
-            governance.validateTokenAddress(tokenAddress);
-            // transfer erc20 token from accepter to receiver directly
-            if (msg.sender != accepter) {
-                require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkLink: broker allowance');
-                brokerAllowances[tokenId][accepter][msg.sender] -= amountReceive;
-            }
-            require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkLink: transferFrom failed');
+        address tokenAddress = governance.tokenAddresses(tokenId);
+        governance.validateTokenAddress(tokenAddress);
+        // transfer erc20 token from accepter to receiver directly
+        if (msg.sender != accepter) {
+            require(brokerAllowance(tokenId, accepter, msg.sender) >= amountReceive, 'ZkLink: broker allowance');
+            brokerAllowances[tokenId][accepter][msg.sender] -= amountReceive;
         }
+        require(Utils.transferFromERC20(IERC20(tokenAddress), accepter, receiver, amountReceive), 'ZkLink: transferFrom failed');
         emit Accept(accepter, receiver, tokenId, amountReceive);
     }
 

@@ -97,18 +97,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         zkLinkExit = _zkLinkExit;
     }
 
-    /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
-    /// @param _zkLinkAddress The receiver Layer 2 address
-    function depositETH(address _zkLinkAddress) external payable {
-        requireActive();
-        require(msg.value > 0, 'ZkLink: deposit amount');
-
-        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkLink: eth transfer failed");
-        vault.recordDeposit(0);
-        registerDeposit(0, SafeCast.toUint128(msg.value), _zkLinkAddress);
-    }
-
     /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
     /// @param _token Token address
     /// @param _amount Token amount
@@ -129,38 +117,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
         vault.recordDeposit(tokenId);
         registerDeposit(tokenId, _amount, _zkLinkAddress);
-    }
-
-    /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
-    /// @param _zkLinkAddress Receiver Layer 2 address if swap failed
-    /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
-    /// @param _toChainId Chain id of to token
-    /// @param _toTokenId Swap token to
-    /// @param _to To token received address
-    /// @param _nonce Used to produce unique accept info
-    /// @param _pair L2 cross chain pair address
-    /// @param _acceptTokenId Accept token user really want to receive
-    /// @param _acceptAmountOutMin Accept token min amount user really want to receive
-    function swapExactETHForTokens(address _zkLinkAddress,
-        uint104 _amountOutMin,
-        uint8 _toChainId,
-        uint16 _toTokenId,
-        address _to,
-        uint32 _nonce,
-        address _pair,
-        uint16 _acceptTokenId,
-        uint128 _acceptAmountOutMin) external payable {
-        requireActive();
-        require(msg.value > 0, 'ZkLink: amountIn');
-        require(_acceptAmountOutMin> 0, 'ZkLink: acceptAmountOutMin');
-        if (_toChainId == CHAIN_ID) {
-            require(_toTokenId != 0, 'ZkLink: can not swap to the same token');
-        }
-
-        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkLink: eth transfer failed");
-        vault.recordDeposit(0);
-        registerQuickSwap(_zkLinkAddress, SafeCast.toUint128(msg.value), _amountOutMin, 0, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
@@ -276,10 +232,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         requireActive();
         require(_accountId <= MAX_ACCOUNT_ID, "e");
 
-        uint16 tokenId = 0;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
+        uint16 tokenId = governance.validateTokenAddress(_token);
 
         // Priority Queue request
         Operations.FullExit memory op =
