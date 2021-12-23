@@ -55,6 +55,14 @@ describe('ZkLink unit tests', function () {
         await expect(zkSync.requestFullExit(1, tokenA)).to.be.revertedWith("L");
     });
 
+    it('should revert when update zkLinkBlock address in logic contract', async () => {
+        const zkLinkHackerFactory = await hardhat.ethers.getContractFactory('ZkLinkHacker');
+        const zkLinkHacker = await zkLinkHackerFactory.deploy();
+        await zkSync.setProxyMode(false);
+        await expect(zkSync.upgrade(hardhat.ethers.utils.defaultAbiCoder.encode(['address','address'], [zkLinkHacker.address, zkLinkHacker.address])))
+            .to.be.revertedWith("ZkLink: call should be in proxy mode");
+    });
+
     it('deposit erc20 should success', async () => {
         let senderBalance = await tokenD.balanceOf(wallet.address);
         let contractBalance = await tokenD.balanceOf(vault.address);

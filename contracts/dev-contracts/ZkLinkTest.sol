@@ -10,6 +10,14 @@ import "../token/IMappingToken.sol";
 
 contract ZkLinkTest is ZkLink {
 
+    constructor() {
+        notInProxyMode = false;
+    }
+
+    function setProxyMode(bool inProxy) external {
+        notInProxyMode = !inProxy;
+    }
+
     function setExodusMode(bool _exodusMode) external {
         exodusMode = _exodusMode;
     }

@@ -114,4 +114,8 @@ contract Storage {
     function getBlockCrts(uint32 crtBlock) external view returns (uint256[] memory) {
         return blockCrts[crtBlock];
     }
+
+    /// @dev ZkLink logic contract will set this value to true to
+    /// @dev prevent hacker set zkLinkBlock or zkLinkExit to a self destruct contract
+    bool internal notInProxyMode;
 }

@@ -23,6 +23,16 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
 
     bytes32 private constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
+    constructor() {
+        notInProxyMode = true;
+    }
+
+    /// @notice Set ZkLink logic part(zkLinkBlock or zkLinkExit) must be called by delegatecall
+    modifier proxyMode() {
+        require(!notInProxyMode, "ZkLink: call should be in proxy mode");
+        _;
+    }
+
     // Upgrade functional
 
     /// @notice Notice period before activation preparation status of upgrade mode
@@ -70,7 +80,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
     /// @dev _pairManagerAddress The address of UniswapV2Factory contract
     /// @dev _vaultAddress The address of Vault contract
     /// @dev _genesisStateHash Genesis blocks (first block) state tree root hash
-    function initialize(bytes calldata initializationParameters) external {
+    function initialize(bytes calldata initializationParameters) external proxyMode {
         initializeReentrancyGuard();
 
         (address _governanceAddress, address _verifierAddress, address payable _vaultAddress, address _zkLinkBlock, address _zkLinkExit, bytes32 _genesisStateHash) =
@@ -91,7 +101,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
-    function upgrade(bytes calldata upgradeParameters) external nonReentrant {
+    function upgrade(bytes calldata upgradeParameters) external nonReentrant proxyMode {
         (address _zkLinkBlock, address _zkLinkExit) = abi.decode(upgradeParameters, (address, address));
         zkLinkBlock = _zkLinkBlock;
         zkLinkExit = _zkLinkExit;
