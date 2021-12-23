@@ -25,7 +25,11 @@ or
 
 ## Deploy
 
-Before deploy you should complile contracts, and then set `NET` environment for deploying to different blockchain.
+Before deploy you should:
+
+* Compile contracts
+* Set deploy address key to `.KEY` file at `scripts` directory
+* Set `NET` environment for deploying to different blockchain
 
 | NET Name    | Description                  |
 | ----------- | ---------------------------- |
@@ -42,11 +46,11 @@ Before deploy you should complile contracts, and then set `NET` environment for 
 We add a custom deploy task to hardhat environment
 
 ```shell
-$ npx hardhat help deploy
+$ npx hardhat help deployZkLink
 
 Hardhat version 2.6.1
 
-Usage: hardhat [GLOBAL OPTIONS] deploy --fee-account <STRING> --force <BOOLEAN> --genesis-root <STRING> --governor <STRING> --key <STRING> --skip-verify <BOOLEAN> --validator <STRING>
+Usage: hardhat [GLOBAL OPTIONS] deployZkLink --fee-account <STRING> --force <BOOLEAN> --genesis-root <STRING> --governor <STRING> --skip-verify <BOOLEAN> --validator <STRING>
 
 OPTIONS:
 
@@ -54,11 +58,10 @@ OPTIONS:
   --force       	Fore redeploy all contracts, default is false
   --genesis-root	The genesis root hash
   --governor    	The governor address, default is same as deployer
-  --key         	The deployer key
   --skip-verify 	Skip verify, default is false
   --validator   	The validator address, default is same as deployer
 
-deploy: Deploy zklink
+deploy: Deploy zklink contracts
 
 For global options help run: hardhat help
 ```
@@ -66,5 +69,5 @@ For global options help run: hardhat help
 For example:
 
 ```shell
-NET=ETH npx hardhat --network custom deploy --key DEPLOYER_ADDRESS_PRIVATE_KEY --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
+NET=ETH npx hardhat --network custom deployZkLink --governor GOVERNOR_ADDRESS --validator VALIDATOR_ADDRESS --feeAccount FEE_ACCOUNT_ADDRESS --genesis-root GENESIS_ROOT_HASH
 ```

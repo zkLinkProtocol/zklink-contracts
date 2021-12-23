@@ -1,8 +1,12 @@
 require("@nomiclabs/hardhat-waffle");
 require("adhusson-hardhat-solpp");
 require("@nomiclabs/hardhat-etherscan");
-require("./deploy");
-require("./interact");
+require("./script/deploy_zklink");
+require("./script/upgrade_zklink");
+require("./script/deploy_zkl");
+require("./script/deploy_nft");
+require("./script/deploy_pool");
+require("./script/interact");
 
 const MAX_TOKEN_NUM = 127;
 
