@@ -4,7 +4,6 @@ pragma solidity ^0.7.0;
 
 import "./zksync/Config.sol";
 import "./nft/IZkLinkNFT.sol";
-import "./oracle/ICrtReporter.sol";
 
 /// @title Governance Contract
 /// @author zk.link
@@ -24,12 +23,6 @@ contract Governance is Config {
 
     /// @notice Nft address changed
     event NftUpdate(address indexed nft);
-
-    /// @notice Crt crt reporters changed
-    event CrtReporterUpdate(ICrtReporter[] crtReporters);
-
-    /// @notice Crt verified
-    event CrtVerified(uint256 indexed crtBlock);
 
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
@@ -54,12 +47,6 @@ contract Governance is Config {
 
     /// @notice ZkLinkNFT mint to user when add liquidity
     IZkLinkNFT public nft;
-
-    /// @notice Verified crt block height
-    uint32 public verifiedCrtBlock;
-
-    /// @notice Crt if verified reporters
-    ICrtReporter[] public crtReporters;
 
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
@@ -151,16 +138,6 @@ contract Governance is Config {
         }
     }
 
-    /// @notice Change crt reporters
-    /// @param _newCrtReporters Crt reporters
-    function changeCrtReporters(ICrtReporter[] memory _newCrtReporters) external {
-        requireGovernor(msg.sender);
-        require(_newCrtReporters.length > 1, "Governance: no crt reporter");
-
-        crtReporters = _newCrtReporters;
-        emit CrtReporterUpdate(_newCrtReporters);
-    }
-
     /// @notice Check if specified address is is governor
     /// @param _address Address to check
     function requireGovernor(address _address) public view {
@@ -187,17 +164,5 @@ contract Governance is Config {
         uint16 tokenId = tokenIds[_tokenAddr];
         require(tokenId != 0, "1i"); // 0 is not a valid token
         return tokenId;
-    }
-
-    /// @notice Update verified crt block
-    function updateVerifiedCrtBlock(uint32 crtBlock) external {
-        require(crtBlock > verifiedCrtBlock, 'Governance: crtBlock');
-
-        // every reporter of any chain should report the same verify result of target block number
-        for (uint256 i = 0; i < crtReporters.length; i++) {
-            require(crtReporters[i].isCrtVerified(crtBlock), 'Governance: crt not verify');
-        }
-        verifiedCrtBlock = crtBlock;
-        emit CrtVerified(verifiedCrtBlock);
     }
 }
