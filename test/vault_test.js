@@ -30,7 +30,7 @@ describe('Vault unit tests', function () {
         // tokenA
         const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         tokenA = await erc20Factory.deploy(10000);
-        await governance.connect(governor).addToken(tokenA.address, false);
+        await governance.connect(governor).addToken(tokenA.address);
         tokenAId = await governance.validateTokenAddress(tokenA.address);
         // strategyA
         const strategyFactory = await hardhat.ethers.getContractFactory('SimpleStrategy');

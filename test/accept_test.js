@@ -15,7 +15,7 @@ describe('Accept unit tests', function () {
         await governance.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
         );
-        await governance.connect(alice).addToken(token.address, false); // tokenId = 1
+        await governance.connect(alice).addToken(token.address); // tokenId = 1
         await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');

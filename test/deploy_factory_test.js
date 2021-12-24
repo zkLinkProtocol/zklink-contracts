@@ -52,7 +52,7 @@ describe('DeployFactory unit tests', function () {
         // token
         const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
         token = await erc20Factory.deploy(10000);
-        await governanceProxy.connect(governor).addToken(token.address, false); // tokenId = 1
+        await governanceProxy.connect(governor).addToken(token.address); // tokenId = 1
     });
 
     it('deposit erc20 should success', async () => {

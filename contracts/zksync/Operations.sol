@@ -22,13 +22,12 @@ library Operations {
         FullExit, // 6 L1 Op
         ChangePubKey, // 7 L2 Op
         ForcedExit, // 8 L2 Op
-        Mapping, // 9 L1 Op
-        L1AddLQ, // 10 L1 Curve add Op
-        QuickSwap, // 11 L1 Curve swap Op
-        L1RemoveLQ, // 12 L1 Curve remove Op
-        AddLiquidity, // 13 L2 Curve add Op
-        Swap, // 14 L2 Curve swap Op
-        RemoveLiquidity // 15 L2 Curve remove Op
+        L1AddLQ, // 9 L1 Curve add Op
+        QuickSwap, // 10 L1 Curve swap Op
+        L1RemoveLQ, // 11 L1 Curve remove Op
+        AddLiquidity, // 12 L2 Curve add Op
+        Swap, // 13 L2 Curve swap Op
+        RemoveLiquidity // 14 L2 Curve remove Op
     }
 
     // Byte lengths
@@ -299,64 +298,6 @@ library Operations {
     function checkPriorityOperation(QuickSwap memory _quickSwap, PriorityOperation memory _priorityOperation) internal pure {
         require(_priorityOperation.opType == Operations.OpType.QuickSwap, "Operations: QuickSwap Op Type"); // incorrect priority op type
         require(Utils.hashBytesToBytes20(writeQuickSwapPubdataForPriorityQueue(_quickSwap)) == _priorityOperation.hashedPubData, "Operations: QuickSwap Hash");
-    }
-
-    // Mapping pubdata
-    struct Mapping {
-        // uint8 opType
-        uint8 fromChainId;
-        uint8 toChainId;
-        address owner;
-        address to;
-        uint16 tokenId;
-        uint128 amount;
-        uint128 fee; // present in pubdata, ignored at serialization
-        uint32 nonce; // accept nonce
-        uint16 withdrawFee; // accept withdraw fee ratio
-    }
-
-    uint256 public constant PACKED_MAPPING_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * CHAIN_BYTES + 2 * ADDRESS_BYTES + TOKEN_BYTES + 2 * AMOUNT_BYTES + NONCE_BYTES + FEE_BYTES;
-
-    /// Deserialize mapping pubdata
-    function readMappingPubdata(bytes memory _data) internal pure returns (Mapping memory parsed) {
-        // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
-        uint256 offset = OP_TYPE_BYTES;
-        (offset, parsed.fromChainId) = Bytes.readUint8(_data, offset);
-        (offset, parsed.toChainId) = Bytes.readUint8(_data, offset);
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
-        (offset, parsed.to) = Bytes.readAddress(_data, offset);
-        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
-        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-        (offset, parsed.fee) = Bytes.readUInt128(_data, offset);
-        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
-        (offset, parsed.withdrawFee) = Bytes.readUInt16(_data, offset);
-
-        require(offset == PACKED_MAPPING_PUBDATA_BYTES, "Operations: Read Mapping");
-    }
-
-    /// Serialize mapping pubdata
-    function writeMappingPubdataForPriorityQueue(Mapping memory op) internal pure returns (bytes memory buf) {
-        buf = abi.encodePacked(
-            uint8(OpType.Mapping),
-            op.fromChainId,
-            op.toChainId,
-            op.owner,
-            op.to,
-            op.tokenId,
-            op.amount,
-            uint128(0), // fee (ignored)
-            op.nonce,
-            op.withdrawFee
-        );
-    }
-
-    /// @notice Checks that token mapping is same as operation in priority queue
-    /// @param _mapping Mapping data
-    /// @param _priorityOperation Operation in priority queue
-    function checkPriorityOperation(Mapping memory _mapping, PriorityOperation memory _priorityOperation) internal pure {
-        require(_priorityOperation.opType == Operations.OpType.Mapping, "Operations: Mapping Op Type"); // incorrect priority op type
-        require(Utils.hashBytesToBytes20(writeMappingPubdataForPriorityQueue(_mapping)) == _priorityOperation.hashedPubData, "Operations: Mapping Hash");
     }
 
     // L1AddLQ pubdata

@@ -20,9 +20,9 @@ describe('ZkLink unit tests', function () {
         await governance.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
         );
-        await governance.connect(alice).addToken(tokenA, false); // tokenId = 1
-        await governance.connect(alice).addToken(tokenB, false); // tokenId = 2
-        await governance.connect(alice).addToken(tokenD.address, false); // tokenId = 3
+        await governance.connect(alice).addToken(tokenA); // tokenId = 1
+        await governance.connect(alice).addToken(tokenB); // tokenId = 2
+        await governance.connect(alice).addToken(tokenD.address); // tokenId = 3
         await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');

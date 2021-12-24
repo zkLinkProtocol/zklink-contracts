@@ -232,8 +232,6 @@ contract ZkLinkBlock is ZkLinkBase {
                 vault.commitWithdraw(op.tokenId, op.owner, op.amount);
             } else if (opType == Operations.OpType.QuickSwap) {
                 execQuickSwap(pubData);
-            } else if (opType == Operations.OpType.Mapping) {
-                execMappingToken(pubData);
             } else if (opType == Operations.OpType.L1AddLQ) {
                 execL1AddLQ(pubData);
             } else if (opType == Operations.OpType.L1RemoveLQ) {
@@ -310,18 +308,6 @@ contract ZkLinkBlock is ZkLinkBase {
                     Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
                     priorityOperationsProcessed++;
                 }
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
-            } else if (opType == Operations.OpType.Mapping) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, MAPPING_BYTES);
-                Operations.Mapping memory mappingData = Operations.readMappingPubdata(opPubData);
-                // fromChainId and toChainId will not be the same
-                require(mappingData.fromChainId != mappingData.toChainId &&
-                    (mappingData.fromChainId == CHAIN_ID || mappingData.toChainId == CHAIN_ID), 'ZkLink: mapping chain id');
-                if (mappingData.fromChainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(mappingData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
-                }
-                // fromChain and toChain both will handle TokenMapping in exec
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else if (opType == Operations.OpType.L1AddLQ) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1ADDLQ_BYTES);
@@ -540,27 +526,6 @@ contract ZkLinkBlock is ZkLinkBase {
             vault.commitWithdraw(tokenId, to, amount);
         } else {
             vault.commitWithdraw(tokenId, accepter, amount);
-        }
-    }
-
-    function execMappingToken(bytes memory pubData) internal {
-        Operations.Mapping memory op = Operations.readMappingPubdata(pubData);
-        address tokenAddress = governance.tokenAddresses(op.tokenId);
-        uint128 burnAmount = op.amount.sub(op.fee);
-        if (op.fromChainId == CHAIN_ID) {
-            // burn token from ZkLink
-            vault.withdraw(op.tokenId, address(this), burnAmount);
-            IMappingToken(tokenAddress).burn(burnAmount);
-        } else {
-            // mint burn amount of token to user or accepter
-            bytes32 hash = keccak256(abi.encodePacked(op.to, op.tokenId, burnAmount, op.withdrawFee, op.nonce));
-            address accepter = accepts[hash];
-            if (accepter == address(0)) {
-                accepts[hash] = op.to;
-                IMappingToken(tokenAddress).mint(op.to, burnAmount);
-            } else {
-                IMappingToken(tokenAddress).mint(accepter, burnAmount);
-            }
         }
     }
 

@@ -30,9 +30,6 @@ interface Events {
         uint16 acceptTokenId,
         uint128 acceptAmountOutMin);
 
-    /// @notice Event emitted when user mapping token
-    event TokenMapping(uint16 indexed tokenId, uint128 amount, uint8 toChainId);
-
     /// @notice Event emitted when user add liquidity
     event AddLiquidity(address indexed pair, uint16 indexed tokenId, uint128 amount);
 

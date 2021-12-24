@@ -72,7 +72,6 @@ contract ZkLinkExit is ZkLinkBase {
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
             if (priorityRequests[id].opType == Operations.OpType.Deposit ||
             priorityRequests[id].opType == Operations.OpType.QuickSwap ||
-            priorityRequests[id].opType == Operations.OpType.Mapping ||
                 priorityRequests[id].opType == Operations.OpType.L1AddLQ) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
@@ -84,9 +83,6 @@ contract ZkLinkExit is ZkLinkBase {
                 } else if (priorityRequests[id].opType == Operations.OpType.QuickSwap) {
                     Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
                     vault.withdraw(op.fromTokenId, op.owner, op.amountIn);
-                } else if (priorityRequests[id].opType == Operations.OpType.Mapping) {
-                    Operations.Mapping memory op = Operations.readMappingPubdata(depositPubdata);
-                    vault.withdraw(op.tokenId, op.owner, op.amount);
                 } else {
                     Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(depositPubdata);
                     vault.withdraw(op.tokenId, op.owner, op.amount);

@@ -22,10 +22,6 @@ contract ZkLinkBlockTest is ZkLinkBlock {
         vault.execWithdraw();
     }
 
-    function testExecMappingToken(bytes calldata _pubdata) external {
-        execMappingToken(_pubdata);
-    }
-
     function testExecL1AddLQ(bytes calldata _pubdata) external {
         execL1AddLQ(_pubdata);
         vault.execWithdraw();

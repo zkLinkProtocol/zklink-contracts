@@ -4,7 +4,6 @@ const {getDepositPubdata,
     getFullExitPubdata,
     getChangePubkeyPubdata,
     getQuickSwapPubdata,
-    getMappingPubdata,
     getL1AddLQPubdata,
     getL1RemoveLQPubdata} = require('./utils');
 
@@ -125,38 +124,6 @@ describe('Operations unit tests', function () {
 
         const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin };
         await testContract.testWriteQuickSwapPubdata(example);
-    });
-
-    // Mapping
-    it('Correctly Parse Mapping pubdata', async () => {
-        const fromChainId = '0x00';
-        const toChainId = '0x01';
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x101112131415161718191a1b1c1d1e1f';
-        const nonce = '0x01020304';
-        const withdrawFee = '0x0001';
-
-        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee };
-        const pubdata = getMappingPubdata(example);
-        await testContract.testCreateMappingPubdata(example, pubdata);
-    });
-
-    it('Correctly Write Mapping pubdata', async () => {
-        const fromChainId = '0x00';
-        const toChainId = '0x01';
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x101112131415161718191a1b1c1d1e1f';
-        const nonce = '0x01020304';
-        const withdrawFee = '0x0001';
-
-        const example = { fromChainId, toChainId, owner, to, tokenId, amount, fee, nonce, withdrawFee };
-        await testContract.testWriteMappingPubdata(example);
     });
 
     // L1AddLQ

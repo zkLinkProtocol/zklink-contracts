@@ -23,9 +23,9 @@ describe('Governance unit tests', function () {
 
     it('Add token should success', async () => {
         const token = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        await expect(testContract.connect(jack).addToken(token, false)).to.be.reverted;
+        await expect(testContract.connect(jack).addToken(token)).to.be.reverted;
 
-        await testContract.connect(bob).addToken(token, true);
+        await testContract.connect(bob).addToken(token);
         const totalTokens = await testContract.totalTokens();
         const tid = await testContract.tokenIds(token);
         const taddr = await testContract.tokenAddresses(tid);
@@ -33,7 +33,7 @@ describe('Governance unit tests', function () {
         expect(tid).equal(1);
         expect(taddr).equal(token);
 
-        await expect(testContract.connect(bob).addToken(token, true)).to.be.revertedWith('1e');
+        await expect(testContract.connect(bob).addToken(token)).to.be.revertedWith('1e');
     });
 
     it('Set validator should success', async () => {
@@ -44,17 +44,6 @@ describe('Governance unit tests', function () {
         await expect(testContract.connect(bob).setValidator(jack.address, false))
             .to.emit(testContract, 'ValidatorStatusUpdate')
             .withArgs(jack.address, false);
-    });
-
-    it('Set token mapping should success', async () => {
-        const token = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        await expect(testContract.connect(bob).setTokenMapping(token, false))
-            .to.emit(testContract, 'TokenMappingUpdate')
-            .withArgs(token, false);
-
-        await expect(testContract.connect(bob).setTokenMapping(token, true))
-            .to.emit(testContract, 'TokenMappingUpdate')
-            .withArgs(token, true);
     });
 
     it('Change nft should success', async () => {

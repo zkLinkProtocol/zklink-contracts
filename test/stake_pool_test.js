@@ -18,7 +18,7 @@ describe('StakePool unit tests', function () {
         await governance.initialize(
             hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address])
         );
-        await governance.connect(networkGovernor).addToken(tokenA.address, false); // tokenId = 1
+        await governance.connect(networkGovernor).addToken(tokenA.address); // tokenId = 1
         // verifier
         const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
         const verifier = await verifierFactory.deploy();

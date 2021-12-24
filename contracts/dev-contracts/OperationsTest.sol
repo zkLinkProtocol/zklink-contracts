@@ -90,31 +90,6 @@ contract OperationsTest {
         require(_example.acceptAmountOutMin == parsed.acceptAmountOutMin, "acceptAmountOutMin");
     }
 
-    function testCreateMappingPubdata(Operations.Mapping calldata _example, bytes calldata _pubdata) external pure {
-        Operations.Mapping memory parsed = Operations.readMappingPubdata(_pubdata);
-        require(_example.fromChainId == parsed.fromChainId);
-        require(_example.toChainId == parsed.toChainId);
-        require(_example.owner == parsed.owner);
-        require(_example.tokenId == parsed.tokenId);
-        require(_example.amount == parsed.amount);
-        require(_example.fee == parsed.fee);
-        require(_example.nonce == parsed.nonce);
-        require(_example.withdrawFee == parsed.withdrawFee);
-    }
-
-    function testWriteMappingPubdata(Operations.Mapping calldata _example) external pure {
-        bytes memory pubdata = Operations.writeMappingPubdataForPriorityQueue(_example);
-        Operations.Mapping memory parsed = Operations.readMappingPubdata(pubdata);
-        require(_example.fromChainId == parsed.fromChainId);
-        require(_example.toChainId == parsed.toChainId);
-        require(_example.owner == parsed.owner);
-        require(_example.tokenId == parsed.tokenId);
-        require(_example.amount == parsed.amount);
-        require(0 == parsed.fee);
-        require(_example.nonce == parsed.nonce);
-        require(_example.withdrawFee == parsed.withdrawFee);
-    }
-
     function testCreateL1AddLQPubdata(Operations.L1AddLQ calldata _example, bytes calldata _pubdata) external pure {
         Operations.L1AddLQ memory parsed = Operations.readL1AddLQPubdata(_pubdata);
         require(_example.owner == parsed.owner);

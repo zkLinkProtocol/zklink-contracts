@@ -169,31 +169,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         registerQuickSwap(_zkLinkAddress, _amountIn, _amountOutMin, fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
-    /// @notice Mapping ERC20 from this chain to another chain - transfer ERC20 tokens from user into contract, validate it, register mapping
-    /// @param _zkLinkAddress Receiver Layer 2 address if mapping failed
-    /// @param _to Address in to chain to receive token
-    /// @param _amount Mapping amount of token
-    /// @param _token Mapping token
-    /// @param _toChainId Chain id of to token
-    /// @param _nonce Used to produce unique accept info
-    /// @param _withdrawFee Accept withdraw fee, 100 means 1%
-    function mappingToken(address _zkLinkAddress, address _to, uint104 _amount, IERC20 _token, uint8 _toChainId, uint32 _nonce, uint16 _withdrawFee) external {
-        requireActive();
-        require(_amount > 0, 'ZkLink: amount');
-        require(_toChainId != CHAIN_ID, 'ZkLink: toChainId');
-        require(_withdrawFee < MAX_WITHDRAW_FEE, 'ZkLink: withdrawFee');
-
-        // Get token id by its address
-        uint16 tokenId = governance.validateTokenAddress(address(_token));
-        require(!governance.pausedTokens(tokenId), "b"); // token deposits are paused
-        require(governance.mappingTokens(tokenId), 'ZkLink: not mapping token');
-
-        // token must not be taken fees when transfer
-        // just transfer to vault, do not call vault.recordDeposit
-        require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
-        registerTokenMapping(_zkLinkAddress, _to, _amount, tokenId, _toChainId, _nonce, _withdrawFee);
-    }
-
     /// @notice Add token to l2 cross chain pair
     /// @param _zkLinkAddress Receiver Layer 2 address if add liquidity failed
     /// @param _token Token added
@@ -312,35 +287,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         bytes memory pubData = Operations.writeQuickSwapPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.QuickSwap, pubData);
         emit QuickSwap(_owner, _amountIn, _amountOutMin, _fromTokenId, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
-    }
-
-    /// @notice Register mapping request - pack pubdata, add priority request and emit OnchainMapping event
-    function registerTokenMapping(
-        address _owner,
-        address _to,
-        uint128 _amount,
-        uint16 _tokenId,
-        uint8 _toChainId,
-        uint32 _nonce,
-        uint16 _withdrawFee
-    ) internal {
-        // Priority Queue request
-        Operations.Mapping memory op =
-            Operations.Mapping({
-                fromChainId: CHAIN_ID,
-                toChainId: _toChainId,
-                owner: _owner,
-                to: _to,
-                tokenId: _tokenId,
-                amount: _amount,
-                fee: 0, // unknown at this point
-                nonce: _nonce,
-                withdrawFee: _withdrawFee
-                }
-            );
-        bytes memory pubData = Operations.writeMappingPubdataForPriorityQueue(op);
-        addPriorityRequest(Operations.OpType.Mapping, pubData);
-        emit TokenMapping(_tokenId, _amount, _toChainId);
     }
 
     /// @notice Register add liquidity request - pack pubdata, add priority request and emit OnchainAddLiquidity event

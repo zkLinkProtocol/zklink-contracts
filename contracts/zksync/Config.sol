@@ -49,7 +49,6 @@ contract Config {
 
     /// @dev ChangePubKey operation length
     uint256 constant CHANGE_PUBKEY_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant MAPPING_BYTES = 10 * CHUNK_BYTES;
     uint256 constant L1ADDLQ_BYTES = 11 * CHUNK_BYTES;
     uint256 constant L1REMOVELQ_BYTES = 11 * CHUNK_BYTES;
 
