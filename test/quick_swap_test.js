@@ -45,26 +45,11 @@ describe('Quick swap unit tests', function () {
 
     it('should revert when exodusMode is active', async () => {
         await zkSync.setExodusMode(true);
-        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("L");
         await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("L");
     });
 
     it('should revert when swap to the same token', async () => {
-        await expect(zkSync.swapExactETHForTokens(wallet.address, 0, 1, 0, wallet.address, 0, pair.address, 1, 1, {value:1})).to.be.revertedWith("ZkLink: can not swap to the same token");
         await expect(zkSync.swapExactTokensForTokens(wallet.address, 1, 0, token.address, 1, 1, wallet.address, 0, pair.address, 1, 1)).to.be.revertedWith("ZkLink: can not swap to the same token");
-    });
-
-    it('quick swap eth should success', async () => {
-        const amountIn = hardhat.ethers.utils.parseEther("1");
-        const amountOutMin = hardhat.ethers.utils.parseEther("3000");
-        const toChainId = 2;
-        const toTokenId = 1;
-        const to = bob.address;
-        const acceptTokenId = toTokenId;
-        const acceptAmountOutMin = amountOutMin;
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, amountOutMin, toChainId, toTokenId, to, 0, pair.address, acceptTokenId, acceptAmountOutMin, {value:amountIn});
-        let contractBalance = await hardhat.ethers.provider.getBalance(vault.address);
-        expect(contractBalance).equal(amountIn);
     });
 
     it('quick swap erc20 should success', async () => {
@@ -82,10 +67,12 @@ describe('Quick swap unit tests', function () {
     });
 
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
-        await zkSync.connect(bob).depositETH(bob.address, {value:30});
-        await zkSync.connect(bob).swapExactETHForTokens(bob.address, 0, 2, 1, bob.address, 0, pair.address, 1, 1, {value:20});
+        await token.connect(bob).mint(100);
+        await token.connect(bob).approve(zkSync.address, 100);
+        await zkSync.connect(bob).depositERC20(token.address, 30, bob.address);
+        await zkSync.connect(bob).swapExactTokensForTokens(bob.address, 20, 0, token.address, 2, 1, bob.address, 0, pair.address, 1, 1);
 
-        const tokenId = '0x0000';
+        const tokenId = '0x0001';
         const amount = '0x0000000000000000000000000000001e';
         const owner = bob.address;
         const pubdata0 = writeDepositPubdata({ tokenId, amount, owner });
@@ -101,31 +88,10 @@ describe('Quick swap unit tests', function () {
         const acceptAmountOutMin = '0x00000000000000000000000000000001';
         const pubdata1 = getQuickSwapPubdata({ fromChainId, toChainId, owner, fromTokenId:tokenId, amountIn, to:bob.address, toTokenId, amountOutMin, amountOut, nonce, pair:pair.address, acceptTokenId, acceptAmountOutMin});
         await zkSync.setExodusMode(true);
+        const b0 = await token.balanceOf(bob.address);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, hardhat.ethers.constants.AddressZero, 50)).to
-            .emit(zkSync, 'Withdrawal')
-            .withArgs(0, 50);
-    });
-
-    it('accept eth should success', async () => {
-        const toTokenId = 0;
-        const accepter = alice.address;
-        const receiver = bob.address;
-        const nonce = 0;
-
-        let amount = hardhat.ethers.utils.parseEther("1");
-        let bobReceive = hardhat.ethers.utils.parseEther("0.997");
-
-        const amountOut = amount;
-        await expect(zkSyncExit.connect(alice).acceptQuickSwap(accepter, receiver, toTokenId, amountOut, toTokenId, bobReceive, nonce, {value:hardhat.ethers.utils.parseEther("0.996")})).to.be.revertedWith("ZkLink: accept msg value");
-        let aliceBalance0 = await alice.getBalance();
-        let bobBalance0 = await bob.getBalance();
-        let tx = await zkSyncExit.connect(alice).acceptQuickSwap(accepter, receiver, toTokenId, amountOut, toTokenId, bobReceive, nonce, {value:hardhat.ethers.utils.parseEther("1")});
-        let txFee = await calFee(tx);
-        let aliceBalance1 = await alice.getBalance();
-        let bobBalance1 = await bob.getBalance();
-        expect(aliceBalance1).to.eq(aliceBalance0.sub(bobReceive).sub(txFee));
-        expect(bobBalance1).to.eq(bobBalance0.add(bobReceive));
+        const b1 = await token.balanceOf(bob.address);
+        expect(b1.sub(b0)).to.be.equal(50);
     });
 
     it('accept erc20 token should success', async () => {
@@ -147,15 +113,15 @@ describe('Quick swap unit tests', function () {
         expect(await token.balanceOf(bob.address)).to.eq(acceptAmountOutMin);
     });
 
-    it('if swap fail owner in from chain should not store pending balance', async () => {
+    it('if swap fail owner in from chain should not get token back', async () => {
         const opType = 12;
         const fromChainId = 1;
         const toChainId = 2;
-        const fromTokenId = 0;
-        const toTokenId = 0;
+        const fromTokenId = 1;
+        const toTokenId = 1;
         const nonce = 134;
         const acceptTokenId = 1;
-        const acceptAmountOutMin = hardhat.ethers.utils.parseEther("997");
+        const acceptAmountOutMin = 0;
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountOut = 0;
@@ -163,55 +129,60 @@ describe('Quick swap unit tests', function () {
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await token.balanceOf(bob.address);
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(0);
+        const b1 = await token.balanceOf(bob.address);
+        expect(b1.sub(b0)).to.eq(0);
     });
 
-    it('if swap success and no accepter owner in to chain should store pending balance', async () => {
+    it('if swap success and no accepter owner in to chain should receive to token', async () => {
         const opType = 12;
         const fromChainId = 2;
         const toChainId = 1;
-        const fromTokenId = 0;
-        const toTokenId = 0;
+        const fromTokenId = 1;
+        const toTokenId = 1;
         const nonce = 134;
         const acceptTokenId = 1;
-        const acceptAmountOutMin = hardhat.ethers.utils.parseEther("997");
+        const acceptAmountOutMin = 0;
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountOut = hardhat.ethers.utils.parseEther("0.995");
 
+        await token.mintTo(vault.address, amountIn);
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await token.balanceOf(bob.address);
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(bob.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountOut);
+        const b1 = await token.balanceOf(bob.address);
+        expect(b1.sub(b0)).to.eq(amountOut);
     });
 
-    it('if swap success and accepter exist accepter in to chain should store pending balance', async () => {
+    it('if swap success and accepter exist accepter in to chain should receive to token', async () => {
         const opType = 12;
         const fromChainId = 2;
         const toChainId = 1;
-        const fromTokenId = 0;
-        const toTokenId = 0;
+        const fromTokenId = 1;
+        const toTokenId = 1;
         const nonce = 134;
         const acceptTokenId = 1;
-        const acceptAmountOutMin = hardhat.ethers.utils.parseEther("997");
+        const acceptAmountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountIn = hardhat.ethers.utils.parseEther("1");
         const amountOutMin = hardhat.ethers.utils.parseEther("0.99");
         const amountOut = hardhat.ethers.utils.parseEther("0.995");
 
-        let amount = hardhat.ethers.utils.parseEther("1000");
+        let amount = hardhat.ethers.utils.parseEther("1");
         await token.connect(alice).mint(amount);
         await token.connect(alice).approve(zkSync.address, amount);
         await zkSyncExit.connect(alice).acceptQuickSwap(alice.address, bob.address, toTokenId, amountOut, acceptTokenId, acceptAmountOutMin, nonce);
 
+        await token.mintTo(vault.address, amountIn);
         const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint8","address","uint16","uint128","address","uint16","uint128","uint128","uint32","address","uint16","uint128"],
             [opType,fromChainId,toChainId,bob.address,fromTokenId,amountIn,bob.address,toTokenId,amountOutMin,amountOut,nonce,pair.address,acceptTokenId,acceptAmountOutMin]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
+        const b0 = await token.balanceOf(alice.address);
         await zkSyncBlock.testExecQuickSwap(pubdata);
-        let pendingBalance = await zkSyncExit.getPendingBalance(alice.address, hardhat.ethers.constants.AddressZero);
-        expect(pendingBalance).to.eq(amountOut);
+        const b1 = await token.balanceOf(alice.address);
+        expect(b1.sub(b0)).to.eq(amountOut);
     });
 });

@@ -3,7 +3,8 @@ const { expect } = require('chai');
 
 describe('DeployFactory unit tests', function () {
     let defaultSender,governor,validator,feeAccount;
-    let zkSyncProxy, vaultProxy;
+    let zkSyncProxy, vaultProxy, governanceProxy;
+    let token;
     beforeEach(async () => {
         [defaultSender,governor,validator,feeAccount] = await hardhat.ethers.getSigners();
         // governance
@@ -47,13 +48,17 @@ describe('DeployFactory unit tests', function () {
         const vaultAddr = log.args.vault;
         zkSyncProxy = zkSyncFactory.attach(zksyncAddr);
         vaultProxy = vaultFactory.attach(vaultAddr);
+        governanceProxy = governanceFactory.attach(log.args.governance);
+        // token
+        const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
+        token = await erc20Factory.deploy(10000);
+        await governanceProxy.connect(governor).addToken(token.address, false); // tokenId = 1
     });
 
-    it('deposit eth should success', async () => {
-        await expect(zkSyncProxy.depositETH(defaultSender.address, {value:30})).to
+    it('deposit erc20 should success', async () => {
+        await token.approve(zkSyncProxy.address, 100);
+        await expect(zkSyncProxy.depositERC20(token.address, 30, defaultSender.address)).to
             .emit(zkSyncProxy, 'Deposit')
-            .withArgs(0, 30);
-        let contractBalance = await hardhat.ethers.provider.getBalance(vaultProxy.address);
-        expect(contractBalance).equal(30);
+            .withArgs(1, 30);
     });
 });

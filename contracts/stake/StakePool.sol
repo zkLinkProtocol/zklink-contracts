@@ -208,6 +208,15 @@ contract StakePool is Ownable, Config {
         poolIdSet.add(zklTokenId);
     }
 
+    /// @notice Set pool active to false to prevent stake
+    /// @dev can only be called by master
+    /// @param zklTokenId token id managed by Governance of ZkLink
+    function freezePool(uint16 zklTokenId) external {
+        requireMaster(msg.sender);
+        require(poolInfo[zklTokenId].active, 'StakePool: pool not existed');
+        poolInfo[zklTokenId].active = false;
+    }
+
     /// @notice Update stake pool zkl reward schedule after last schedule finish
     /// @dev can only be called by master
     /// @param zklTokenId token id managed by Governance of ZkLink

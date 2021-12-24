@@ -73,9 +73,7 @@ describe('L1AddLQ unit tests', function () {
         const pubdata = getL1AddLQPubdata({ owner:bob.address, chainId:'0x01', tokenId:'0x0001', amount:'0x00000000000000000000000000000014', pair:pair.address, minLpAmount:'0x00000000000000000000000000000001', lpAmount:'0x00000000000000000000000000000000', nftTokenId:'0x00000001' });
         await zkSync.setExodusMode(true);
         await zkSyncExit.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
-        await expect(zkSyncExit.connect(bob).withdrawPendingBalance(bob.address, token.address, 20)).to
-            .emit(zkSync, 'Withdrawal')
-            .withArgs(1, 20);
+        expect(await token.balanceOf(bob.address)).to.be.equal(20);
     });
 
     it('confirm add lq should success', async () => {
@@ -101,6 +99,6 @@ describe('L1AddLQ unit tests', function () {
         await zkSyncBlock.testExecL1AddLQ(pubdata);
         const nftInfo = await nft.tokenLq(1);
         expect(nftInfo.status).to.be.equal(3);
-        expect(await zkSyncExit.getPendingBalance(bob.address, token.address)).to.be.equal(20);
+        expect(await token.balanceOf(bob.address)).to.be.equal(20);
     });
 });

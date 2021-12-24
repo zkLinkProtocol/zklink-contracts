@@ -10,13 +10,16 @@ import "../token/IMappingToken.sol";
 
 contract ZkLinkTest is ZkLink {
 
-    function setExodusMode(bool _exodusMode) external {
-        exodusMode = _exodusMode;
+    constructor() {
+        notInProxyMode = false;
     }
 
-    function setBalancesToWithdraw(address _account, uint16 _tokenId, uint _balance) external {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_account, _tokenId);
-        pendingBalances[packedBalanceKey].balanceToWithdraw = SafeCast.toUint128(_balance);
+    function setProxyMode(bool inProxy) external {
+        notInProxyMode = !inProxy;
+    }
+
+    function setExodusMode(bool _exodusMode) external {
+        exodusMode = _exodusMode;
     }
 
     function setPriorityExpirationBlock(uint64 index, uint64 eb) external {

@@ -1,17 +1,15 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
-const {calFee} = require('./utils');
 
 describe('Vault unit tests', function () {
     let vault;
     let zkSync;
     let pool;
-    let deployer, governor, alice;
+    let deployer, governor, alice, bob;
     let tokenA, tokenAId;
     let strategyA, strategyB;
-    let zkSyncUser;
     beforeEach(async () => {
-        [deployer, governor, alice, pool] = await hardhat.ethers.getSigners();
+        [deployer, governor, alice, pool, bob] = await hardhat.ethers.getSigners();
         // governance, governor is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
         const governance = await governanceFactory.deploy();
@@ -39,9 +37,6 @@ describe('Vault unit tests', function () {
         strategyA = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address, pool.address, []);
         // strategyB
         strategyB = await strategyFactory.deploy(vault.address, tokenAId, tokenA.address, pool.address, []);
-        // ZkSyncUser
-        const zkSyncUserFactor = await hardhat.ethers.getContractFactory('ZkLinkUser');
-        zkSyncUser = await zkSyncUserFactor.deploy(zkSync.address);
     });
 
     it('should revert when need to call from zkLink', async () => {
@@ -66,35 +61,6 @@ describe('Vault unit tests', function () {
         await tokenA.approve(zkSync.address, 100);
         await zkSync.depositERC20(tokenA.address, 100, alice.address);
         expect(await tokenA.balanceOf(vault.address)).to.equal(100);
-    });
-
-    it('eoa address withdraw eth from zkLink should success', async () => {
-        await zkSync.depositETH(alice.address, {value:50});
-        let b0 = await alice.getBalance();
-        let tx = await zkSync.connect(alice).withdrawPendingBalance(alice.address, hardhat.ethers.constants.AddressZero, 20);
-        let fee = await calFee(tx);
-        let b1 = await alice.getBalance();
-        expect(b1.add(fee).sub(b0)).equal(20);
-        expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(30);
-    });
-
-    it('contract address withdraw eth from zkLink should success', async () => {
-        await zkSync.depositETH(zkSyncUser.address, {value:50});
-        let b0 = await hardhat.ethers.provider.getBalance(zkSyncUser.address);
-        await zkSyncUser.withdrawETH(20);
-        let b1 = await hardhat.ethers.provider.getBalance(zkSyncUser.address);
-        expect(b1.sub(b0)).equal(20);
-        expect(await hardhat.ethers.provider.getBalance(vault.address)).to.equal(30);
-    });
-
-    it('withdraw erc20 from zkLink should success', async () => {
-        await tokenA.approve(zkSync.address, 100);
-        await zkSync.depositERC20(tokenA.address, 100, alice.address);
-        let b0 = await tokenA.balanceOf(alice.address);
-        await zkSync.connect(alice).withdrawPendingBalance(alice.address, tokenA.address, 60);
-        let b1 = await tokenA.balanceOf(alice.address);
-        expect(b1.sub(b0)).equal(60);
-        expect(await tokenA.balanceOf(vault.address)).to.equal(40);
     });
 
     it('should fail when strategy is zero address', async () => {
@@ -189,5 +155,25 @@ describe('Vault unit tests', function () {
         await expect(vault.connect(governor).upgradeStrategy(strategyB.address))
             .to.emit(vault, 'StrategyUpgradePrepare')
             .withArgs(tokenAId, strategyB.address);
+    });
+
+    it('commit withdraw should success', async () => {
+        await tokenA.approve(zkSync.address, 100);
+        await zkSync.depositERC20(tokenA.address, 100, alice.address);
+        await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 40);
+        await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 20);
+        const aliceTokenAB0 = await tokenA.balanceOf(alice.address);
+        await zkSync.vaultExecWithdraw();
+        const aliceTokenAB1 = await tokenA.balanceOf(alice.address);
+        expect(aliceTokenAB1.sub(aliceTokenAB0)).to.be.equal(60);
+        // cache has been cleared, the second time will have no token been withdrawn from vault
+        await zkSync.vaultExecWithdraw();
+        const aliceTokenAB2 = await tokenA.balanceOf(alice.address);
+        expect(aliceTokenAB2).to.be.equal(aliceTokenAB1);
+        // commit and exec withdraw again
+        await zkSync.vaultCommitWithdraw(tokenAId, alice.address, 10);
+        await zkSync.vaultExecWithdraw();
+        const aliceTokenAB3 = await tokenA.balanceOf(alice.address);
+        expect(aliceTokenAB3.sub(aliceTokenAB2)).to.be.equal(10);
     });
 });

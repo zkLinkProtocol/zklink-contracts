@@ -31,16 +31,11 @@ contract SimpleZkLink {
         vault.recordDeposit(tokenId);
     }
 
-    function withdrawPendingBalance(
-        address payable _owner,
-        address _token,
-        uint128 _amount
-    ) external {
-        if (_token == address(0)) {
-            vault.withdraw(0, _owner, _amount);
-        } else {
-            uint16 tokenId = governance.validateTokenAddress(_token);
-            vault.withdraw(tokenId, _owner, _amount);
-        }
+    function vaultCommitWithdraw(uint16 tokenId, address to, uint256 amount) external {
+        vault.commitWithdraw(tokenId, to, amount);
+    }
+
+    function vaultExecWithdraw() external {
+        vault.execWithdraw();
     }
 }

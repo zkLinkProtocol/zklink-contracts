@@ -4,6 +4,7 @@ contracts/zksync/KeysWithPlonkVerifier.sol
 hardhat.config.js
 log
 etc
+script/.KEY
 
 #Hardhat files
 cache

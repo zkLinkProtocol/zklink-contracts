@@ -10,8 +10,16 @@ interface IVault {
     /// @param tokenId Token id
     function recordDeposit(uint16 tokenId) external;
 
+    /// @notice Commit withdraw (can only be call by zkSync), vault will cache withdraw info
+    /// @param tokenId Token id
+    /// @param to Token receive address
+    /// @param amount Amount of tokens to transfer
+    function commitWithdraw(uint16 tokenId, address to, uint256 amount) external;
+
+    /// @notice Exec withdraw (can only be call by zkSync), vault will exec all withdraw in cache
+    function execWithdraw() external;
+
     /// @notice Withdraw token from vault to satisfy user withdraw request(can only be call by zkSync)
-    /// @dev More details see test/vault_withdraw_test.js
     /// @param tokenId Token id
     /// @param to Token receive address
     /// @param amount Amount of tokens to transfer

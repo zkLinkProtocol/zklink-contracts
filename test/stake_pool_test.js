@@ -104,6 +104,11 @@ describe('StakePool unit tests', function () {
         // approve nft to pool and then stake
         await nft.connect(alice).approve(pool.address, nftTokenId);
         await expect(pool.connect(alice).stake(nftTokenId)).to.be.revertedWith('StakePool: pool not existed');
+
+        // add pool and then freeze pool
+        await expect(pool.connect(networkGovernor).addPool(zklTokenId, hardhat.ethers.constants.AddressZero, 100000, 200000, 100, 1));
+        await pool.connect(networkGovernor).freezePool(zklTokenId);
+        await expect(pool.connect(alice).stake(nftTokenId)).to.be.revertedWith('StakePool: pool not existed');
     });
 
     it('stake ADD_PENDING nft should success', async () => {

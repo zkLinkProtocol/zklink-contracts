@@ -23,6 +23,16 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
 
     bytes32 private constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
+    constructor() {
+        notInProxyMode = true;
+    }
+
+    /// @notice Set ZkLink logic part(zkLinkBlock or zkLinkExit) must be called by delegatecall
+    modifier proxyMode() {
+        require(!notInProxyMode, "ZkLink: call should be in proxy mode");
+        _;
+    }
+
     // Upgrade functional
 
     /// @notice Notice period before activation preparation status of upgrade mode
@@ -70,7 +80,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
     /// @dev _pairManagerAddress The address of UniswapV2Factory contract
     /// @dev _vaultAddress The address of Vault contract
     /// @dev _genesisStateHash Genesis blocks (first block) state tree root hash
-    function initialize(bytes calldata initializationParameters) external {
+    function initialize(bytes calldata initializationParameters) external proxyMode {
         initializeReentrancyGuard();
 
         (address _governanceAddress, address _verifierAddress, address payable _vaultAddress, address _zkLinkBlock, address _zkLinkExit, bytes32 _genesisStateHash) =
@@ -91,22 +101,10 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
-    function upgrade(bytes calldata upgradeParameters) external nonReentrant {
+    function upgrade(bytes calldata upgradeParameters) external nonReentrant proxyMode {
         (address _zkLinkBlock, address _zkLinkExit) = abi.decode(upgradeParameters, (address, address));
         zkLinkBlock = _zkLinkBlock;
         zkLinkExit = _zkLinkExit;
-    }
-
-    /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
-    /// @param _zkLinkAddress The receiver Layer 2 address
-    function depositETH(address _zkLinkAddress) external payable {
-        requireActive();
-        require(msg.value > 0, 'ZkLink: deposit amount');
-
-        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkLink: eth transfer failed");
-        vault.recordDeposit(0);
-        registerDeposit(0, SafeCast.toUint128(msg.value), _zkLinkAddress);
     }
 
     /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
@@ -129,38 +127,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         require(Utils.transferFromERC20(_token, msg.sender, address(vault), _amount), "c"); // token transfer failed deposit
         vault.recordDeposit(tokenId);
         registerDeposit(tokenId, _amount, _zkLinkAddress);
-    }
-
-    /// @notice Swap ETH from this chain to another token(this chain or another chain) - transfer ETH from user into contract, validate it, register swap
-    /// @param _zkLinkAddress Receiver Layer 2 address if swap failed
-    /// @param _amountOutMin Minimum receive amount of to token when no fast withdraw
-    /// @param _toChainId Chain id of to token
-    /// @param _toTokenId Swap token to
-    /// @param _to To token received address
-    /// @param _nonce Used to produce unique accept info
-    /// @param _pair L2 cross chain pair address
-    /// @param _acceptTokenId Accept token user really want to receive
-    /// @param _acceptAmountOutMin Accept token min amount user really want to receive
-    function swapExactETHForTokens(address _zkLinkAddress,
-        uint104 _amountOutMin,
-        uint8 _toChainId,
-        uint16 _toTokenId,
-        address _to,
-        uint32 _nonce,
-        address _pair,
-        uint16 _acceptTokenId,
-        uint128 _acceptAmountOutMin) external payable {
-        requireActive();
-        require(msg.value > 0, 'ZkLink: amountIn');
-        require(_acceptAmountOutMin> 0, 'ZkLink: acceptAmountOutMin');
-        if (_toChainId == CHAIN_ID) {
-            require(_toTokenId != 0, 'ZkLink: can not swap to the same token');
-        }
-
-        (bool success, ) = payable(address(vault)).call{value: msg.value}("");
-        require(success, "ZkLink: eth transfer failed");
-        vault.recordDeposit(0);
-        registerQuickSwap(_zkLinkAddress, SafeCast.toUint128(msg.value), _amountOutMin, 0, _toChainId, _toTokenId, _to, _nonce, _pair, _acceptTokenId, _acceptAmountOutMin);
     }
 
     /// @notice Swap ERC20 token from this chain to another token(this chain or another chain) - transfer ERC20 tokens from user into contract, validate it, register swap
@@ -276,10 +242,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         requireActive();
         require(_accountId <= MAX_ACCOUNT_ID, "e");
 
-        uint16 tokenId = 0;
-        if (_token != address(0)) {
-            tokenId = governance.validateTokenAddress(_token);
-        }
+        uint16 tokenId = governance.validateTokenAddress(_token);
 
         // Priority Queue request
         Operations.FullExit memory op =
@@ -291,11 +254,6 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
             });
         bytes memory pubData = Operations.writeFullExitPubdataForPriorityQueue(op);
         addPriorityRequest(Operations.OpType.FullExit, pubData);
-
-        // User must fill storage slot of balancesToWithdraw(msg.sender, tokenId) with nonzero value
-        // In this case operator should just overwrite this slot during confirming withdrawal
-        bytes22 packedBalanceKey = packAddressAndTokenId(msg.sender, tokenId);
-        pendingBalances[packedBalanceKey].gasReserveValue = FILLED_GAS_RESERVE_VALUE;
     }
 
     /// @notice Register deposit request - pack pubdata, add priority request and emit OnchainDeposit event

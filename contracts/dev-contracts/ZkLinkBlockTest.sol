@@ -19,6 +19,7 @@ contract ZkLinkBlockTest is ZkLinkBlock {
 
     function testExecQuickSwap(bytes calldata _pubdata) external {
         execQuickSwap(_pubdata);
+        vault.execWithdraw();
     }
 
     function testExecMappingToken(bytes calldata _pubdata) external {
@@ -27,13 +28,16 @@ contract ZkLinkBlockTest is ZkLinkBlock {
 
     function testExecL1AddLQ(bytes calldata _pubdata) external {
         execL1AddLQ(_pubdata);
+        vault.execWithdraw();
     }
 
     function testExecL1RemoveLQ(bytes calldata _pubdata) external {
         execL1RemoveLQ(_pubdata);
+        vault.execWithdraw();
     }
 
     function testExecPartialExit(bytes calldata _pubdata) external {
         execPartialExit(_pubdata);
+        vault.execWithdraw();
     }
 }
