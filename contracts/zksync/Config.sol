@@ -6,21 +6,9 @@ pragma solidity ^0.7.0;
 /// @author Matter Labs
 contract Config {
     /// @dev Bytes in one chunk
-    uint8 constant CHUNK_BYTES = 9;
-
-    /// @dev zkSync address length
-    uint8 constant ADDRESS_BYTES = 20;
+    uint8 constant CHUNK_BYTES = 14;
 
     uint8 constant PUBKEY_HASH_BYTES = 20;
-
-    /// @dev Public key bytes length
-    uint8 constant PUBKEY_BYTES = 32;
-
-    /// @dev Ethereum signature r/s bytes length
-    uint8 constant ETH_SIGN_RS_BYTES = 32;
-
-    /// @dev Success flag bytes length
-    uint8 constant SUCCESS_FLAG_BYTES = 1;
 
     /// @dev Max amount of tokens registered in the network (excluding ETH, which is hardcoded as tokenId = 0)
     uint16 constant MAX_AMOUNT_OF_REGISTERED_TOKENS = $(MAX_AMOUNT_OF_REGISTERED_TOKENS);
@@ -31,26 +19,17 @@ contract Config {
     /// @dev Expected average period of block creation
     uint256 constant BLOCK_PERIOD = $(BLOCK_PERIOD);
 
-    /// @dev ETH blocks verification expectation
-    /// @dev Blocks can be reverted if they are not verified for at least EXPECT_VERIFICATION_IN.
-    /// @dev If set to 0 validator can revert blocks at any time.
-    uint256 constant EXPECT_VERIFICATION_IN = 0 hours / BLOCK_PERIOD;
-
     uint256 constant NOOP_BYTES = 1 * CHUNK_BYTES;
-    uint256 constant DEPOSIT_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant QUICK_SWAP_BYTES = 16 * CHUNK_BYTES;
-    uint256 constant TRANSFER_TO_NEW_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant PARTIAL_EXIT_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant TRANSFER_BYTES = 2 * CHUNK_BYTES;
-    uint256 constant FORCED_EXIT_BYTES = 6 * CHUNK_BYTES;
-
+    uint256 constant DEPOSIT_BYTES = 4 * CHUNK_BYTES;
     /// @dev Full exit operation length
-    uint256 constant FULL_EXIT_BYTES = 6 * CHUNK_BYTES;
-
+    uint256 constant FULL_EXIT_BYTES = 4 * CHUNK_BYTES;
+    uint256 constant PARTIAL_EXIT_BYTES = 4 * CHUNK_BYTES;
+    uint256 constant FORCED_EXIT_BYTES = 4 * CHUNK_BYTES;
     /// @dev ChangePubKey operation length
-    uint256 constant CHANGE_PUBKEY_BYTES = 6 * CHUNK_BYTES;
-    uint256 constant L1ADDLQ_BYTES = 11 * CHUNK_BYTES;
-    uint256 constant L1REMOVELQ_BYTES = 11 * CHUNK_BYTES;
+    uint256 constant CHANGE_PUBKEY_BYTES = 4 * CHUNK_BYTES;
+    uint256 constant QUICK_SWAP_BYTES = 10 * CHUNK_BYTES;
+    uint256 constant L1ADDLQ_BYTES = 7 * CHUNK_BYTES;
+    uint256 constant L1REMOVELQ_BYTES = 7 * CHUNK_BYTES;
 
     /// @dev Expiration delta for priority request to be satisfied (in seconds)
     /// @dev NOTE: Priority expiration should be > (EXPECT_VERIFICATION_IN * BLOCK_PERIOD)

@@ -79,7 +79,7 @@ library Operations {
     }
 
     uint256 public constant PACKED_DEPOSIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES;
+        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES; // 43
 
     /// Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
@@ -123,7 +123,7 @@ library Operations {
     }
 
     uint256 public constant PACKED_FULL_EXIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES;
+        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 43
 
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -169,7 +169,7 @@ library Operations {
     }
 
     uint256 public constant PACKED_PARTIAL_EXIT_PUBDATA_BYTES =
-    OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES;
+    OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES; // 52
 
     function readPartialExitPubdata(bytes memory _data) internal pure returns (PartialExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -195,7 +195,7 @@ library Operations {
         uint128 amount;
         //uint16 fee; -- present in pubdata, ignored at serialization
         address target;
-    }
+    } // 49 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -218,7 +218,7 @@ library Operations {
         uint32 nonce;
         //uint16 tokenId; -- present in pubdata, ignored at serialization
         //uint16 fee; -- present in pubdata, ignored at serialization
-    }
+    } // 53 bytes
 
     function readChangePubKeyPubdata(bytes memory _data) internal pure returns (ChangePubKey memory parsed) {
         uint256 offset = OP_TYPE_BYTES;
@@ -248,7 +248,7 @@ library Operations {
 
     uint256 public constant PACKED_QUICK_SWAP_PUBDATA_BYTES =
     OP_TYPE_BYTES + 2 * (CHAIN_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES) +
-    AMOUNT_BYTES + NONCE_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES;
+    AMOUNT_BYTES + NONCE_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 137
 
     /// Deserialize quick swap pubdata
     function readQuickSwapPubdata(bytes memory _data) internal pure returns (QuickSwap memory parsed) {
@@ -314,7 +314,7 @@ library Operations {
     }
 
     uint256 public constant PACKED_L1ADDLQ_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES; // 96
 
     /// Deserialize pubdata
     function readL1AddLQPubdata(bytes memory _data) internal pure returns (L1AddLQ memory parsed) {
@@ -369,7 +369,7 @@ library Operations {
     }
 
     uint256 public constant PACKED_L1REMOVELQ_PUBDATA_BYTES =
-    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES;
+    OP_TYPE_BYTES + 2 * ADDRESS_BYTES + CHAIN_BYTES + TOKEN_BYTES + 3 * AMOUNT_BYTES + NFT_TOKEN_BYTES; // 96
 
     /// Deserialize pubdata
     function readL1RemoveLQPubdata(bytes memory _data) internal pure returns (L1RemoveLQ memory parsed) {
