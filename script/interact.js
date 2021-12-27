@@ -1,5 +1,6 @@
 const fs = require('fs');
-const { readDeployerKey } = require('./utils');
+const { readDeployerKey, readDeployContract } = require('./utils');
+const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenAddr) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
@@ -94,4 +95,113 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             }
             const tx = await zkSync.connect(sender).depositERC20(token, amountInWei, sender.address);
             console.log('tx', tx.hash);
+    });
+
+task("setDestination", "Set zkl multi chain destination for testnet")
+    .setAction(async (taskArgs, hardhat) => {
+        const key = readDeployerKey();
+        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const totalChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
+        const curChain = process.env.NET;
+        if (!totalChains.includes(curChain)) {
+            console.log('%s is not a testnet', curChain);
+            return;
+        }
+
+        // cur chain zkl must exist
+        const curZKL = readDeployContract(curChain, 'zkl');
+        if (curZKL === undefined) {
+            console.log('zkl must be deployed');
+            return;
+        }
+        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
+        const zklContract = zklFactory.attach(curZKL);
+
+        const lzChains = [];
+        const otherZKLs = [];
+        for (const otherChain of totalChains) {
+            if (otherChain === curChain) {
+                continue;
+            }
+            const lzInfo = layerZero[otherChain];
+            if (lzInfo === undefined) {
+                console.log('%s layerzero not support', otherChain);
+                continue;
+            }
+            const otherZKL = readDeployContract(otherChain, 'zkl');
+            if (otherZKL === undefined) {
+                console.log('%s zkl not exist', otherChain);
+                continue;
+            }
+            lzChains.push(lzInfo.chainId);
+            otherZKLs.push(otherZKL);
+            console.log('prepare to set %s dst zkl address: %s', otherChain, otherZKL);
+        }
+
+        if (lzChains.length > 0) {
+            const tx = await zklContract.connect(governor).setDestinations(lzChains, otherZKLs);
+            console.log('tx', tx.hash);
+        } else {
+            console.log('no destinations can be set');
+        }
+    });
+
+task("bridge", "Send zkl of deployer to another chain for testnet")
+    .addParam("destination", "The target destination network name")
+    .addParam("amount", "Amount to send")
+    .setAction(async (taskArgs, hardhat) => {
+        const dstChain = taskArgs.destination;
+        const amount = taskArgs.amount;
+        console.log('destination', dstChain);
+        console.log('amount', amount);
+
+        const key = readDeployerKey();
+        const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        console.log('deployer', deployer.address);
+
+        const balance = await deployer.getBalance();
+        console.log('deployer eth balance', hardhat.ethers.utils.formatEther(balance));
+
+        const totalChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
+        const curChain = process.env.NET;
+        if (!totalChains.includes(curChain)) {
+            console.log('%s is not a testnet', curChain);
+            return;
+        }
+        if (!totalChains.includes(dstChain)) {
+            console.log('%s is not a testnet', dstChain);
+            return;
+        }
+        if (dstChain === curChain) {
+            console.log('can not bridge to the same chain');
+            return;
+        }
+
+        // cur chain zkl must exist
+        const curZKL = readDeployContract(curChain, 'zkl');
+        if (curZKL === undefined) {
+            console.log('zkl must be deployed');
+            return;
+        }
+        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
+        const zklContract = zklFactory.attach(curZKL);
+        const zklBalance = await zklContract.connect(deployer).balanceOf(deployer.address);
+        console.log('deployer zkl balance', hardhat.ethers.utils.formatEther(zklBalance));
+
+        // layerzero must support dst chain
+        const lzInfo = layerZero[dstChain];
+        if (lzInfo === undefined) {
+            console.log('%s layerzero not support', dstChain);
+            return;
+        }
+
+        const lzFee = hardhat.ethers.utils.parseEther("0.1");
+        const tx = await zklContract.connect(deployer)
+            .bridge(lzInfo.chainId, deployer.address, hardhat.ethers.utils.parseEther(amount), {value:lzFee});
+        console.log('tx', tx.hash);
     });

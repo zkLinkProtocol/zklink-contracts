@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
+const { layerZero } = require('./layerzero');
 
 task("deployZKL", "Deploy ZKL token")
     .addParam("governor", "The governor address, default is same as deployer", undefined, types.string, true)
@@ -32,19 +33,20 @@ task("deployZKL", "Deploy ZKL token")
         const data = fs.readFileSync(deployLogPath, 'utf8');
         let deployLog = JSON.parse(data);
 
-        // zkLink proxy must be deployed
-        const zkSyncProxyAddr = deployLog.zkSyncProxy;
-        if (zkSyncProxyAddr === undefined) {
-            console.log('ZkLink proxy contract not exist')
+        // layerzero must exist
+        const lzInfo = layerZero[process.env.NET];
+        if (lzInfo === undefined) {
+            console.log('LayerZero not exist')
             return;
         }
 
         // deploy zkl
         let zklContractAddr;
         const cap = hardhat.ethers.utils.parseEther('1000000000');
+        const isGenesisChain = process.env.NET === 'ETH' || process.env.NET === 'RINKEBY';
         console.log('deploy zkl...');
         const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = await zklFactory.connect(deployer).deploy("ZKLINK", "ZKL", cap, governor, zkSyncProxyAddr);
+        const zklContract = await zklFactory.connect(deployer).deploy("ZKLINK", "ZKL", cap, lzInfo.address, governor, isGenesisChain);
         await zklContract.deployed();
         zklContractAddr = zklContract.address;
         deployLog.zkl = zklContractAddr;
@@ -56,7 +58,7 @@ task("deployZKL", "Deploy ZKL token")
         await verifyWithErrorHandle(async () => {
             await hardhat.run("verify:verify", {
                 address: zklContractAddr,
-                constructorArguments: ["ZKLINK", "ZKL", cap, governor, zkSyncProxyAddr]
+                constructorArguments: ["ZKLINK", "ZKL", cap, lzInfo.address, governor, isGenesisChain]
             });
         }, () => {
             deployLog.zklVerified = true;

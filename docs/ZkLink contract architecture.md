@@ -29,27 +29,20 @@ Earn module contains files in `contracts/vault` and `contracts/strategy`
 * Withdraw funds from strategy
 * Manage strategies
 
-### Oracle
-
-Oracle module contains files in `contracts/oracle`
-
-* Different oracle reporters such as ChainLink, Api3
-* All reporters should return the same result of a crt verify request
-
 ## Stake
 
 Stake consists of three modules:
 
-* Stake pool: user stake or unstake nft produced by add liquidity
+* Stake pool: user stake or unStake nft produced by add liquidity
 * ZkLinkNft: manage the life cycle of nft
-* ZKL: token reward to liuqidity provider
+* ZKL: token reward to liquidity provider
 
 ### StakePool
 
 StakePool module contains files in `contract/stake`
 
 * Manage pools
-* User stake and unstake nft
+* User stake and unStake nft
 * Allocate rewards to staker users
 
 ### ZkLinkNft
@@ -64,7 +57,7 @@ ZkLinkNft module contains files in `contracts/nft`
 ZKL module contains files in `contract/token`
 
 * ZKL token is a capped erc20 token
-* ZKL implement `IMappingToken` interface which can be cross brided
+* ZKL token is a cross chain token supported by `layerzero`
 
 ## Permissions
 
@@ -90,13 +83,12 @@ Contrats contain business permission are：
 | **Governance**        | Token manage                     | governor             |
 |                       | Validator manage                 | governor             |
 |                       | Nft manage                       | governor             |
-|                       | Oracle reporter manage           | governor             |
 | **Vault**             | Deposit record and withdraw      | zkLink               |
 |                       | Strategy manage                  | governor             |
 | **ZkLink**            | Block commit, verify and execute | validator            |
-| **ZKL**               | Mint                             | governor and zkLink  |
+| **ZKL**               | Mint                             | layerzero            |
 | **Strategy**          | Harvest                          | stakePool            |
 | **StakePool**         | Pool manage                      | governor             |
 | **ZkLinkNFT**         | NFT status manage                | zkLink               |
 
-governor will be a multiowner wallet or a timelock executor controlled by dao.
+governor will be a MultiOwner wallet or a TimeLock executor controlled by dao.

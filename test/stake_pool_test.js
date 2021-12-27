@@ -47,7 +47,7 @@ describe('StakePool unit tests', function () {
         await governance.connect(networkGovernor).changeNft(nft.address);
         // zkl
         const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        zkl = await zklFactory.deploy('ZKLINK','ZKL',1000000000,networkGovernor.address,zkLink.address);
+        zkl = await zklFactory.deploy('ZKLINK','ZKL',1000000000,hardhat.ethers.constants.AddressZero,networkGovernor.address,true);
         // stake pool
         const poolFactory = await hardhat.ethers.getContractFactory('StakePoolTest');
         pool = await poolFactory.deploy(nft.address,zkl.address,zkLink.address,networkGovernor.address);
@@ -216,7 +216,7 @@ describe('StakePool unit tests', function () {
         await pool.setPoolAccPerShare(zklTokenId, zkl.address, hardhat.ethers.utils.parseUnits("2", 14)); // 200 * 1e12
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId, zkl.address, 10000);
         const nftPendingReward = 10000; // nftPower*poolAccPerShare/1e12 - userNftPendingRewardDebt
-        await zkLink.mintZKL(zkl.address, pool.address, nftPendingReward);
+        await zkl.connect(networkGovernor).transfer(pool.address, nftPendingReward);
         // add lq success
         await zkLink.confirmAddLq(nft.address, nftTokenId, 1);
         // unStake nft from pool
@@ -509,7 +509,7 @@ describe('StakePool unit tests', function () {
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId1, zkl.address, 2000);
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId0, tokenB.address, 1000);
         await pool.setUserPendingRewardDebt(zklTokenId, alice.address, nftTokenId1, tokenB.address, 2000);
-        await zkLink.mintZKL(zkl.address, pool.address, 100000);
+        await zkl.connect(networkGovernor).transfer(pool.address, 100000);
         await tokenB.mintTo(pool.address, 100000);
         await tokenC.mintTo(pool.address, 100000);
         await pool.connect(alice).harvest(zklTokenId);

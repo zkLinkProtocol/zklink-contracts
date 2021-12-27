@@ -5,48 +5,113 @@ pragma solidity ^0.8.0;
 import "openzeppelin-solidity/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "openzeppelin-solidity/contracts/access/AccessControlEnumerable.sol";
+import "openzeppelin-solidity/contracts/security/ReentrancyGuard.sol";
+import "./ILayerZeroReceiver.sol";
+import "./ILayerZeroEndpoint.sol";
 
-/// @title ZkLink token contract implement IMappingToken interface
+/// @title ZkLink token contract implement ILayerZeroReceiver interface
 /// @author zk.link
-contract ZKL is AccessControlEnumerable, ERC20Capped, ERC20Permit{
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
 
-    /**
-     * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE` to the
-     * account that deploys the contract.
-     *
-     * See {ERC20-constructor}.
-     */
-    constructor(string memory name, string memory symbol, uint256 cap, address networkGovernor, address zkLink)
-        ERC20(name, symbol) ERC20Capped(cap) ERC20Permit(name) {
-        _setupRole(DEFAULT_ADMIN_ROLE, networkGovernor);
+    /// @notice LayerZero endpoint used to send message to other chains
+    ILayerZeroEndpoint public endpoint;
+    /// @notice controller of this contract
+    address public networkGovernor;
+    /// @notice zkl contract address on other chains
+    mapping(uint16 => bytes) public destination;
+    /// @notice a switch to determine if token can bridge to other chains
+    bool public bridgeable;
 
-        // default networkGovernor and zkLink contract can mint zkl
-        _setupRole(MINTER_ROLE, networkGovernor);
-        _setupRole(MINTER_ROLE, zkLink);
+    event BridgeTo(uint16 indexed lzChainId, bytes receiver, uint amount);
+    event BridgeFrom(uint16 indexed lzChainId, address receiver, uint amount);
+
+    modifier onlyGovernor {
+        require(msg.sender == networkGovernor, 'ZKL: require governor');
+        _;
     }
 
-    /**
-     * @dev Creates `amount` new tokens for `to`.
-     *
-     * See {ERC20-_mint}.
-     *
-     * Requirements:
-     *
-     * - the caller must have the `MINTER_ROLE`.
-     */
-    function mint(address to, uint256 amount) public virtual onlyRole(MINTER_ROLE) {
-        _mint(to, amount);
+    modifier onlyLZEndpoint {
+        require(msg.sender == address(endpoint), 'ZKL: require LZ endpoint');
+        _;
     }
 
-    /**
-     * @dev Destroys `amount` tokens from the caller.
-     *
-     * See {ERC20-_burn}.
-     */
-    function burn(uint256 amount) public virtual {
-        _burn(_msgSender(), amount);
+    constructor(string memory _name,
+        string memory _symbol,
+        uint256 _cap,
+        address _endpoint,
+        address _networkGovernor,
+        bool _isGenesisChain) ERC20(_name, _symbol) ERC20Capped(_cap) ERC20Permit(_name) {
+        endpoint = ILayerZeroEndpoint(_endpoint);
+        networkGovernor = _networkGovernor;
+        // initial all zkl to networkGovernor at the genesis chain
+        if (_isGenesisChain) {
+            _mint(_networkGovernor, _cap);
+        }
+        bridgeable = true;
+    }
+
+    /// @notice Set bridge switch
+    function setBridgeable(bool _bridgeable) external onlyGovernor {
+        bridgeable = _bridgeable;
+    }
+
+    /// @notice Set bridge destination
+    /// @param _lzChainId LayerZero chain id on other chains
+    /// @param _contractAdd ZKL contract address on other chains
+    function setDestination(uint16 _lzChainId, bytes calldata _contractAdd) external onlyGovernor {
+        destination[_lzChainId] = _contractAdd;
+    }
+
+    /// @notice Set multiple bridge destinations
+    /// @param lzChainIds LayerZero chain id on other chains
+    /// @param contractAdds ZKL contract address on other chains
+    function setDestinations(uint16[] memory lzChainIds, bytes[] memory contractAdds) external onlyGovernor {
+        require(lzChainIds.length == contractAdds.length, 'ZKL: destination length not match');
+        for(uint i = 0; i < lzChainIds.length; i++) {
+            destination[lzChainIds[i]] = contractAdds[i];
+        }
+    }
+
+    /// @notice Bridge zkl to other chain
+    /// @param _lzChainId the destination chainId
+    /// @param _receiver the destination receiver address
+    /// @param _amount the amount to bridge
+    function bridge(uint16 _lzChainId, bytes calldata _receiver, uint _amount) public payable nonReentrant {
+        require(bridgeable, 'ZKL: bridge disabled');
+
+        bytes memory zklDstAdd = destination[_lzChainId];
+        require(zklDstAdd.length > 0, 'ZKL: invalid lz chain id');
+
+        // burn token from sender
+        _burn(msg.sender, _amount);
+
+        // encode the payload with the receiver and amount to send
+        bytes memory payload = abi.encode(_receiver, _amount);
+
+        // send LayerZero message
+        endpoint.send{value:msg.value}(_lzChainId, zklDstAdd, payload, payable(msg.sender), address(0x0), bytes(""));
+
+        emit BridgeTo(_lzChainId, _receiver, _amount);
+    }
+
+    /// @notice Receive the bytes payload from the source chain via LayerZero and mint token to receiver
+    function lzReceive(uint16 _srcChainId, bytes calldata _srcAddress, uint64 /**_nonce**/, bytes calldata _payload) override external onlyLZEndpoint nonReentrant {
+        require(bridgeable, 'ZKL: bridge disabled');
+
+        // reject invalid src contract address
+        bytes memory zklSrcAdd = destination[_srcChainId];
+        require(zklSrcAdd.length > 0, 'ZKL: invalid lz chain id');
+        require(keccak256(zklSrcAdd) == keccak256(_srcAddress), 'ZKL: invalid zkl src address');
+
+        // mint token to receiver
+        (bytes memory receiverBytes, uint amount) = abi.decode(_payload, (bytes, uint));
+        address receiver;
+        assembly {
+            receiver := mload(add(receiverBytes, 20))
+        }
+        _mint(receiver, amount);
+
+        emit BridgeFrom(_srcChainId, receiver, amount);
     }
 
     /**
