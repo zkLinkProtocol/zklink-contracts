@@ -72,6 +72,15 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
         }
     }
 
+    /// @notice Estimate bridge fees
+    /// @param _lzChainId the destination chainId
+    /// @param _receiver the destination receiver address
+    /// @param _amount the amount to bridge
+    function estimateBridgeFees(uint16 _lzChainId, bytes calldata _receiver, uint _amount) view external returns(uint) {
+        bytes memory payload = abi.encode(_receiver, _amount);
+        return endpoint.estimateNativeFees(_lzChainId, address(this), payload, false, bytes(""));
+    }
+
     /// @notice Bridge zkl to other chain
     /// @param _lzChainId the destination chainId
     /// @param _receiver the destination receiver address

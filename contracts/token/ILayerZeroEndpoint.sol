@@ -16,4 +16,16 @@ interface ILayerZeroEndpoint {
         address payable _refundAddress,
         address _zroPaymentAddress,
         bytes calldata _txParameters) external payable;
+
+    /// @notice estimate the fees send() need
+    /// @param _chainId the destination chainId
+    /// @param _userApplication the user application use layerzero
+    /// @param _payload the raw bytes of your payload
+    /// @param _payInZRO if fee pay in ZRO token
+    /// @param _txParameters bytes("") for now
+    function estimateNativeFees(uint16 _chainId,
+        address _userApplication,
+        bytes calldata _payload,
+        bool _payInZRO,
+        bytes calldata _txParameters) view external returns (uint totalFee);
 }

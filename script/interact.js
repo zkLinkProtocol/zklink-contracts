@@ -200,7 +200,9 @@ task("bridge", "Send zkl of deployer to another chain for testnet")
             return;
         }
 
-        const lzFee = hardhat.ethers.utils.parseEther("0.1");
+        const lzFee = await zklContract.connect(deployer)
+            .estimateBridgeFees(lzInfo.chainId, deployer.address, hardhat.ethers.utils.parseEther(amount));
+        console.log('lzFee', hardhat.ethers.utils.formatEther(lzFee));
         const tx = await zklContract.connect(deployer)
             .bridge(lzInfo.chainId, deployer.address, hardhat.ethers.utils.parseEther(amount), {value:lzFee});
         console.log('tx', tx.hash);

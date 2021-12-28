@@ -22,6 +22,14 @@ contract DummyLayerZero is ILayerZeroEndpoint {
         require(msg.value > 0, 'LZ: require fee');
     }
 
+    function estimateNativeFees(uint16 /**_chainId**/,
+        address /**_userApplication**/,
+        bytes calldata /**_payload**/,
+        bool /**_payInZRO**/,
+        bytes calldata /**_txParameters**/) override pure external returns (uint) {
+        return 1;
+    }
+
     function lzReceive(uint16 _srcChainId, address _srcAddress, uint64 _nonce, bytes calldata _to, uint _amount) external {
         bytes memory payload = abi.encode(_to, _amount);
         zkl.lzReceive(_srcChainId, abi.encodePacked(_srcAddress), _nonce, payload);
