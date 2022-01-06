@@ -239,6 +239,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const txr = await tx.wait();
             deployLog.deployFactory = deployFactoryAddr;
             deployLog.deployFactoryBlockHash = txr.blockHash;
+            deployLog.deployTxHash = txr.transactionHash;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         } else {
             deployFactoryAddr = deployLog.deployFactory;
