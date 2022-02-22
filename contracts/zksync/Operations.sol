@@ -27,7 +27,8 @@ library Operations {
         L1RemoveLQ, // 11 L1 Curve remove Op
         AddLiquidity, // 12 L2 Curve add Op
         Swap, // 13 L2 Curve swap Op
-        RemoveLiquidity // 14 L2 Curve remove Op
+        RemoveLiquidity, // 14 L2 Curve remove Op
+        OrderMatching // 15 L2 Order matching Op
     }
 
     // Byte lengths
