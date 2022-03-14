@@ -73,6 +73,7 @@ library Operations {
     // Deposit pubdata
     struct Deposit {
         // uint8 opType
+        uint8 chainId;
         uint32 accountId;
         uint16 tokenId;
         uint128 amount;
@@ -80,12 +81,13 @@ library Operations {
     }
 
     uint256 public constant PACKED_DEPOSIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES; // 43
+        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES; // 44
 
     /// Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
@@ -98,6 +100,7 @@ library Operations {
     function writeDepositPubdataForPriorityQueue(Deposit memory op) internal pure returns (bytes memory buf) {
         buf = abi.encodePacked(
             uint8(OpType.Deposit),
+            op.chainId, // chainId
             bytes4(0), // accountId (ignored) (update when ACCOUNT_ID_BYTES is changed)
             op.tokenId, // tokenId
             op.amount, // amount
@@ -117,6 +120,7 @@ library Operations {
 
     struct FullExit {
         // uint8 opType
+        uint8 chainId;
         uint32 accountId;
         address owner;
         uint16 tokenId;
@@ -124,11 +128,12 @@ library Operations {
     }
 
     uint256 public constant PACKED_FULL_EXIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 43
+        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 44
 
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
         (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
@@ -140,6 +145,7 @@ library Operations {
     function writeFullExitPubdataForPriorityQueue(FullExit memory op) internal pure returns (bytes memory buf) {
         buf = abi.encodePacked(
             uint8(OpType.FullExit),
+            op.chainId,
             op.accountId, // accountId
             op.owner, // owner
             op.tokenId, // tokenId

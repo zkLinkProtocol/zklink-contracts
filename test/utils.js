@@ -1,9 +1,10 @@
 const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
-function getDepositPubdata({ accountId, tokenId, amount, owner }) {
+function getDepositPubdata({ chainId, accountId, tokenId, amount, owner }) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x01'),
+        ethers.utils.arrayify(chainId),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
@@ -11,9 +12,10 @@ function getDepositPubdata({ accountId, tokenId, amount, owner }) {
     ]);
 }
 
-function writeDepositPubdata({ tokenId, amount, owner }) {
+function writeDepositPubdata({ chainId, tokenId, amount, owner }) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x01'), // OpType.Deposit
+        ethers.utils.arrayify(chainId),
         ethers.utils.arrayify('0x00000000'), // ignore accountId
         ethers.utils.arrayify(tokenId),
         ethers.utils.arrayify(amount),
@@ -35,9 +37,10 @@ function getPartialExitPubdata({ accountId, tokenId, amount, fee, owner, nonce, 
     ]);
 }
 
-function getFullExitPubdata({ accountId, owner, tokenId, amount}) {
+function getFullExitPubdata({ chainId, accountId, owner, tokenId, amount}) {
     return ethers.utils.concat([
         ethers.utils.arrayify('0x06'),
+        ethers.utils.arrayify(chainId),
         ethers.utils.arrayify(accountId),
         ethers.utils.arrayify(owner),
         ethers.utils.arrayify(tokenId),

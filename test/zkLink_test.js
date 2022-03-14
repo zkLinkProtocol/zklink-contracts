@@ -87,12 +87,13 @@ describe('ZkLink unit tests', function () {
         await zkSync.depositERC20(tokenD.address, 30, alice.address);
         await zkSync.depositERC20(tokenD.address, 20, alice.address);
 
+        const chainId = '0x01';
         const tokenId = '0x0003';
         const amount0 = '0x0000000000000000000000000000001e';
         const amount1 = '0x00000000000000000000000000000014';
         const owner = alice.address;
-        const pubdata0 = writeDepositPubdata({ tokenId, amount:amount0, owner });
-        const pubdata1 = writeDepositPubdata({ tokenId, amount:amount1, owner });
+        const pubdata0 = writeDepositPubdata({ chainId, tokenId, amount:amount0, owner });
+        const pubdata1 = writeDepositPubdata({ chainId, tokenId, amount:amount1, owner });
 
         await zkSync.setExodusMode(true);
         const b0 = await tokenD.balanceOf(alice.address);

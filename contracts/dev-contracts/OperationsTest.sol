@@ -9,6 +9,7 @@ import "../zksync/Operations.sol";
 contract OperationsTest {
     function testDepositPubdata(Operations.Deposit calldata _example, bytes calldata _pubdata) external pure {
         Operations.Deposit memory parsed = Operations.readDepositPubdata(_pubdata);
+        require(_example.chainId == parsed.chainId, "cok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
@@ -18,6 +19,7 @@ contract OperationsTest {
         bytes memory pubdata = Operations.writeDepositPubdataForPriorityQueue(_example);
         Operations.Deposit memory parsed = Operations.readDepositPubdata(pubdata);
         require(0 == parsed.accountId, "acc");
+        require(_example.chainId == parsed.chainId, "cok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
@@ -32,6 +34,7 @@ contract OperationsTest {
 
     function testFullExitPubdata(Operations.FullExit calldata _example, bytes calldata _pubdata) external pure {
         Operations.FullExit memory parsed = Operations.readFullExitPubdata(_pubdata);
+        require(_example.chainId == parsed.chainId, "cid");
         require(_example.accountId == parsed.accountId, "acc");
         require(_example.owner == parsed.owner, "own");
         require(_example.tokenId == parsed.tokenId, "tok");
@@ -41,6 +44,7 @@ contract OperationsTest {
     function testWriteFullExitPubdata(Operations.FullExit calldata _example) external pure {
         bytes memory pubdata = Operations.writeFullExitPubdataForPriorityQueue(_example);
         Operations.FullExit memory parsed = Operations.readFullExitPubdata(pubdata);
+        require(_example.chainId == parsed.chainId, "cid");
         require(_example.accountId == parsed.accountId, "acc");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(0 == parsed.amount, "amn");

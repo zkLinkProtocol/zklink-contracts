@@ -229,7 +229,9 @@ contract ZkLinkBlock is ZkLinkBase {
                 vault.commitWithdraw(op.tokenId, op.target, op.amount);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                vault.commitWithdraw(op.tokenId, op.owner, op.amount);
+                if (op.chainId == CHAIN_ID) {
+                    vault.commitWithdraw(op.tokenId, op.owner, op.amount);
+                }
             } else if (opType == Operations.OpType.QuickSwap) {
                 execQuickSwap(pubData);
             } else if (opType == Operations.OpType.L1AddLQ) {
@@ -285,9 +287,10 @@ contract ZkLinkBlock is ZkLinkBase {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
 
                 Operations.Deposit memory depositData = Operations.readDepositPubdata(opPubData);
-
-                Operations.checkPriorityOperation(depositData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                priorityOperationsProcessed++;
+                if (depositData.chainId == CHAIN_ID) {
+                    Operations.checkPriorityOperation(depositData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
+                    priorityOperationsProcessed++;
+                }
             } else if (opType == Operations.OpType.ChangePubKey) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
 
@@ -336,8 +339,10 @@ contract ZkLinkBlock is ZkLinkBase {
                     opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
 
                     Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    Operations.checkPriorityOperation(fullExitData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
+                    if (fullExitData.chainId == CHAIN_ID) {
+                        Operations.checkPriorityOperation(fullExitData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
+                        priorityOperationsProcessed++;
+                    }
                 } else {
                     revert("F"); // unsupported op
                 }

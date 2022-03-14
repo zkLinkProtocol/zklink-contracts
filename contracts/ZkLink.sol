@@ -222,6 +222,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         // Priority Queue request
         Operations.FullExit memory op =
             Operations.FullExit({
+                chainId: CHAIN_ID,
                 accountId: _accountId,
                 owner: msg.sender,
                 tokenId: tokenId,
@@ -243,6 +244,7 @@ contract ZkLink is UpgradeableMaster, ZkLinkBase, IZkLink {
         // Priority Queue request
         Operations.Deposit memory op =
             Operations.Deposit({
+                chainId: CHAIN_ID,
                 accountId: 0, // unknown at this point
                 owner: _owner,
                 tokenId: _tokenId,

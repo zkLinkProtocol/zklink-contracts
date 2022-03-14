@@ -16,23 +16,25 @@ describe('Operations unit tests', function () {
 
     // Deposit
     it('Correctly Parse Deposit pubdata', async () => {
+        const chainId = '0x01';
         const accountId = '0x01020304';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { accountId, tokenId, amount, owner };
+        const example = { chainId, accountId, tokenId, amount, owner };
         const pubdata = getDepositPubdata(example);
         await testContract.testDepositPubdata(example, pubdata);
     });
 
     it('Correctly Write Deposit pubdata', async () => {
+        const chainId = '0x01';
         const accountId = '0x01020304';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        await testContract.testWriteDepositPubdata({ accountId, tokenId, amount, owner });
+        await testContract.testWriteDepositPubdata({ chainId, accountId, tokenId, amount, owner });
     });
 
     // PartialExit
@@ -53,12 +55,13 @@ describe('Operations unit tests', function () {
 
     // FullExit
     it('Correctly Parse FullExit pubdata', async () => {
+        const chainId = '0x01';
         const accountId = '0x01020304';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
 
-        const example = { accountId, owner, tokenId, amount };
+        const example = { chainId, accountId, owner, tokenId, amount };
         const pubdata = getFullExitPubdata(example);
         await testContract.testFullExitPubdata(example, pubdata);
     });

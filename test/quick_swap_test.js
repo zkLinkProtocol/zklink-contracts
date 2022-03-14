@@ -72,10 +72,11 @@ describe('Quick swap unit tests', function () {
         await zkSync.connect(bob).depositERC20(token.address, 30, bob.address);
         await zkSync.connect(bob).swapExactTokensForTokens(bob.address, 20, 0, token.address, 2, 1, bob.address, 0, pair.address, 1, 1);
 
+        const chainId = '0x01';
         const tokenId = '0x0001';
         const amount = '0x0000000000000000000000000000001e';
         const owner = bob.address;
-        const pubdata0 = writeDepositPubdata({ tokenId, amount, owner });
+        const pubdata0 = writeDepositPubdata({ chainId, tokenId, amount, owner });
 
         const fromChainId = '0x01';
         const toChainId = '0x02';
