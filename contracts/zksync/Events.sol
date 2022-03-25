@@ -17,25 +17,6 @@ interface Events {
     /// @notice Event emitted when user funds are deposited to the zkSync contract
     event Deposit(uint16 indexed tokenId, uint128 amount);
 
-    /// @notice Event emitted when user funds are deposited and swap to the zkSync contract
-    event QuickSwap(address indexed sender,
-        uint128 amountIn,
-        uint128 amountOutMin,
-        uint16 fromTokenId,
-        uint8 toChainId,
-        uint16 toTokenId,
-        address to,
-        uint32 nonce,
-        address pair,
-        uint16 acceptTokenId,
-        uint128 acceptAmountOutMin);
-
-    /// @notice Event emitted when user add liquidity
-    event AddLiquidity(address indexed pair, uint16 indexed tokenId, uint128 amount);
-
-    /// @notice Event emitted when user remove liquidity
-    event RemoveLiquidity(address indexed pair, uint16 indexed tokenId, uint128 lpAmount);
-
     /// @notice Event emitted when accepter accept a fast withdraw
     event Accept(address indexed accepter, address indexed receiver, uint16 indexed tokenId, uint128 amount);
 

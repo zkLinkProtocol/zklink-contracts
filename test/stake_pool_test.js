@@ -544,33 +544,4 @@ describe('StakePool unit tests', function () {
         expect(allRewardAmounts[1]).eq(23220);
         expect(allRewardAmounts[2]).eq(360);
     });
-
-    it('stake and unStake atomic operations should success', async () => {
-        const zklTokenId = 1;
-        const amount = 100;
-        // mint token to alice
-        await tokenA.mintTo(alice.address, amount);
-        await tokenA.connect(alice).approve(pool.address, amount);
-        // add pool
-        await expect(pool.connect(networkGovernor).addPool(zklTokenId, hardhat.ethers.constants.AddressZero, 100000, 200000, 100, 1));
-        // approve all nft to pool
-        await nft.connect(alice).setApprovalForAll(pool.address, true);
-        // add liquidity and stake
-        await pool.connect(alice).addLiquidityAndStake(tokenA.address, amount, pair.address, 0);
-        const nftTokenId = await nft.tokenOfOwnerByIndex(pool.address, 0);
-        expect(await pool.nftDepositor(nftTokenId)).to.eq(alice.address);
-        // pool power should increase amount
-        const poolInfo = await pool.poolInfo(zklTokenId);
-        expect(poolInfo.power).to.eq(amount);
-        // user power should not increase amount and should flag this nft to pending
-        expect(await pool.userPower(zklTokenId, alice.address)).to.eq(0);
-        expect(await pool.isUserPendingNft(zklTokenId, alice.address, nftTokenId)).to.eq(true);
-
-        // set nft to final
-        await zkLink.confirmAddLq(nft.address, nftTokenId, 0);
-        // unStake and remove liquidity
-        await pool.connect(alice).unStakeAndRemoveLiquidity(nftTokenId, 0);
-        const nftInfo = await nft.tokenLq(nftTokenId);
-        expect(nftInfo.status).to.be.equal(4);
-    });
 });

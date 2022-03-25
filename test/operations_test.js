@@ -2,10 +2,7 @@ const hardhat = require('hardhat');
 const {getDepositPubdata,
     getPartialExitPubdata,
     getFullExitPubdata,
-    getChangePubkeyPubdata,
-    getQuickSwapPubdata,
-    getL1AddLQPubdata,
-    getL1RemoveLQPubdata} = require('./utils');
+    getChangePubkeyPubdata} = require('./utils');
 
 describe('Operations unit tests', function () {
     let testContract;
@@ -67,12 +64,13 @@ describe('Operations unit tests', function () {
     });
 
     it('Correctly Write FullExit pubdata', async () => {
+        const chainId = '0x01';
         const accountId = '0x01020304';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
 
-        const example = { accountId, owner, tokenId, amount };
+        const example = { chainId, accountId, owner, tokenId, amount };
         await testContract.testWriteFullExitPubdata(example);
     });
 
@@ -87,101 +85,5 @@ describe('Operations unit tests', function () {
         const example = { offset, accountId, pubKeyHash, owner, nonce };
         const pubdata = getChangePubkeyPubdata(example);
         await testContract.testChangePubkeyPubdata(example, pubdata);
-    });
-
-    // QuickSwap
-    it('Correctly Parse QuickSwap pubdata', async () => {
-        const fromChainId = '0x00';
-        const toChainId = '0x01';
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const fromTokenId = '0x0102';
-        const amountIn = '0x101112131415161718191a1b1c1d1e1f';
-        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const toTokenId = '0x0103';
-        const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
-        const amountOut = '0x001212131415161718191a1b1c1d1e1f';
-        const nonce = '0x01020304';
-        const pair = '0x8177598e08ee8199c160a48c7a0af31ab54bb59f';
-        const acceptTokenId = '0x0104';
-        const acceptAmountOutMin = '0x001312131415161718191a1b1c1d1e1f';
-
-        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin };
-        const pubdata = getQuickSwapPubdata(example);
-        await testContract.testQuickSwapPubdata(example, pubdata);
-    });
-
-    it('Correctly Write QuickSwap pubdata', async () => {
-        const fromChainId = '0x00';
-        const toChainId = '0x01';
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const fromTokenId = '0x0102';
-        const amountIn = '0x101112131415161718191a1b1c1d1e1f';
-        const to = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const toTokenId = '0x0103';
-        const amountOutMin = '0x001112131415161718191a1b1c1d1e1f';
-        const amountOut = '0x001212131415161718191a1b1c1d1e1f';
-        const nonce = '0x01020304';
-        const pair = '0x8177598e08ee8199c160a48c7a0af31ab54bb59f';
-        const acceptTokenId = '0x0104';
-        const acceptAmountOutMin = '0x002112131415161718191a1b1c1d1e1f';
-
-        const example = { fromChainId, toChainId, owner, fromTokenId, amountIn, to, toTokenId, amountOutMin, amountOut, nonce, pair, acceptTokenId, acceptAmountOutMin };
-        await testContract.testWriteQuickSwapPubdata(example);
-    });
-
-    // L1AddLQ
-    it('Correctly Parse L1AddLQ pubdata', async () => {
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const chainId = '0x00';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const minLpAmount = '0x201112131415161718191a1b1c1d1e1f';
-        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
-        const nftTokenId = '0x01020304';
-        const example = { owner, chainId, tokenId, amount, pair, minLpAmount, lpAmount, nftTokenId };
-        const pubdata = getL1AddLQPubdata(example);
-        await testContract.testCreateL1AddLQPubdata(example, pubdata);
-    });
-
-    it('Correctly Write L1AddLQ pubdata', async () => {
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const chainId = '0x00';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const minLpAmount = '0x201112131415161718191a1b1c1d1e1f';
-        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
-        const nftTokenId = '0x01020304';
-        const example = { owner, chainId, tokenId, amount, pair, minLpAmount, lpAmount, nftTokenId };
-        await testContract.testWriteL1AddLQPubdata(example);
-    });
-
-    // L1RemoveLQ
-    it('Correctly Parse L1RemoveLQ pubdata', async () => {
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const chainId = '0x00';
-        const tokenId = '0x0102';
-        const minAmount = '0x201112131415161718191a1b1c1d1e1f';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
-        const nftTokenId = '0x01020304';
-        const example = { owner, chainId, tokenId, minAmount, amount, pair, lpAmount, nftTokenId };
-        const pubdata = getL1RemoveLQPubdata(example);
-        await testContract.testCreateL1RemoveLQPubdata(example, pubdata);
-    });
-
-    it('Correctly Write L1RemoveLQ pubdata', async () => {
-        const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const chainId = '0x00';
-        const tokenId = '0x0102';
-        const minAmount = '0x201112131415161718191a1b1c1d1e1f';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const pair = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const lpAmount = '0x101112131415161718191a1b1c1d1e1f';
-        const nftTokenId = '0x01020304';
-        const example = { owner, chainId, tokenId, minAmount, amount, pair, lpAmount, nftTokenId };
-        await testContract.testWriteL1RemoveLQPubdata(example);
     });
 });

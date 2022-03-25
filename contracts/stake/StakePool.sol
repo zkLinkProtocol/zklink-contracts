@@ -319,20 +319,6 @@ contract StakePool is Ownable, Config {
         emit Stake(msg.sender, nftTokenId);
     }
 
-    /// @notice Add liquidity to zkLink and then stake ZKLinkNFT to pool for reward allocation
-    /// @param token Token added
-    /// @param amount Amount of token
-    /// @param pair L2 cross chain pair address
-    /// @param minLpAmount L2 lp token amount min received
-    function addLiquidityAndStake(IERC20 token, uint104 amount, address pair, uint104 minLpAmount) external {
-        // token transfer to pool firstly and then transfer from pool to zkLink
-        token.transferFrom(msg.sender, address(this), amount);
-        token.approve(address(zkLink), amount);
-        uint32 nftTokenId = zkLink.addLiquidity(msg.sender, token, amount, pair, minLpAmount);
-        // user should have approved all nft to pool
-        stake(nftTokenId);
-    }
-
     /// @notice UnStake ZklNft tokens from pool
     /// @param nftTokenId token id of ZKLinkNFT
     function unStake(uint32 nftTokenId) public {
@@ -369,16 +355,6 @@ contract StakePool is Ownable, Config {
         _updateRewardDebts(pool, user);
         _transferNftToDepositor(nftTokenId, msg.sender);
         emit UnStake(msg.sender, nftTokenId);
-    }
-
-    /// @notice UnStake ZklNft tokens from pool and then remove liquidity from zkLink
-    /// @param nftTokenId token id of ZKLinkNFT
-    /// @param minAmount Token amount min received
-    function unStakeAndRemoveLiquidity(uint32 nftTokenId, uint104 minAmount) external {
-        unStake(nftTokenId);
-        // user should have approved all nft to pool
-        nft.transferFrom(msg.sender, address(this), nftTokenId);
-        zkLink.removeLiquidity(msg.sender, nftTokenId, minAmount);
     }
 
     /// @notice Emergency unStake ZklNft tokens from pool without caring about rewards

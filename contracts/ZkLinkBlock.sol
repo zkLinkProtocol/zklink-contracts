@@ -232,12 +232,6 @@ contract ZkLinkBlock is ZkLinkBase {
                 if (op.chainId == CHAIN_ID) {
                     vault.commitWithdraw(op.tokenId, op.owner, op.amount);
                 }
-            } else if (opType == Operations.OpType.QuickSwap) {
-                execQuickSwap(pubData);
-            } else if (opType == Operations.OpType.L1AddLQ) {
-                execL1AddLQ(pubData);
-            } else if (opType == Operations.OpType.L1RemoveLQ) {
-                execL1RemoveLQ(pubData);
             } else {
                 revert("l"); // unsupported op in block execution
             }
@@ -303,31 +297,6 @@ contract ZkLinkBlock is ZkLinkBase {
                     bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
                     require(valid, "E"); // new pub key hash is not authenticated properly
                 }
-            } else if (opType == Operations.OpType.QuickSwap) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, QUICK_SWAP_BYTES);
-                Operations.QuickSwap memory quickSwapData = Operations.readQuickSwapPubdata(opPubData);
-                // fromChain should check priority operation
-                if (quickSwapData.fromChainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(quickSwapData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
-                }
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
-            } else if (opType == Operations.OpType.L1AddLQ) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1ADDLQ_BYTES);
-                Operations.L1AddLQ memory l1AddLQData = Operations.readL1AddLQPubdata(opPubData);
-                if (l1AddLQData.chainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(l1AddLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
-                }
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
-            } else if (opType == Operations.OpType.L1RemoveLQ) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, L1REMOVELQ_BYTES);
-                Operations.L1RemoveLQ memory l1RemoveLQData = Operations.readL1RemoveLQPubdata(opPubData);
-                if (l1RemoveLQData.chainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(l1RemoveLQData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
-                }
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
             } else {
                 bytes memory opPubData;
 
@@ -500,15 +469,6 @@ contract ZkLinkBlock is ZkLinkBase {
         return sha256(concatenated)  & bytes32(INPUT_MASK);
     }
 
-    function execQuickSwap(bytes memory pubData) internal {
-        Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(pubData);
-        if (op.amountOut > 0 && op.toChainId == CHAIN_ID) {
-            // only to chain need to process pubData when swap success
-            bytes32 hash = keccak256(abi.encodePacked(op.to, op.toTokenId, op.amountOut, op.acceptTokenId, op.acceptAmountOutMin, op.nonce));
-            withdrawToAccepter(op.to, op.toTokenId, op.amountOut, hash);
-        }
-    }
-
     function execPartialExit(bytes memory pubData) internal {
         Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
         if (op.isFastWithdraw) {
@@ -531,36 +491,6 @@ contract ZkLinkBlock is ZkLinkBase {
             vault.commitWithdraw(tokenId, to, amount);
         } else {
             vault.commitWithdraw(tokenId, accepter, amount);
-        }
-    }
-
-    function execL1AddLQ(bytes memory pubData) internal {
-        Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(pubData);
-        if (op.chainId != CHAIN_ID) {
-            return;
-        }
-        // lpAmount is zero means add liquidity fail
-        if (op.lpAmount > 0) {
-            governance.nft().confirmAddLq(op.nftTokenId, op.lpAmount);
-        } else {
-            // if fail add to owner's pending balance
-            governance.nft().revokeAddLq(op.nftTokenId);
-            vault.commitWithdraw(op.tokenId, op.owner, op.amount);
-        }
-    }
-
-    function execL1RemoveLQ(bytes memory pubData) internal {
-        Operations.L1RemoveLQ memory op = Operations.readL1RemoveLQPubdata(pubData);
-        if (op.chainId != CHAIN_ID) {
-            return;
-        }
-        // token amount is zero means remove liquidity fail
-        if (op.amount > 0) {
-            governance.nft().confirmRemoveLq(op.nftTokenId);
-            // withdraw to owner
-            vault.commitWithdraw(op.tokenId, op.owner, op.amount);
-        } else {
-            governance.nft().revokeRemoveLq(op.nftTokenId);
         }
     }
 }

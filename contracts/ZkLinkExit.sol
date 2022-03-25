@@ -70,25 +70,13 @@ contract ZkLinkExit is ZkLinkBase {
         require(toProcess > 0, "9"); // no deposits to process
         uint64 currentDepositIdx = 0;
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; id++) {
-            if (priorityRequests[id].opType == Operations.OpType.Deposit ||
-            priorityRequests[id].opType == Operations.OpType.QuickSwap ||
-                priorityRequests[id].opType == Operations.OpType.L1AddLQ) {
+            if (priorityRequests[id].opType == Operations.OpType.Deposit) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
                 require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "a");
                 ++currentDepositIdx;
 
-                if (priorityRequests[id].opType == Operations.OpType.Deposit) {
-                    Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
-                    vault.withdraw(op.tokenId, op.owner, op.amount);
-                } else if (priorityRequests[id].opType == Operations.OpType.QuickSwap) {
-                    Operations.QuickSwap memory op = Operations.readQuickSwapPubdata(depositPubdata);
-                    vault.withdraw(op.fromTokenId, op.owner, op.amountIn);
-                } else {
-                    Operations.L1AddLQ memory op = Operations.readL1AddLQPubdata(depositPubdata);
-                    vault.withdraw(op.tokenId, op.owner, op.amount);
-                    // revoke nft
-                    governance.nft().revokeAddLq(op.nftTokenId);
-                }
+                Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
+                vault.withdraw(op.tokenId, op.owner, op.amount);
             }
             delete priorityRequests[id];
         }
