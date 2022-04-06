@@ -129,7 +129,7 @@ describe('ZkLink unit tests', function () {
             feeAccount:0
         }
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
-        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0xe7b31627476f17be31f1377910f7c44eb41d91ad26144b79dd682e891a4fb6cf');
+        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x07b31627476f17be31f1377910f7c44eb41d91ad26144b79dd682e891a4fb6cf');
     });
 
     it('createBlockCommitment contain cross chain data should success', async () => {
