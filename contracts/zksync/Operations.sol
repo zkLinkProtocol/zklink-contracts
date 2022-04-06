@@ -162,6 +162,7 @@ library Operations {
 
     struct PartialExit {
         //uint8 opType; -- present in pubdata, ignored at serialization
+        uint8 chainId;
         //uint32 accountId; -- present in pubdata, ignored at serialization
         uint16 tokenId;
         uint128 amount;
@@ -173,11 +174,13 @@ library Operations {
     }
 
     uint256 public constant PACKED_PARTIAL_EXIT_PUBDATA_BYTES =
-    OP_TYPE_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES; // 52
+    OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES; // 53
 
     function readPartialExitPubdata(bytes memory _data) internal pure returns (PartialExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
-        uint256 offset = OP_TYPE_BYTES + ACCOUNT_ID_BYTES; // opType + accountId (ignored)
+        uint256 offset = OP_TYPE_BYTES; // opType (ignored)
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
+        offset += ACCOUNT_ID_BYTES; // accountId (ignored)
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
         offset += FEE_BYTES; // fee (ignored)

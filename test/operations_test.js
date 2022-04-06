@@ -36,6 +36,7 @@ describe('Operations unit tests', function () {
 
     // PartialExit
     it('Correctly Parse PartialExit pubdata', async () => {
+        const chainId = '0x01';
         const accountId = '0x01020304';
         const tokenId = '0x0102';
         const amount = '0x101112131415161718191a1b1c1d1e1f';
@@ -45,7 +46,7 @@ describe('Operations unit tests', function () {
         const isFastWithdraw = '0x01';
         const fastWithdrawFee = '0x0102';
 
-        const example = { accountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFee };
+        const example = { chainId, accountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFee };
         const pubdata = getPartialExitPubdata(example);
         await testContract.testPartialExitPubdata(example, pubdata);
     });

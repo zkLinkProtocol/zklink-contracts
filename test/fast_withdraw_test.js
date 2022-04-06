@@ -44,6 +44,7 @@ describe('Fast withdraw unit tests', function () {
 
     it('fast withdraw erc20 token should success', async () => {
         const opType = 3;
+        const chainId = 1;
         const accountId = 1;
         const tokenId = 1;
         const fee = 0;
@@ -63,8 +64,8 @@ describe('Fast withdraw unit tests', function () {
         expect(await token.balanceOf(receiver)).to.eq(bobReceive);
 
         await token.mintTo(vault.address, amount);
-        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint32","uint16","uint128","uint16","address","uint32","bool","uint16"],
-            [opType,accountId,tokenId,amount,fee,receiver,nonce,true,fastWithdrawFeeRatio]);
+        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint32","uint16","uint128","uint16","address","uint32","bool","uint16"],
+            [opType,chainId,accountId,tokenId,amount,fee,receiver,nonce,true,fastWithdrawFeeRatio]);
         const pubdata = ethers.utils.arrayify(encodePubdata);
         const b0 = await token.balanceOf(accepter);
         await zkSyncBlock.testExecPartialExit(pubdata);

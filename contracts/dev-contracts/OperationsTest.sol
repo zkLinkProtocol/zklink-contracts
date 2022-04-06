@@ -27,6 +27,7 @@ contract OperationsTest {
 
     function testPartialExitPubdata(Operations.PartialExit calldata _example, bytes calldata _pubdata) external pure {
         Operations.PartialExit memory parsed = Operations.readPartialExitPubdata(_pubdata);
+        require(_example.chainId == parsed.chainId, "cok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");

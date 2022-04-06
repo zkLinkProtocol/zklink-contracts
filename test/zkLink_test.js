@@ -118,8 +118,7 @@ describe('ZkLink unit tests', function () {
             pendingOnchainOperationsHash:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
             timestamp:0,
             stateHash: hardhat.ethers.utils.arrayify('0x26e6e312fd7a24967587edd956f7c932b56888c44186f903a39975d27d3473c7'),
-            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
-            crtCommitments:[0,0]
+            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000')
         }
         const newBlockData = {
             newStateHash:hardhat.ethers.utils.arrayify('0x1a2ef2aa9f890664ce7b3e412272495d45858b2443d9d375d9adcb3699630fcf'),
@@ -127,12 +126,10 @@ describe('ZkLink unit tests', function () {
             timestamp:305419896,
             onchainOperations: [{ethWitness:[],publicDataOffset:0},{ethWitness:[],publicDataOffset:36}],
             blockNumber:1,
-            feeAccount:0,
-            chainId:0,
-            crtCommitments:[1,1]
+            feeAccount:0
         }
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
-        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x12f72fa0a00836246431cafed812cd8d41ead474c54c4ba9d10d0b7f6aa4d09d');
+        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0xe7b31627476f17be31f1377910f7c44eb41d91ad26144b79dd682e891a4fb6cf');
     });
 
     it('createBlockCommitment contain cross chain data should success', async () => {
@@ -142,8 +139,7 @@ describe('ZkLink unit tests', function () {
             pendingOnchainOperationsHash:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
             timestamp:0,
             stateHash: hardhat.ethers.utils.arrayify('0x125ff49d4c0372404e289e31068166e0653064efb93b16e49706958707d083c1'),
-            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000'),
-            crtCommitments:[0,0]
+            commitment:hardhat.ethers.utils.arrayify('0x0000000000000000000000000000000000000000000000000000000000000000')
         }
         const newBlockData = {
             newStateHash:hardhat.ethers.utils.arrayify('0x032dd983f30763e0fc4664cc513a3832c7d6883382371732dbe3d9be14fb0cf3'),
@@ -151,11 +147,9 @@ describe('ZkLink unit tests', function () {
             timestamp:305419896,
             onchainOperations: [{ethWitness:[],publicDataOffset:0},{ethWitness:[],publicDataOffset:36}],
             blockNumber:1,
-            feeAccount:0,
-            chainId:0,
-            crtCommitments:[BigNumber.from('0x22b3b1ebe263a161216f8a214e4a775fdf7e68e5ca54b8156e072345ac1f83ee'),BigNumber.from('0x0000000000000000000000000000000000000000000000000000000000000001')]
+            feeAccount:0
         }
         const offsetCommitment = hardhat.ethers.utils.arrayify('0x0000000000000000');
-        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x1a71c78bec2495904b8bf0f12e8564f2278100a93cc6a8342442ef7c9161e214');
+        expect(await zkSyncBlock.testBlockCommitment(previousBlock, newBlockData, offsetCommitment)).to.equal('0x107659691c238119dfcedd821c25bb8c4dacb68b0775245d4e370f582d7513b3');
     });
 });

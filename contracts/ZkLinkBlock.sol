@@ -36,8 +36,6 @@ contract ZkLinkBlock is ZkLinkBase {
         OnchainOperationData[] onchainOperations;
         uint32 blockNumber;
         uint32 feeAccount;
-        uint8 chainId; // current chain id
-        uint256[] crtCommitments; // current chain roll up commitments
     }
 
     /// @notice Data needed to execute committed and verified block
@@ -454,23 +452,14 @@ contract ZkLinkBlock is ZkLinkBase {
 
             hash := mload(hashResult)
         }
-
-        // current chain rolling hash
-        bytes32 rollingHash = hash & bytes32(INPUT_MASK);
-        commitment = calInput(rollingHash, _newBlockData.chainId, _newBlockData.crtCommitments);
-    }
-
-    /// @notice Calculate input used in commitment of each chain
-    function calInput(bytes32 rollingHash, uint8 chainId, uint256[] memory crtCommitments) internal pure returns (bytes32) {
-        bytes memory concatenated = abi.encodePacked(rollingHash, uint256(chainId));
-        for (uint i = 0; i < crtCommitments.length; i++) {
-            concatenated = abi.encodePacked(concatenated, crtCommitments[i]);
-        }
-        return sha256(concatenated)  & bytes32(INPUT_MASK);
+        return hash;
     }
 
     function execPartialExit(bytes memory pubData) internal {
         Operations.PartialExit memory op = Operations.readPartialExitPubdata(pubData);
+        if (op.chainId != CHAIN_ID) {
+            return;
+        }
         if (op.isFastWithdraw) {
             withdrawToAccepter(op.owner, op.tokenId, op.amount, op.fastWithdrawFee, op.nonce);
         } else {
