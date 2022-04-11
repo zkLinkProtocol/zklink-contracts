@@ -452,7 +452,7 @@ contract ZkLinkBlock is ZkLinkBase {
 
             hash := mload(hashResult)
         }
-        return hash & bytes32(INPUT_MASK);
+        return hash;
     }
 
     function execPartialExit(bytes memory pubData) internal {
