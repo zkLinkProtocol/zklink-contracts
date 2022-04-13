@@ -1,10 +1,10 @@
 const fs = require('fs');
 const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
 
-task("upgradeZkLink", "Upgrade zkKink on testnet")
+task("upgradeZkLink", "Upgrade zkLink on testnet")
     .addParam("upgradeGovernance", "Upgrade governance, default is false", undefined, types.boolean, true)
     .addParam("upgradeVerifier", "Upgrade verifier, default is false", undefined, types.boolean, true)
-    .addParam("upgradeVault", "Upgrade vault, default is false", undefined, types.boolean, true)
+    .addParam("upgradePeriphery", "Upgrade periphery, default is false", undefined, types.boolean, true)
     .addParam("upgradeZkLink", "Upgrade zkLink, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
@@ -12,16 +12,16 @@ task("upgradeZkLink", "Upgrade zkKink on testnet")
         const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
         let upgradeGovernance = taskArgs.upgradeGovernance === undefined ? false : taskArgs.upgradeGovernance;
         let upgradeVerifier = taskArgs.upgradeVerifier === undefined ? false : taskArgs.upgradeVerifier;
-        let upgradeVault = taskArgs.upgradeVault === undefined ? false : taskArgs.upgradeVault;
-        let upgradeZksync = taskArgs.upgradeZkLink === undefined ? false : taskArgs.upgradeZkLink;
+        let upgradePeriphery = taskArgs.upgradePeriphery === undefined ? false : taskArgs.upgradePeriphery;
+        let upgradeZkLink = taskArgs.upgradeZkLink === undefined ? false : taskArgs.upgradeZkLink;
         let skipVerify = taskArgs.skipVerify === undefined ? false : taskArgs.skipVerify;
         console.log('deployer', deployer.address);
         console.log('upgrade governance?', upgradeGovernance);
         console.log('upgrade verifier?', upgradeVerifier);
-        console.log('upgrade vault?', upgradeVault);
-        console.log('upgrade zkLink?', upgradeZksync);
+        console.log('upgrade periphery?', upgradePeriphery);
+        console.log('upgrade zkLink?', upgradeZkLink);
         console.log('skip verify contracts?', skipVerify);
-        if (!upgradeGovernance && !upgradeVerifier && !upgradeVault && !upgradeZksync) {
+        if (!upgradeGovernance && !upgradeVerifier && !upgradePeriphery && !upgradeZkLink) {
             console.log('no need upgrade');
             return;
         }
@@ -37,14 +37,14 @@ task("upgradeZkLink", "Upgrade zkKink on testnet")
         let deployLog = JSON.parse(data);
 
         // check if upgrade at testnet
-        let zkSyncProxyAddr = deployLog.zkSyncProxy;
-        if (zkSyncProxyAddr === undefined) {
+        let zkLinkProxyAddr = deployLog.zkLinkProxy;
+        if (zkLinkProxyAddr === undefined) {
             console.log('ZkLink proxy address not exist');
             return;
         }
-        const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
-        let zkSyncProxy = await zkSyncFactory.attach(zkSyncProxyAddr);
-        const noticePeriod = await zkSyncProxy.connect(deployer).getNoticePeriod();
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+        let zkLinkProxy = await zkLinkFactory.attach(zkLinkProxyAddr);
+        const noticePeriod = await zkLinkProxy.connect(deployer).getNoticePeriod();
         if (noticePeriod > 0) {
             console.log('Notice period is not zero, can not exec this task in main net');
             return;
@@ -113,83 +113,46 @@ task("upgradeZkLink", "Upgrade zkKink on testnet")
             }
         }
 
-        // vault
-        if (upgradeVault) {
-            console.log('deploy vault target...');
-            const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
-            const vault = await vaultFactory.connect(deployer).deploy();
-            await vault.deployed();
-            deployLog.vaultTarget = vault.address;
-            upgradeTargets[2] = deployLog.vaultTarget;
-            console.log('vault target', deployLog.vaultTarget);
+        // periphery
+        if (upgradePeriphery) {
+            console.log('deploy periphery target...');
+            const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+            const periphery = await peripheryFactory.connect(deployer).deploy();
+            await periphery.deployed();
+            deployLog.peripheryTarget = periphery.address;
+            upgradeTargets[2] = deployLog.peripheryTarget;
+            console.log('periphery target', deployLog.peripheryTarget);
             if (!skipVerify) {
-                console.log('verify vault target...');
+                console.log('verify periphery target...');
                 await verifyWithErrorHandle(async () => {
                     await hardhat.run("verify:verify", {
-                        address: deployLog.vaultTarget
+                        address: deployLog.peripheryTarget
                     });
                 }, () => {
-                    deployLog.vaultTargetVerified = true;
+                    deployLog.peripheryTargetVerified = true;
                 })
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }
 
         // zkLink
-        if (upgradeZksync) {
-            console.log('deploy zkLinkBlock...');
-            const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlock');
-            const zkSyncBlock = await zkSyncBlockFactory.connect(deployer).deploy();
-            await zkSyncBlock.deployed();
-            deployLog.zkSyncBlock = zkSyncBlock.address;
-            console.log('zkLinkBlock', deployLog.zkSyncBlock);
-
-            console.log('deploy zkLinkExit...');
-            const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
-            const zkSyncExit = await zkSyncExitFactory.connect(deployer).deploy();
-            await zkSyncExit.deployed();
-            deployLog.zkSyncExit = zkSyncExit.address;
-            console.log('zkLinkExit', deployLog.zkSyncExit);
-
-            if (!skipVerify) {
-                console.log('verify zkLinkBlock...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: deployLog.zkSyncBlock
-                    });
-                }, () => {
-                    deployLog.zkSyncBlockVerified = true;
-                })
-                fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-
-                console.log('verify zkLinkExit...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: deployLog.zkSyncExit
-                    });
-                }, () => {
-                    deployLog.zkSyncExitVerified = true;
-                })
-                fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            }
-
+        if (upgradeZkLink) {
             console.log('deploy zkLink target...');
-            const zkSyncFactory = await hardhat.ethers.getContractFactory('ZkLink');
-            const zkSync = await zkSyncFactory.connect(deployer).deploy();
-            await zkSync.deployed();
-            deployLog.zkSyncTarget = zkSync.address;
-            upgradeTargets[3] = deployLog.zkSyncTarget;
-            upgradeParameters[3] = hardhat.ethers.utils.defaultAbiCoder.encode(['address','address'], [deployLog.zkSyncBlock, deployLog.zkSyncExit]);
-            console.log('zkLink target', deployLog.zkSyncTarget);
+            const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+            const zkLink = await zkLinkFactory.connect(deployer).deploy();
+            await zkLink.deployed();
+            deployLog.zkLinkTarget = zkLink.address;
+            upgradeTargets[3] = deployLog.zkLinkTarget;
+            console.log('zkLink target', deployLog.zkLinkTarget);
 
             if (!skipVerify) {
                 console.log('verify zkLink target...');
                 await verifyWithErrorHandle(async () => {
                     await hardhat.run("verify:verify", {
-                        address: deployLog.zkSyncTarget
+                        address: deployLog.zkLinkTarget
                     });
                 }, () => {
-                    deployLog.zkSyncTargetVerified = true;
+                    deployLog.zkLinkTargetVerified = true;
                 })
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
