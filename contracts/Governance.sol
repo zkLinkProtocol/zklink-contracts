@@ -42,6 +42,11 @@ contract Governance is Config {
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
 
+    modifier onlyGovernor {
+        require(msg.sender == networkGovernor, "Gov: no auth");
+        _;
+    }
+
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
     ///     _networkGovernor The address of network governor
@@ -57,8 +62,7 @@ contract Governance is Config {
 
     /// @notice Change current governor
     /// @param _newGovernor Address of the new governor
-    function changeGovernor(address _newGovernor) external {
-        requireGovernor(msg.sender);
+    function changeGovernor(address _newGovernor) external onlyGovernor {
         require(_newGovernor != address(0), "Gov: address not set");
         if (networkGovernor != _newGovernor) {
             networkGovernor = _newGovernor;
@@ -68,13 +72,19 @@ contract Governance is Config {
 
     /// @notice Add token to the list of networks tokens
     /// @param _tokenId Token id
-    /// @param _tokenAddress Token address, zero represent ETH
-    function addToken(uint16 _tokenId, address _tokenAddress) public {
-        requireGovernor(msg.sender);
+    /// @param _tokenAddress Token address
+    function addToken(uint16 _tokenId, address _tokenAddress) public onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "Gov: invalid tokenId");
+        // token MUST be not zero address
+        require(_tokenAddress != address(0), "Gov: invalid tokenAddress");
         RegisteredToken memory rt = tokens[_tokenId];
         require(!rt.registered, "Gov: token registered");
+        // revert duplicate ETH register
+        if (_tokenAddress == ETH_ADDRESS) {
+            uint16 ethId = tokenIds[_tokenAddress];
+            require(ethId == 0, "Gov: duplicate ETH register");
+        }
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
@@ -96,8 +106,7 @@ contract Governance is Config {
     /// @notice Pause token deposits for the given token
     /// @param _tokenId Token id
     /// @param _tokenPaused Token paused status
-    function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external {
-        requireGovernor(msg.sender);
+    function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external onlyGovernor {
         RegisteredToken memory rt = tokens[_tokenId];
         require(rt.registered, "Gov: token not registered");
 
@@ -110,14 +119,14 @@ contract Governance is Config {
     /// @notice Update token address
     /// @param _tokenId Token id
     /// @param _newTokenAddress Token address to replace
-    function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external {
-        requireGovernor(msg.sender);
+    function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external onlyGovernor {
+        // new token address MUST not be zero address
+        require(_newTokenAddress != address(0), "Gov: newTokenAddress not set");
+        // token MUST be registered
         RegisteredToken memory rt = tokens[_tokenId];
         require(rt.registered, "Gov: token not registered");
         // ETH address MUST not be updated
         require(rt.tokenAddress != ETH_ADDRESS, "Gov: eth address update disabled");
-        // new token address MUST not be zero address
-        require(_newTokenAddress != address(0), "Gov: newTokenAddress not set");
 
         if (rt.tokenAddress != _newTokenAddress) {
             delete tokenIds[rt.tokenAddress];
@@ -130,18 +139,11 @@ contract Governance is Config {
     /// @notice Change validator status (active or not active)
     /// @param _validator Validator address
     /// @param _active Active flag
-    function setValidator(address _validator, bool _active) external {
-        requireGovernor(msg.sender);
+    function setValidator(address _validator, bool _active) external onlyGovernor {
         if (validators[_validator] != _active) {
             validators[_validator] = _active;
             emit ValidatorStatusUpdate(_validator, _active);
         }
-    }
-
-    /// @notice Check if specified address is is governor
-    /// @param _address Address to check
-    function requireGovernor(address _address) public view {
-        require(_address == networkGovernor, "Gov: no auth");
     }
 
     /// @notice Checks if validator is active

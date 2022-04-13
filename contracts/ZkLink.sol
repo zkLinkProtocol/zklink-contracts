@@ -137,7 +137,6 @@ contract ZkLink is  UpgradeableMaster, Storage, Config, Events, ReentrancyGuard 
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
     function depositETH(address _zkLinkAddress, uint8 _subAccountId) external payable nonReentrant {
-        // zero address represents eth
         deposit(ETH_ADDRESS, SafeCast.toUint128(msg.value), _zkLinkAddress, _subAccountId);
     }
 
@@ -733,7 +732,7 @@ contract ZkLink is  UpgradeableMaster, Storage, Config, Events, ReentrancyGuard 
             sent = sendETHNoRevert(toPayable, _amount);
         } else {
             // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`
-            // and fail if token subtracted from zkSync balance more then `_amount` that was requested.
+            // and fail if token subtracted from zkLink balance more then `_amount` that was requested.
             // This can happen if token subtracts fee from sender while transferring `_amount` that was requested to transfer.
             try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(tokenAddress), _recipient, _amount, _amount) {
                 sent = true;

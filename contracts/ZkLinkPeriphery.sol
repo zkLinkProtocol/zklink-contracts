@@ -11,16 +11,19 @@ import "./zksync/Config.sol";
 import "./zksync/SafeMath.sol";
 import "./IZkLink.sol";
 
+/// @title ZkLink periphery contract
+/// @author zk.link
 contract ZkLinkPeriphery is ReentrancyGuard, Config {
     using SafeMath for uint256;
 
     /// @dev When set fee = 100, it means 1%
     uint16 constant MAX_WITHDRAW_FEE_RATE = 10000;
 
+    /// @dev zkLink proxy address
     IZkLink public zkLink;
 
     /// @dev Accept infos of fast withdraw
-    /// Key is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFee, nonce))
+    /// Key is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce))
     /// Value is the accepter address
     mapping(bytes32 => address) public accepts;
 
@@ -45,18 +48,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config {
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external {}
 
+    /// @notice Set the zkLink proxy address
+    /// @dev MUST be called at once when deployed ZkLink
     function setZkLinkAddress(address _zkLink) external {
         if (_zkLink == address(0)) {
             zkLink = IZkLink(_zkLink);
         }
-    }
-
-    function getAccepter(bytes32 hash) external view returns (address) {
-        return accepts[hash];
-    }
-
-    function setAccepter(bytes32 hash, address accepter) external onlyZkLink {
-        accepts[hash] = accepter;
     }
 
     /// @notice Checks that change operation is correct
@@ -165,6 +162,17 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config {
         return hash;
     }
 
+    // =======================Fast withdraw and Accept======================
+
+    function getAccepter(bytes32 hash) external view returns (address) {
+        return accepts[hash];
+    }
+
+    /// @dev Only zkLink can set accepter
+    function setAccepter(bytes32 hash, address accepter) external onlyZkLink {
+        accepts[hash] = accepter;
+    }
+
     /// @notice Accepter accept a fast withdraw, accepter will get a fee of (amount - amountOutMin)
     /// @param accepter Accepter
     /// @param receiver User receive token from accepter
@@ -222,6 +230,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config {
         return brokerAllowances[tokenId][owner][spender];
     }
 
+    /// @notice Give allowance to spender to call accept
     function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
         // token MUST be registered to ZkLink
         Governance.RegisteredToken memory rt = zkLink.governance().getToken(tokenId);
