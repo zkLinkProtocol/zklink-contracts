@@ -62,7 +62,6 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
         require(newTargets.length == managedContracts.length, "spu12"); // spu12 - number of new targets must be equal to the number of managed contracts
 
         uint256 noticePeriod = mainContract.getNoticePeriod();
-        mainContract.upgradeNoticePeriodStarted();
         upgradeStatus = UpgradeStatus.NoticePeriod;
         noticePeriodFinishTimestamp = block.timestamp.add(noticePeriod);
         nextTargets = newTargets;
@@ -74,7 +73,6 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
         requireMaster(msg.sender);
         require(upgradeStatus != UpgradeStatus.Idle, "cpu11"); // cpu11 - unable to cancel not active upgrade mode
 
-        mainContract.upgradeCanceled();
         upgradeStatus = UpgradeStatus.Idle;
         noticePeriodFinishTimestamp = 0;
         delete nextTargets;
@@ -89,7 +87,6 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
 
         if (block.timestamp >= noticePeriodFinishTimestamp) {
             upgradeStatus = UpgradeStatus.Preparation;
-            mainContract.upgradePreparationStarted();
             emit PreparationStart(versionId);
             return true;
         } else {
@@ -104,7 +101,6 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
         require(upgradeStatus == UpgradeStatus.Preparation, "fpu11"); // fpu11 - unable to finish upgrade without preparation status active
         require(targetsUpgradeParameters.length == managedContracts.length, "fpu12"); // fpu12 - number of new targets upgrade parameters must be equal to the number of managed contracts
         require(mainContract.isReadyForUpgrade(), "fpu13"); // fpu13 - main contract is not ready for upgrade
-        mainContract.upgradeFinishes();
 
         for (uint64 i = 0; i < managedContracts.length; i++) {
             address newTarget = nextTargets[i];

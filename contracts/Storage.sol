@@ -13,13 +13,6 @@ import "./ZkLinkPeriphery.sol";
 /// @title ZkLink storage contract
 /// @author zk.link
 contract Storage {
-    /// @dev Flag indicates that upgrade preparation status is active
-    /// @dev Will store false in case of not active upgrade mode
-    bool internal upgradePreparationActive;
-
-    /// @dev Upgrade preparation activation timestamp (as seconds since unix epoch)
-    /// @dev Will be equal to zero in case of not active upgrade mode
-    uint256 internal upgradePreparationActivationTime;
 
     /// @dev Verifier contract. Used to verify block proof and exit proof
     Verifier public verifier;

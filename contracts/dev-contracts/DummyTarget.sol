@@ -26,14 +26,6 @@ contract DummyFirst is UpgradeableMaster, DummyTarget {
         return UPGRADE_NOTICE_PERIOD;
     }
 
-    function upgradeNoticePeriodStarted() external override {}
-
-    function upgradePreparationStarted() external override {}
-
-    function upgradeCanceled() external override {}
-
-    function upgradeFinishes() external override {}
-
     function isReadyForUpgrade() external view override returns (bool) {
         return totalVerifiedPriorityOperations() >= totalRegisteredPriorityOperations();
     }
@@ -80,14 +72,6 @@ contract DummySecond is UpgradeableMaster, DummyTarget {
     function getNoticePeriod() external pure override returns (uint256) {
         return UPGRADE_NOTICE_PERIOD;
     }
-
-    function upgradeNoticePeriodStarted() external override {}
-
-    function upgradePreparationStarted() external override {}
-
-    function upgradeCanceled() external override {}
-
-    function upgradeFinishes() external override {}
 
     function isReadyForUpgrade() external view override returns (bool) {
         return totalVerifiedPriorityOperations() >= totalRegisteredPriorityOperations();

@@ -112,34 +112,6 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
         return abi.decode(result, (uint256));
     }
 
-    /// @notice Notifies proxy contract that notice period started
-    function upgradeNoticePeriodStarted() external override {
-        requireMaster(msg.sender);
-        (bool success, ) = getTarget().delegatecall(abi.encodeWithSignature("upgradeNoticePeriodStarted()"));
-        require(success, "nps11"); // nps11 - upgradeNoticePeriodStarted delegatecall failed
-    }
-
-    /// @notice Notifies proxy contract that upgrade preparation status is activated
-    function upgradePreparationStarted() external override {
-        requireMaster(msg.sender);
-        (bool success, ) = getTarget().delegatecall(abi.encodeWithSignature("upgradePreparationStarted()"));
-        require(success, "ups11"); // ups11 - upgradePreparationStarted delegatecall failed
-    }
-
-    /// @notice Notifies proxy contract that upgrade canceled
-    function upgradeCanceled() external override {
-        requireMaster(msg.sender);
-        (bool success, ) = getTarget().delegatecall(abi.encodeWithSignature("upgradeCanceled()"));
-        require(success, "puc11"); // puc11 - upgradeCanceled delegatecall failed
-    }
-
-    /// @notice Notifies proxy contract that upgrade finishes
-    function upgradeFinishes() external override {
-        requireMaster(msg.sender);
-        (bool success, ) = getTarget().delegatecall(abi.encodeWithSignature("upgradeFinishes()"));
-        require(success, "puf11"); // puf11 - upgradeFinishes delegatecall failed
-    }
-
     /// @notice Checks that contract is ready for upgrade
     /// @return bool flag indicating that contract is ready for upgrade
     function isReadyForUpgrade() external override returns (bool) {

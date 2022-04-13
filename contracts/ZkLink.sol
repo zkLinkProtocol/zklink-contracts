@@ -71,31 +71,6 @@ contract ZkLink is  UpgradeableMaster, Storage, Config, Events, ReentrancyGuard 
         return UPGRADE_NOTICE_PERIOD;
     }
 
-    /// @notice Notification that upgrade notice period started
-    /// @dev Can be external because Proxy contract intercepts illegal calls of this function
-    function upgradeNoticePeriodStarted() external override {}
-
-    /// @notice Notification that upgrade preparation status is activated
-    /// @dev Can be external because Proxy contract intercepts illegal calls of this function
-    function upgradePreparationStarted() external override {
-        upgradePreparationActive = true;
-        upgradePreparationActivationTime = block.timestamp;
-    }
-
-    /// @notice Notification that upgrade canceled
-    /// @dev Can be external because Proxy contract intercepts illegal calls of this function
-    function upgradeCanceled() external override {
-        upgradePreparationActive = false;
-        upgradePreparationActivationTime = 0;
-    }
-
-    /// @notice Notification that upgrade finishes
-    /// @dev Can be external because Proxy contract intercepts illegal calls of this function
-    function upgradeFinishes() external override {
-        upgradePreparationActive = false;
-        upgradePreparationActivationTime = 0;
-    }
-
     /// @notice Checks that contract is ready for upgrade
     /// @return bool flag indicating that contract is ready for upgrade
     function isReadyForUpgrade() external view override returns (bool) {
@@ -130,8 +105,6 @@ contract ZkLink is  UpgradeableMaster, Storage, Config, Events, ReentrancyGuard 
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {}
 
     // =================User interface=================
-
-    receive() external payable {}
 
     /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
     /// @param _zkLinkAddress The receiver Layer 2 address
