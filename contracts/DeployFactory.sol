@@ -2,12 +2,12 @@
 
 pragma solidity ^0.7.0;
 
-import "./Governance.sol";
 import "./zksync/Proxy.sol";
 import "./zksync/UpgradeGatekeeper.sol";
-import "./ZkLink.sol";
 import "./zksync/Verifier.sol";
-import "./vault/Vault.sol";
+import "./Governance.sol";
+import "./ZkLinkPeriphery.sol";
+import "./ZkLink.sol";
 
 /// @title Deploy ZkLink
 /// @author zk.link
@@ -29,19 +29,15 @@ contract DeployFactory {
     // genesis state, as the very first account in tree is a fee account, and we need its address before
     // we're able to start recovering the data from the Ethereum blockchain.
     constructor(
-        address _zkLinkBlock,
-        address _zkLinkExit,
         Governance _govTarget,
         Verifier _verifierTarget,
-        Vault _vaultTarget,
+        ZkLinkPeriphery _peripheryTarget,
         ZkLink _zkLinkTarget,
         bytes32 _genesisRoot,
         address _firstValidator,
         address _governor,
         address _feeAccountAddress
     ) {
-        require(_zkLinkBlock != address(0));
-        require(_zkLinkExit != address(0));
         require(_firstValidator != address(0));
         require(_governor != address(0));
         require(_feeAccountAddress != address(0));
@@ -49,30 +45,28 @@ contract DeployFactory {
         // set this contract as governor
         Proxy governance = new Proxy(address(_govTarget), abi.encode(this));
         Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
-        Proxy vault = new Proxy(address(_vaultTarget), abi.encode(address(governance)));
-        deployProxyContracts(_zkLinkBlock, _zkLinkExit, governance, verifier, vault, _zkLinkTarget, _genesisRoot, _firstValidator, _governor);
+        Proxy periphery = new Proxy(address(_peripheryTarget), abi.encode());
+        deployProxyContracts(governance, verifier, periphery, _zkLinkTarget, _genesisRoot, _firstValidator, _governor);
 
         selfdestruct(msg.sender);
     }
 
-    event Addresses(address governance, address zkLink, address verifier, address vault, address gatekeeper);
+    event Addresses(address governance, address zkLink, address verifier, address periphery, address gatekeeper);
 
     function deployProxyContracts(
-        address _zkLinkBlock,
-        address _zkLinkExit,
         Proxy governance,
         Proxy verifier,
-        Proxy vault,
+        Proxy periphery,
         ZkLink _zkLinkTarget,
         bytes32 _genesisRoot,
         address _validator,
         address _governor
     ) internal {
         Proxy zkLink =
-            new Proxy(address(_zkLinkTarget), abi.encode(address(governance), address(verifier), address(vault), _zkLinkBlock, _zkLinkExit, _genesisRoot));
+            new Proxy(address(_zkLinkTarget), abi.encode(address(governance), address(verifier), address(periphery), _genesisRoot));
 
         // set zkLink address
-        Vault(address(vault)).setZkLinkAddress(address(zkLink));
+        ZkLinkPeriphery(address(periphery)).setZkLinkAddress(address(zkLink));
 
         UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(zkLink);
 
@@ -82,15 +76,15 @@ contract DeployFactory {
         verifier.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(verifier));
 
-        vault.transferMastership(address(upgradeGatekeeper));
-        upgradeGatekeeper.addUpgradeable(address(vault));
+        periphery.transferMastership(address(upgradeGatekeeper));
+        upgradeGatekeeper.addUpgradeable(address(periphery));
 
         zkLink.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(zkLink));
 
         upgradeGatekeeper.transferMastership(_governor);
 
-        emit Addresses(address(governance), address(zkLink), address(verifier), address(vault), address(upgradeGatekeeper));
+        emit Addresses(address(governance), address(zkLink), address(verifier), address(periphery), address(upgradeGatekeeper));
 
         finalizeGovernance(Governance(address(governance)), _validator, _governor);
     }

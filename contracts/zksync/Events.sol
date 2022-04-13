@@ -14,11 +14,11 @@ interface Events {
     /// @notice Event emitted when a block is verified
     event BlockVerification(uint32 indexed blockNumber);
 
-    /// @notice Event emitted when user funds are deposited to the zkSync contract
-    event Deposit(uint16 indexed tokenId, uint128 amount);
+    /// @notice Event emitted when user funds are withdrawn from the zkLink state and contract
+    event Withdrawal(uint16 indexed tokenId, uint128 amount);
 
-    /// @notice Event emitted when accepter accept a fast withdraw
-    event Accept(address indexed accepter, address indexed receiver, uint16 indexed tokenId, uint128 amount);
+    /// @notice Event emitted when user funds are withdrawn from the zkLink state but not from contract
+    event WithdrawalPending(uint16 indexed tokenId, address indexed recepient, uint128 amount);
 
     /// @notice Event emitted when user sends a authentication fact (e.g. pub-key hash)
     event FactAuth(address indexed sender, uint32 nonce, bytes fact);
@@ -36,24 +36,6 @@ interface Events {
         Operations.OpType opType,
         bytes pubData,
         uint256 expirationBlock
-    );
-
-    /// @notice Deposit committed event.
-    event DepositCommit(
-        uint32 indexed zkSyncBlockId,
-        uint32 indexed accountId,
-        address owner,
-        uint16 indexed tokenId,
-        uint128 amount
-    );
-
-    /// @notice Full exit committed event.
-    event FullExitCommit(
-        uint32 indexed zkSyncBlockId,
-        uint32 indexed accountId,
-        address owner,
-        uint16 indexed tokenId,
-        uint128 amount
     );
 }
 

@@ -48,9 +48,8 @@ contract ERC20 is IERC20 {
         return _balances[account];
     }
 
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+    function transfer(address recipient, uint256 amount) public virtual override {
         _transfer(_msgSender(), recipient, amount);
-        return true;
     }
 
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
@@ -62,14 +61,12 @@ contract ERC20 is IERC20 {
         return true;
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount) public virtual override {
         _transfer(sender, recipient, amount);
 
         uint256 currentAllowance = _allowances[sender][_msgSender()];
         require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
         _approve(sender, _msgSender(), currentAllowance - amount);
-
-        return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {

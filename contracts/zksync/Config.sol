@@ -5,45 +5,52 @@ pragma solidity ^0.7.0;
 /// @title zkSync configuration constants
 /// @author Matter Labs
 contract Config {
+    /// @dev ERC20 tokens and ETH withdrawals gas limit, used only for complete withdrawals
+    uint256 internal constant WITHDRAWAL_GAS_LIMIT = 100000;
+
     /// @dev Bytes in one chunk
     uint8 constant CHUNK_BYTES = 14;
 
+    /// @dev Bytes of L2 Pubkey hash
     uint8 constant PUBKEY_HASH_BYTES = 20;
 
-    /// @dev Max amount of tokens registered in the network (excluding ETH, which is hardcoded as tokenId = 0)
-    uint16 constant MAX_AMOUNT_OF_REGISTERED_TOKENS = $(MAX_AMOUNT_OF_REGISTERED_TOKENS);
+    /// @dev Max amount of tokens registered in the network
+    uint16 constant MAX_AMOUNT_OF_REGISTERED_TOKENS = 8192;
 
     /// @dev Max account id that could be registered in the network
     uint32 constant MAX_ACCOUNT_ID = (2**24) - 1;
 
+    /// @dev Max sub account id that could be bound to account id
+    uint8 constant MAX_SUB_ACCOUNT_ID = (2**3) - 1;
+
     /// @dev Expected average period of block creation
     uint256 constant BLOCK_PERIOD = $(BLOCK_PERIOD);
 
-    uint256 constant NOOP_BYTES = 1 * CHUNK_BYTES;
+    /// @dev Operation chunks
     uint256 constant DEPOSIT_BYTES = 4 * CHUNK_BYTES;
-    /// @dev Full exit operation length
     uint256 constant FULL_EXIT_BYTES = 4 * CHUNK_BYTES;
-    uint256 constant PARTIAL_EXIT_BYTES = 4 * CHUNK_BYTES;
+    uint256 constant WITHDRAW_BYTES = 4 * CHUNK_BYTES;
     uint256 constant FORCED_EXIT_BYTES = 4 * CHUNK_BYTES;
-    /// @dev ChangePubKey operation length
     uint256 constant CHANGE_PUBKEY_BYTES = 4 * CHUNK_BYTES;
 
     /// @dev Expiration delta for priority request to be satisfied (in seconds)
     /// @dev NOTE: Priority expiration should be > (EXPECT_VERIFICATION_IN * BLOCK_PERIOD)
     /// @dev otherwise incorrect block with priority op could not be reverted.
-    uint256 constant PRIORITY_EXPIRATION_PERIOD = 3 days;
+    uint256 constant PRIORITY_EXPIRATION_PERIOD = 14 days;
 
     /// @dev Expiration delta for priority request to be satisfied (in ETH blocks)
     uint256 constant PRIORITY_EXPIRATION =
         $(defined(PRIORITY_EXPIRATION) ? PRIORITY_EXPIRATION : PRIORITY_EXPIRATION_PERIOD / BLOCK_PERIOD);
 
-    /// @dev Maximum number of priority request to clear during verifying the block
-    /// @dev Cause deleting storage slots cost 5k gas per each slot it's unprofitable to clear too many slots
-    /// @dev Value based on the assumption of ~750k gas cost of verifying and 5 used storage slots per PriorityOperation structure
-    uint64 constant MAX_PRIORITY_REQUESTS_TO_DELETE_IN_VERIFY = 6;
+    /// @dev Maximum number of priority request that wait to be proceed
+    /// to prevent an attacker submit a large number of priority requests
+    /// that exceeding the processing power of the l2 server
+    /// and force the contract to enter exodus mode
+    /// this attack may occur on some blockchains with high tps but low gas prices
+    uint256 constant MAX_PRIORITY_REQUESTS = $(defined(MAX_PRIORITY_REQUESTS) ? MAX_PRIORITY_REQUESTS : 4096);
 
     /// @dev Reserved time for users to send full exit priority operation in case of an upgrade (in seconds)
-    uint256 constant MASS_FULL_EXIT_PERIOD = 9 days;
+    uint256 constant MASS_FULL_EXIT_PERIOD = 5 days;
 
     /// @dev Reserved time for users to withdraw funds from full exit priority operation in case of an upgrade (in seconds)
     uint256 constant TIME_TO_WITHDRAW_FUNDS_FROM_FULL_EXIT = 2 days;
@@ -70,9 +77,12 @@ contract Config {
     /// @dev Auth fact reset timelock
     uint256 constant AUTH_FACT_RESET_TIMELOCK = 1 days;
 
-    /// @dev When set fee = 100, it means 1%
-    uint16 constant MAX_WITHDRAW_FEE = 10000;
+    /// @dev Max deposit of ERC20 token that is possible to deposit
+    uint128 internal constant MAX_DEPOSIT_AMOUNT = (2**104) - 1;
 
     /// @dev Chain id
     uint8 constant CHAIN_ID = $(CHAIN_ID);
+
+    /// @dev Zero address represent eth when deposit or withdraw
+    address constant ETH_ADDRESS = address(0);
 }

@@ -25,8 +25,8 @@ contract OperationsTest {
         require(_example.owner == parsed.owner, "own");
     }
 
-    function testPartialExitPubdata(Operations.PartialExit calldata _example, bytes calldata _pubdata) external pure {
-        Operations.PartialExit memory parsed = Operations.readPartialExitPubdata(_pubdata);
+    function testPartialExitPubdata(Operations.Withdraw calldata _example, bytes calldata _pubdata) external pure {
+        Operations.Withdraw memory parsed = Operations.readWithdrawPubdata(_pubdata);
         require(_example.chainId == parsed.chainId, "cok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");

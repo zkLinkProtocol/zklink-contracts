@@ -8,230 +8,221 @@ import "./Bytes.sol";
 import "./Utils.sol";
 
 /// @title zkSync operations tools
+/// @dev Circuit ops and their pubdata (chunks * bytes)
 library Operations {
-    // Circuit ops and their pubdata (chunks * bytes)
-
-    /// @notice zkSync circuit operation type
+    /// @dev zkSync circuit operation type
     enum OpType {
         Noop, // 0
         Deposit, // 1 L1 Op
         TransferToNew, // 2 L2 Op
-        PartialExit, // 3 L2 Op
-        _CloseAccount, // 4 used for correct op id offset
-        Transfer, // 5 L2 Op
-        FullExit, // 6 L1 Op
-        ChangePubKey, // 7 L2 Op
-        ForcedExit, // 8 L2 Op
-        AddLiquidity, // 9 L2 Curve add Op
-        Swap, // 10 L2 Curve swap Op
-        RemoveLiquidity, // 11 L2 Curve remove Op
-        OrderMatching // 12 L2 Order matching Op
+        Withdraw, // 3 L2 Op
+        Transfer, // 4 L2 Op
+        FullExit, // 5 L1 Op
+        ChangePubKey, // 6 L2 Op
+        ForcedExit, // 7 L2 Op
+        L2CurveAddLiq, // 8 L2 Op
+        L2CurveSwap, // 9 L2 Op
+        L2CurveRemoveLiquidity, // 10 Op
+        OrderMatching // 11 L2 Op
     }
 
     // Byte lengths
 
+    /// @dev op is uint8
     uint8 constant OP_TYPE_BYTES = 1;
 
+    /// @dev chainId is uint8
     uint8 constant CHAIN_BYTES = 1;
 
+    /// @dev token is uint16
     uint8 constant TOKEN_BYTES = 2;
 
-    uint8 constant PUBKEY_BYTES = 32;
-
+    /// @dev nonce is uint32
     uint8 constant NONCE_BYTES = 4;
 
-    uint8 constant PUBKEY_HASH_BYTES = 20;
-
+    /// @dev address is 20 bytes length
     uint8 constant ADDRESS_BYTES = 20;
 
-    /// @dev Packed fee bytes lengths
+    /// @dev fee is uint16
     uint8 constant FEE_BYTES = 2;
 
-    /// @dev zkSync account id bytes lengths
+    /// @dev accountId is uint32
     uint8 constant ACCOUNT_ID_BYTES = 4;
 
+    /// @dev subAccountId is uint8
+    uint8 constant SUB_ACCOUNT_ID_BYTES = 1;
+
+    /// @dev amount is uint128
     uint8 constant AMOUNT_BYTES = 16;
 
-    /// @dev Signature (for example full exit signature) bytes length
-    uint8 constant SIGNATURE_BYTES = 64;
-
-    uint8 constant NFT_TOKEN_BYTES = 4;
-
-    /// @notice Priority Operation container
-    /// @member hashedPubData Hashed priority operation public data
-    /// @member expirationBlock Expiration block number (ETH block) for this request (must be satisfied before)
-    /// @member opType Priority operation type
+    // Priority operations: Deposit, FullExit
     struct PriorityOperation {
-        bytes20 hashedPubData;
-        uint64 expirationBlock;
-        OpType opType;
+        bytes20 hashedPubData; // hashed priority operation public data
+        uint64 expirationBlock; // expiration block number (ETH block) for this request (must be satisfied before)
+        OpType opType; // priority operation type
     }
 
-    // Deposit pubdata
     struct Deposit {
         // uint8 opType
-        uint8 chainId;
-        uint32 accountId;
-        uint16 tokenId;
-        uint128 amount;
-        address owner;
+        uint8 chainId; // deposit from which chain that identified by l2 chain id
+        uint32 accountId; // the account id bound to the owner address, ignored at serialization and will be set when the block is submitted
+        uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
+        uint16 tokenId; // the token that registered to l2
+        uint128 amount; // the token amount deposited to l2
+        address owner; // the address that receive deposited token at l2
     }
 
     uint256 public constant PACKED_DEPOSIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES; // 44
+        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + ADDRESS_BYTES; // 45
 
-    /// Deserialize deposit pubdata
+    /// @dev Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
-        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
-        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
-        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
-        (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.subAccountId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
 
-        require(offset == PACKED_DEPOSIT_PUBDATA_BYTES, "N"); // reading invalid deposit pubdata size
+        require(offset == PACKED_DEPOSIT_PUBDATA_BYTES, "OP: invalid deposit");
     }
 
-    /// Serialize deposit pubdata
+    /// @dev Serialize deposit pubdata
     function writeDepositPubdataForPriorityQueue(Deposit memory op) internal pure returns (bytes memory buf) {
         buf = abi.encodePacked(
             uint8(OpType.Deposit),
-            op.chainId, // chainId
-            bytes4(0), // accountId (ignored) (update when ACCOUNT_ID_BYTES is changed)
-            op.tokenId, // tokenId
-            op.amount, // amount
-            op.owner // owner
+            op.chainId,
+            uint32(0), // accountId (ignored during hash calculation)
+            op.subAccountId,
+            op.tokenId,
+            op.amount,
+            op.owner
         );
     }
 
-    /// @notice Checks that deposit is same as operation in priority queue
-    /// @param _deposit Deposit data
-    /// @param _priorityOperation Operation in priority queue
+    /// @dev Checks that deposit is same as operation in priority queue
     function checkPriorityOperation(Deposit memory _deposit, PriorityOperation memory _priorityOperation) internal pure {
-        require(_priorityOperation.opType == Operations.OpType.Deposit, "Operations: Deposit Op Type"); // incorrect priority op type
-        require(Utils.hashBytesToBytes20(writeDepositPubdataForPriorityQueue(_deposit)) == _priorityOperation.hashedPubData, "Operations: Deposit Hash");
+        require(_priorityOperation.opType == Operations.OpType.Deposit, "OP: not deposit");
+        require(Utils.hashBytesToBytes20(writeDepositPubdataForPriorityQueue(_deposit)) == _priorityOperation.hashedPubData, "OP: invalid deposit hash");
     }
-
-    // FullExit pubdata
 
     struct FullExit {
         // uint8 opType
-        uint8 chainId;
-        uint32 accountId;
-        address owner;
-        uint16 tokenId;
-        uint128 amount;
+        uint8 chainId; // withdraw to which chain that identified by l2 chain id
+        uint32 accountId; // the account id to withdraw from
+        uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
+        address owner; // the address that own the account at l2
+        uint16 tokenId; // the token that registered to l2
+        uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
     }
 
     uint256 public constant PACKED_FULL_EXIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 44
+        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES + AMOUNT_BYTES; // 45
 
+    /// @dev Deserialize fullExit pubdata
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
-        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
-        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
-        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
-        (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.subAccountId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
 
-        require(offset == PACKED_FULL_EXIT_PUBDATA_BYTES, "O"); // reading invalid full exit pubdata size
+        require(offset == PACKED_FULL_EXIT_PUBDATA_BYTES, "OP: invalid fullExit");
     }
 
+    /// @dev Serialize fullExit pubdata
     function writeFullExitPubdataForPriorityQueue(FullExit memory op) internal pure returns (bytes memory buf) {
         buf = abi.encodePacked(
             uint8(OpType.FullExit),
             op.chainId,
-            op.accountId, // accountId
-            op.owner, // owner
-            op.tokenId, // tokenId
-            uint128(0) // amount -- ignored
+            op.accountId,
+            op.subAccountId,
+            op.owner,
+            op.tokenId,
+            uint128(0) // amount(ignored during hash calculation)
         );
     }
 
-    /// @notice Checks that FullExit is same as operation in priority queue
-    /// @param _fullExit FullExit data
-    /// @param _priorityOperation Operation in priority queue
+    /// @dev Checks that FullExit is same as operation in priority queue
     function checkPriorityOperation(FullExit memory _fullExit, PriorityOperation memory _priorityOperation) internal pure {
-        require(_priorityOperation.opType == Operations.OpType.FullExit, "Operations: FullExit Op Type"); // incorrect priority op type
-        require(Utils.hashBytesToBytes20(writeFullExitPubdataForPriorityQueue(_fullExit)) == _priorityOperation.hashedPubData, "Operations: FullExit Hash");
+        require(_priorityOperation.opType == Operations.OpType.FullExit, "OP: not fullExit");
+        require(Utils.hashBytesToBytes20(writeFullExitPubdataForPriorityQueue(_fullExit)) == _priorityOperation.hashedPubData, "OP: invalid fullExit hash");
     }
 
-    // PartialExit pubdata
-
-    struct PartialExit {
+    struct Withdraw {
         //uint8 opType; -- present in pubdata, ignored at serialization
-        uint8 chainId;
+        uint8 chainId; // which chain the withdraw happened
         //uint32 accountId; -- present in pubdata, ignored at serialization
-        uint16 tokenId;
-        uint128 amount;
+        //uint8 subAccountId; -- present in pubdata, ignored at serialization
+        uint16 tokenId; // the token that to withdraw
+        uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
-        address owner;
+        address owner; // the address to receive token
         uint32 nonce;
         bool isFastWithdraw;
-        uint16 fastWithdrawFee;
-    }
+        uint16 fastWithdrawFeeRate;
+    } // 54
 
-    uint256 public constant PACKED_PARTIAL_EXIT_PUBDATA_BYTES =
-    OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + TOKEN_BYTES + AMOUNT_BYTES + FEE_BYTES + ADDRESS_BYTES + NONCE_BYTES + 1 + FEE_BYTES; // 53
-
-    function readPartialExitPubdata(bytes memory _data) internal pure returns (PartialExit memory parsed) {
+    function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
-        uint256 offset = OP_TYPE_BYTES; // opType (ignored)
-        (offset, parsed.chainId) = Bytes.readUint8(_data, offset); // chainId
-        offset += ACCOUNT_ID_BYTES; // accountId (ignored)
-        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
-        (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
-        offset += FEE_BYTES; // fee (ignored)
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
-        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
-        (offset, parsed.isFastWithdraw) = Bytes.readBool(_data, offset); // isFastWithdraw
-        (offset, parsed.fastWithdrawFee) = Bytes.readUInt16(_data, offset); // fastWithdrawFee
-
-        require(offset == PACKED_PARTIAL_EXIT_PUBDATA_BYTES, "Operations: Read PartialExit");
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        offset += ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        offset += FEE_BYTES;
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.isFastWithdraw) = Bytes.readBool(_data, offset);
+        (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
     }
-
-    // ForcedExit pubdata
 
     struct ForcedExit {
         //uint8 opType; -- present in pubdata, ignored at serialization
+        uint8 chainId; // which chain the force exit happened
         //uint32 initiatorAccountId; -- present in pubdata, ignored at serialization
         //uint32 targetAccountId; -- present in pubdata, ignored at serialization
-        uint16 tokenId;
-        uint128 amount;
+        //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
+        uint16 tokenId; // the token that to withdraw
+        uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
-        address target;
-    } // 49 bytes
+        address target; // the address to receive token
+    } // 51 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
-        uint256 offset = OP_TYPE_BYTES + ACCOUNT_ID_BYTES * 2; // opType + initiatorAccountId + targetAccountId (ignored)
-        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset); // tokenId
-        (offset, parsed.amount) = Bytes.readUInt128(_data, offset); // amount
-        offset += FEE_BYTES; // fee (ignored)
-        (offset, parsed.target) = Bytes.readAddress(_data, offset); // target
+        uint256 offset = OP_TYPE_BYTES;
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        offset += ACCOUNT_ID_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
+        (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        offset += FEE_BYTES;
+        (offset, parsed.target) = Bytes.readAddress(_data, offset);
     }
 
     // ChangePubKey
-
-    enum ChangePubkeyType {ECRECOVER, CREATE2, OldECRECOVER}
-
     struct ChangePubKey {
         // uint8 opType; -- present in pubdata, ignored at serialization
-        uint32 accountId;
-        bytes20 pubKeyHash;
-        address owner;
-        uint32 nonce;
+        uint8 chainId; // which chain to verify(only one chain need to verify for gas saving)
+        uint32 accountId; // the account that to change pubkey
+        bytes20 pubKeyHash; // hash of the new rollup pubkey
+        address owner; // the owner that own this account
+        uint32 nonce; // the account nonce
         //uint16 tokenId; -- present in pubdata, ignored at serialization
         //uint16 fee; -- present in pubdata, ignored at serialization
-    } // 53 bytes
+    } // 54 bytes
 
     function readChangePubKeyPubdata(bytes memory _data) internal pure returns (ChangePubKey memory parsed) {
         uint256 offset = OP_TYPE_BYTES;
-        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset); // accountId
-        (offset, parsed.pubKeyHash) = Bytes.readBytes20(_data, offset); // pubKeyHash
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset); // owner
-        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset); // nonce
+        (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.pubKeyHash) = Bytes.readBytes20(_data, offset);
+        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
     }
 }

@@ -2,14 +2,15 @@
 
 pragma solidity ^0.7.0;
 
+pragma experimental ABIEncoderV2;
+
 import "./zksync/Config.sol";
-import "./nft/IZkLinkNFT.sol";
 
 /// @title Governance Contract
 /// @author zk.link
 contract Governance is Config {
-    /// @notice Token added to Franklin net
-    event NewToken(address indexed token, uint16 indexed tokenId);
+    /// @notice Token added to ZkLink net
+    event NewToken(uint16 indexed tokenId, address indexed token);
 
     /// @notice Governor changed
     event NewGovernor(address newGovernor);
@@ -17,31 +18,29 @@ contract Governance is Config {
     /// @notice Validator's status changed
     event ValidatorStatusUpdate(address indexed validatorAddress, bool isActive);
 
-    event TokenPausedUpdate(address indexed token, bool paused);
+    /// @notice Token pause status update
+    event TokenPausedUpdate(uint16 indexed token, bool paused);
 
-    /// @notice Nft address changed
-    event NftUpdate(address indexed nft);
+    /// @notice Token address update
+    event TokenAddressUpdate(uint16 indexed token, address newAddress);
 
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
 
-    /// @notice Total number of ERC20 tokens registered in the network (excluding ETH, which is hardcoded as tokenId = 0)
-    uint16 public totalTokens;
-
-    /// @notice List of registered tokens by tokenId
-    mapping(uint16 => address) public tokenAddresses;
-
-    /// @notice List of registered tokens by address
-    mapping(address => uint16) public tokenIds;
-
     /// @notice List of permitted validators
     mapping(address => bool) public validators;
 
-    /// @notice Paused tokens list, deposits are impossible to create for paused tokens
-    mapping(uint16 => bool) public pausedTokens;
+    struct RegisteredToken {
+        bool registered; // whether token registered to ZkLink or not, default is false
+        bool paused; // whether token can deposit to ZkLink or not, default is false
+        address tokenAddress; // the token address, zero represents eth, can be updated
+    }
 
-    /// @notice ZkLinkNFT mint to user when add liquidity
-    IZkLinkNFT public nft;
+    /// @notice A map of registered token infos
+    mapping(uint16 => RegisteredToken) public tokens;
+
+    /// @notice A map of token address to id, 0 is invalid token id
+    mapping(address => uint16) public tokenIds;
 
     /// @notice Governance contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
@@ -60,38 +59,71 @@ contract Governance is Config {
     /// @param _newGovernor Address of the new governor
     function changeGovernor(address _newGovernor) external {
         requireGovernor(msg.sender);
-        require(_newGovernor != address(0), "z0");
+        require(_newGovernor != address(0), "Gov: address not set");
         if (networkGovernor != _newGovernor) {
             networkGovernor = _newGovernor;
             emit NewGovernor(_newGovernor);
         }
     }
 
-    /// @notice Add token to the list of networks tokens，token must not be taken fees when transfer
-    /// @param _token Token address
-    function addToken(address _token) external {
+    /// @notice Add token to the list of networks tokens
+    /// @param _tokenId Token id
+    /// @param _tokenAddress Token address, zero represent ETH
+    function addToken(uint16 _tokenId, address _tokenAddress) public {
         requireGovernor(msg.sender);
-        require(tokenIds[_token] == 0, "1e"); // token exists
-        require(totalTokens < MAX_AMOUNT_OF_REGISTERED_TOKENS, "1f"); // no free identifiers for tokens
+        // token id MUST be in a valid range
+        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "Gov: invalid tokenId");
+        RegisteredToken memory rt = tokens[_tokenId];
+        require(!rt.registered, "Gov: token registered");
 
-        totalTokens++;
-        uint16 newTokenId = totalTokens; // it is not `totalTokens - 1` because tokenId = 0 is reserved for eth
+        rt.registered = true;
+        rt.tokenAddress = _tokenAddress;
+        tokens[_tokenId] = rt;
+        tokenIds[_tokenAddress] = _tokenId;
+        emit NewToken(_tokenId, _tokenAddress);
+    }
 
-        tokenAddresses[newTokenId] = _token;
-        tokenIds[_token] = newTokenId;
-        emit NewToken(_token, newTokenId);
+    /// @notice Add tokens to the list of networks tokens
+    /// @param _tokenIdList Token id list
+    /// @param _tokenAddressList Token address list
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList) external {
+        require(_tokenIdList.length == _tokenAddressList.length, "Gov: invalid array length");
+        for (uint i; i < _tokenIdList.length; i++) {
+            addToken(_tokenIdList[i], _tokenAddressList[i]);
+        }
     }
 
     /// @notice Pause token deposits for the given token
-    /// @param _tokenAddr Token address
+    /// @param _tokenId Token id
     /// @param _tokenPaused Token paused status
-    function setTokenPaused(address _tokenAddr, bool _tokenPaused) external {
+    function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external {
         requireGovernor(msg.sender);
+        RegisteredToken memory rt = tokens[_tokenId];
+        require(rt.registered, "Gov: token not registered");
 
-        uint16 tokenId = this.validateTokenAddress(_tokenAddr);
-        if (pausedTokens[tokenId] != _tokenPaused) {
-            pausedTokens[tokenId] = _tokenPaused;
-            emit TokenPausedUpdate(_tokenAddr, _tokenPaused);
+        if (rt.paused != _tokenPaused) {
+            rt.paused = _tokenPaused;
+            emit TokenPausedUpdate(_tokenId, _tokenPaused);
+        }
+    }
+
+    /// @notice Update token address
+    /// @param _tokenId Token id
+    /// @param _newTokenAddress Token address to replace
+    function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external {
+        requireGovernor(msg.sender);
+        RegisteredToken memory rt = tokens[_tokenId];
+        require(rt.registered, "Gov: token not registered");
+        // ETH address MUST not be updated
+        require(rt.tokenAddress != ETH_ADDRESS, "Gov: eth address update disabled");
+        // new token address MUST not be zero address
+        require(_newTokenAddress != address(0), "Gov: newTokenAddress not set");
+
+        if (rt.tokenAddress != _newTokenAddress) {
+            delete tokenIds[rt.tokenAddress];
+            rt.tokenAddress = _newTokenAddress;
+            tokenIds[_newTokenAddress] = _tokenId;
+            emit TokenAddressUpdate(_tokenId, _newTokenAddress);
         }
     }
 
@@ -106,43 +138,25 @@ contract Governance is Config {
         }
     }
 
-    /// @notice Change nft
-    /// @param _newNft ZKLinkNFT address
-    function changeNft(address _newNft) external {
-        requireGovernor(msg.sender);
-        require(_newNft != address(0), "Governance: zero nft address");
-
-        if (_newNft != address(nft)) {
-            nft = IZkLinkNFT(_newNft);
-            emit NftUpdate(_newNft);
-        }
-    }
-
     /// @notice Check if specified address is is governor
     /// @param _address Address to check
     function requireGovernor(address _address) public view {
-        require(_address == networkGovernor, "1g"); // only by governor
+        require(_address == networkGovernor, "Gov: no auth");
     }
 
     /// @notice Checks if validator is active
     /// @param _address Validator address
     function requireActiveValidator(address _address) external view {
-        require(validators[_address], "1h"); // validator is not active
+        require(validators[_address], "Gov: not validator");
     }
 
-    /// @notice Validate token id (must be less than or equal to total tokens amount)
-    /// @param _tokenId Token id
-    /// @return bool flag that indicates if token id is less than or equal to total tokens amount
-    function isValidTokenId(uint16 _tokenId) external view returns (bool) {
-        return _tokenId <= totalTokens;
+    /// @notice Get registered token info by id
+    function getToken(uint16 _tokenId) external view returns (RegisteredToken memory) {
+        return tokens[_tokenId];
     }
 
-    /// @notice Validate token address
-    /// @param _tokenAddr Token address
-    /// @return tokens id
-    function validateTokenAddress(address _tokenAddr) external view returns (uint16) {
-        uint16 tokenId = tokenIds[_tokenAddr];
-        require(tokenId != 0, "1i"); // 0 is not a valid token
-        return tokenId;
+    /// @notice Get registered token id by address
+    function getTokenId(address _tokenAddress) external view returns (uint16) {
+        return tokenIds[_tokenAddress];
     }
 }

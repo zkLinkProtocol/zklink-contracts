@@ -10,15 +10,6 @@ import "../zksync/SafeCast.sol";
 contract ZkLinkTest is ZkLink {
 
     constructor() {
-        notInProxyMode = false;
-    }
-
-    function setProxyMode(bool inProxy) external {
-        notInProxyMode = !inProxy;
-    }
-
-    function setExodusMode(bool _exodusMode) external {
-        exodusMode = _exodusMode;
     }
 
     function setPriorityExpirationBlock(uint64 index, uint64 eb) external {
@@ -37,22 +28,10 @@ contract ZkLinkTest is ZkLink {
         uint16 _tokenId,
         uint128 _amount,
         address _owner) external {
-        registerDeposit(_tokenId, _amount, _owner);
+//        registerDeposit(_tokenId, _amount, _owner);
     }
 
     function getStoredBlockHashes(uint32 height) external view returns (bytes32) {
         return storedBlockHashes[height];
-    }
-
-    function addLq(IZkLinkNFT nft, address to, uint16 tokenId, uint128 amount, address pair) external returns (uint32) {
-        return nft.addLq(to, tokenId, amount, pair);
-    }
-
-    function confirmAddLq(IZkLinkNFT nft, uint32 nftTokenId, uint128 lpTokenAmount) external {
-        nft.confirmAddLq(nftTokenId, lpTokenAmount);
-    }
-
-    function revokeAddLq(IZkLinkNFT nft, uint32 nftTokenId) external {
-        nft.revokeAddLq(nftTokenId);
     }
 }
