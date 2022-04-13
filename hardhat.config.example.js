@@ -1,5 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
-require("adhusson-hardhat-solpp");
+require("@nomiclabs/hardhat-solpp");
 require("@nomiclabs/hardhat-etherscan");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
@@ -159,7 +159,7 @@ module.exports = {
           }
         }
       }
-    ],
+    ]
   },
   networks: {
     hardhat: {

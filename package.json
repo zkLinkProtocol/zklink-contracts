@@ -10,15 +10,17 @@
     "amm"
   ],
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-etherscan": "^2.1.8",
-    "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "adhusson-hardhat-solpp": "^2.0.4",
-    "chai": "^4.3.4",
+    "@nomiclabs/hardhat-ethers": "^2.0.5",
+    "@nomiclabs/hardhat-etherscan": "^3.0.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@nomiclabs/hardhat-solpp": "^2.0.1",
+    "chai": "^4.3.6",
     "ethereum-waffle": "^3.4.0",
-    "ethers": "^5.3.0",
-    "hardhat": "^2.6.1",
-    "openzeppelin-solidity": "~4.1.0"
+    "ethers": "^5.6.0",
+    "hardhat": "^2.9.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0"
   },
   "scripts": {
     "compile": "NET=UNITTEST npx hardhat compile",
