@@ -4,19 +4,13 @@ require("@nomiclabs/hardhat-etherscan");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
 require("./script/deploy_zkl");
-require("./script/deploy_nft");
-require("./script/deploy_pool");
 require("./script/interact");
-
-const MAX_TOKEN_NUM = 127;
 
 // main net
 const ethConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: MAX_TOKEN_NUM,
     BLOCK_PERIOD: '15 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '7 days',
     CHAIN_ID: 1
   },
   url: "https://eth-mainnet.alchemyapi.io/v2/YOUK_API_KEY",
@@ -25,10 +19,8 @@ const ethConfig = {
 
 const bscConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: MAX_TOKEN_NUM,
     BLOCK_PERIOD: '3 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '7 days',
     CHAIN_ID: 2
   },
   url: "https://bsc-dataseed2.binance.org",
@@ -37,10 +29,8 @@ const bscConfig = {
 
 const avaxConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: MAX_TOKEN_NUM,
     BLOCK_PERIOD: '2 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '7 days',
     CHAIN_ID: 3
   },
   url: "https://api.avax.network/ext/bc/C/rpc",
@@ -49,10 +39,8 @@ const avaxConfig = {
 
 const polygonConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: MAX_TOKEN_NUM,
     BLOCK_PERIOD: '2 seconds',
     // UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '7 days',
     CHAIN_ID: 4
   },
   url: "https://matic-mainnet.chainstacklabs.com",
@@ -62,10 +50,8 @@ const polygonConfig = {
 // testnet
 const polygonTestConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: polygonConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
     BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
     CHAIN_ID: 1
   },
   url: "https://matic-mumbai.chainstacklabs.com",
@@ -74,10 +60,8 @@ const polygonTestConfig = {
 
 const avaxTestConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: avaxConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
     BLOCK_PERIOD: avaxConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
     CHAIN_ID: 2
   },
   url: "https://api.avax-test.network/ext/bc/C/rpc",
@@ -86,10 +70,8 @@ const avaxTestConfig = {
 
 const rinkebyConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: ethConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
     CHAIN_ID: 3
   },
   url: "https://eth-rinkeby.alchemyapi.io/v2/YOUK_API_KEY",
@@ -98,10 +80,8 @@ const rinkebyConfig = {
 
 const goerliConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: ethConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
     CHAIN_ID: 4
   },
   url: "https://eth-goerli.alchemyapi.io/v2/YOUK_API_KEY",
@@ -110,10 +90,8 @@ const goerliConfig = {
 
 const bscTestConfig = {
   macro: {
-    MAX_AMOUNT_OF_REGISTERED_TOKENS: bscConfig.macro.MAX_AMOUNT_OF_REGISTERED_TOKENS,
     BLOCK_PERIOD: bscConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
-    STRATEGY_ACTIVE_WAIT: '0 days',
     CHAIN_ID: 5
   },
   url: "https://data-seed-prebsc-1-s1.binance.org:8545",
@@ -175,4 +153,3 @@ module.exports = {
     apiKey: config.scan
   }
 };
-
