@@ -10,6 +10,8 @@ contract OperationsTest {
     function testDepositPubdata(Operations.Deposit calldata _example, bytes calldata _pubdata) external pure {
         Operations.Deposit memory parsed = Operations.readDepositPubdata(_pubdata);
         require(_example.chainId == parsed.chainId, "cok");
+        require(_example.accountId == parsed.accountId, "aok");
+        require(_example.subAccountId == parsed.subAccountId, "sok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
@@ -20,12 +22,13 @@ contract OperationsTest {
         Operations.Deposit memory parsed = Operations.readDepositPubdata(pubdata);
         require(0 == parsed.accountId, "acc");
         require(_example.chainId == parsed.chainId, "cok");
+        require(_example.subAccountId == parsed.subAccountId, "sok");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
     }
 
-    function testPartialExitPubdata(Operations.Withdraw calldata _example, bytes calldata _pubdata) external pure {
+    function testWithdrawPubdata(Operations.Withdraw calldata _example, bytes calldata _pubdata) external pure {
         Operations.Withdraw memory parsed = Operations.readWithdrawPubdata(_pubdata);
         require(_example.chainId == parsed.chainId, "cok");
         require(_example.tokenId == parsed.tokenId, "tok");
@@ -37,6 +40,7 @@ contract OperationsTest {
         Operations.FullExit memory parsed = Operations.readFullExitPubdata(_pubdata);
         require(_example.chainId == parsed.chainId, "cid");
         require(_example.accountId == parsed.accountId, "acc");
+        require(_example.subAccountId == parsed.subAccountId, "scc");
         require(_example.owner == parsed.owner, "own");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
@@ -47,9 +51,18 @@ contract OperationsTest {
         Operations.FullExit memory parsed = Operations.readFullExitPubdata(pubdata);
         require(_example.chainId == parsed.chainId, "cid");
         require(_example.accountId == parsed.accountId, "acc");
+        require(_example.subAccountId == parsed.subAccountId, "scc");
         require(_example.tokenId == parsed.tokenId, "tok");
         require(0 == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
+    }
+
+    function testForcedExitPubdata(Operations.ForcedExit calldata _example, bytes calldata _pubdata) external pure {
+        Operations.ForcedExit memory parsed = Operations.readForcedExitPubdata(_pubdata);
+        require(_example.chainId == parsed.chainId, "cid");
+        require(_example.tokenId == parsed.tokenId, "tcc");
+        require(_example.amount == parsed.amount, "amn");
+        require(_example.target == parsed.target, "tar");
     }
 
     function testChangePubkeyPubdata(Operations.ChangePubKey calldata _example, bytes calldata _pubdata) external pure {

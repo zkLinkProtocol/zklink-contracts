@@ -78,13 +78,10 @@ contract Governance is Config {
         require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "Gov: invalid tokenId");
         // token MUST be not zero address
         require(_tokenAddress != address(0), "Gov: invalid tokenAddress");
+        // revert duplicate register
         RegisteredToken memory rt = tokens[_tokenId];
-        require(!rt.registered, "Gov: token registered");
-        // revert duplicate ETH register
-        if (_tokenAddress == ETH_ADDRESS) {
-            uint16 ethId = tokenIds[_tokenAddress];
-            require(ethId == 0, "Gov: duplicate ETH register");
-        }
+        require(!rt.registered, "Gov: tokenId registered");
+        require(tokenIds[_tokenAddress] == 0, "Gov: tokenAddress registered");
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
@@ -120,12 +117,14 @@ contract Governance is Config {
     /// @param _tokenId Token id
     /// @param _newTokenAddress Token address to replace
     function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external onlyGovernor {
-        // new token address MUST not be zero address
-        require(_newTokenAddress != address(0), "Gov: newTokenAddress not set");
-        // token MUST be registered
+        // new token address MUST not be zero address or eth address
+        require(_newTokenAddress != address(0) && _newTokenAddress != ETH_ADDRESS, "Gov: invalid address");
+        // tokenId MUST be registered
         RegisteredToken memory rt = tokens[_tokenId];
-        require(rt.registered, "Gov: token not registered");
-        // ETH address MUST not be updated
+        require(rt.registered, "Gov: tokenId not registered");
+        // tokenAddress MUST not be registered
+        require(tokenIds[_newTokenAddress] == 0, "Gov: tokenAddress registered");
+        // token represent ETH MUST not be updated
         require(rt.tokenAddress != ETH_ADDRESS, "Gov: eth address update disabled");
 
         if (rt.tokenAddress != _newTokenAddress) {
