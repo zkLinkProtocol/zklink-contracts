@@ -89,6 +89,18 @@ contract Storage {
         _;
     }
 
+    /// @notice Checks that current state is exodus mode
+    modifier notActive() {
+        require(exodusMode, "ZkLink: active");
+        _;
+    }
+
+    /// @notice Check if msg sender is a validator
+    modifier onlyValidator() {
+        governance.requireActiveValidator(msg.sender);
+        _;
+    }
+
     /// @notice Packs address and token id into single word to use as a key in balances mapping
     function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
         return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));

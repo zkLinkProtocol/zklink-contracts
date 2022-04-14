@@ -164,12 +164,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
     /// @dev Exodus mode must be entered in case of current ethereum block number is higher than the oldest
     /// of existed priority requests expiration block number.
-    /// @return bool flag that is true if the Exodus mode must be entered.
-    function activateExodusMode() external returns (bool) {
-        if (exodusMode) {
-            return false;
-        }
-
+    function activateExodusMode() external active {
         bool trigger = block.number >= priorityRequests[firstPriorityRequestId].expirationBlock &&
             priorityRequests[firstPriorityRequestId].expirationBlock != 0;
 
@@ -177,7 +172,6 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
             exodusMode = true;
             emit ExodusMode();
         }
-        return trigger;
     }
 
     /// @notice Withdraws token from ZkLink to root chain in case of exodus mode. User must provide proof that he owns funds
@@ -196,10 +190,8 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
         uint16 _tokenId,
         uint128 _amount,
         uint256[] calldata _proof
-    ) external {
+    ) external notActive {
         // ===Checks===
-        // MUST be in exodus mode
-        require(exodusMode, "ZkLink: not exodus");
         // accountId and subAccountId MUST be valid
         require(_accountId <= MAX_ACCOUNT_ID, "ZkLink: invalid accountId");
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "ZkLink: invalid subAccountId");
@@ -226,10 +218,8 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// Canceling may take several separate transactions to be completed
     /// @param _n number of requests to process
     /// @param _depositsPubdata deposit details
-    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external {
+    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external notActive {
         // ===Checks===
-        // MUST be in exodus mode
-        require(exodusMode, "ZkLink: not exodus");
         uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
         require(toProcess > 0, "ZkLink: no deposits to process");
         require(toProcess == _depositsPubdata.length, "ZkLink: invalid deposits pubdata");
@@ -346,10 +336,10 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @notice Commit block
     /// @dev 1. Checks onchain operations, timestamp.
     /// 2. Store block commitments
-    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active nonReentrant
+    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
     {
         // ===Checks===
-        governance.requireActiveValidator(msg.sender);
+        require(_newBlocksData.length > 0, "ZkLink: no commit");
         // Check that we commit blocks after last committed block
         require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "ZkLink: incorrect previous block data");
 
@@ -357,15 +347,17 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
         for (uint32 i = 0; i < _newBlocksData.length; ++i) {
             _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
 
+            // overflow is impossible
             totalCommittedPriorityRequests += _lastCommittedBlockData.priorityOperations;
             storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
-
-            emit BlockCommit(_lastCommittedBlockData.blockNumber);
         }
+        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "ZkLink: invalid state of pr");
 
+        // overflow is impossible
         totalBlocksCommitted += uint32(_newBlocksData.length);
 
-        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "ZkLink: invalid state of pr");
+        // log the last new committed block number
+        emit BlockCommit(_lastCommittedBlockData.blockNumber);
     }
 
     /// @notice Blocks commitment verification.
@@ -392,13 +384,11 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
             _proof.commitments,
             _proof.subproofsLimbs
         );
-        require(success, "ZkLink: Aggregated proof verification failed");
+        require(success, "ZkLink: aggregated proof verification failed");
     }
 
     /// @notice Reverts unverified blocks
-    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external nonReentrant {
-        governance.requireActiveValidator(msg.sender);
-
+    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
         uint32 blocksCommitted = totalBlocksCommitted;
         uint32 blocksToRevert = Utils.minU32(uint32(_blocksToRevert.length), blocksCommitted - totalBlocksExecuted);
         uint64 revertedPriorityRequests = 0;
@@ -425,9 +415,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
     /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
-    function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external active nonReentrant {
-        governance.requireActiveValidator(msg.sender);
-
+    function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
         uint64 priorityRequestsExecuted = 0;
         uint32 nBlocks = uint32(_blocksData.length);
         for (uint32 i = 0; i < nBlocks; ++i) {
@@ -516,9 +504,9 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
         // Check timestamp of the new block
         {
             require(_newBlock.timestamp >= _previousBlock.timestamp, "ZkLink: block should be after previous block");
-            bool timestampNotTooSmall = block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp;
-            bool timestampNotTooBig = _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA);
-            require(timestampNotTooSmall && timestampNotTooBig, "ZkLink: invalid new block timestamp");
+            // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
+            require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
+                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZkLink: invalid new block timestamp");
         }
 
         // Check onchain operations
