@@ -19,7 +19,7 @@ import "./Storage.sol";
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files
 /// https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct
 /// @author zk.link
-contract ZkLink is  UpgradeableMaster, Storage, Config, Events, ReentrancyGuard {
+contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
