@@ -50,6 +50,8 @@ describe('Governance unit tests', function () {
 
         expect(await testContract.connect(bob).setTokenPaused(tokenId, true))
             .to.be.emit(testContract.address, 'TokenPausedUpdate');
+        const rt = await testContract.getToken(tokenId);
+        expect(rt.paused).equal(true);
     });
 
     it('Set token address should success', async () => {
@@ -65,6 +67,8 @@ describe('Governance unit tests', function () {
 
         expect(await testContract.connect(bob).setTokenAddress(tokenId, newTokenAddress))
             .to.be.emit(testContract.address, 'TokenAddressUpdate');
+        const rt = await testContract.getToken(tokenId);
+        expect(rt.tokenAddress.toLowerCase()).equal(newTokenAddress.toLowerCase());
 
         // eth token update disabled
         const ethId = 2;

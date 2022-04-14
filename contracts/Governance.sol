@@ -109,6 +109,7 @@ contract Governance is Config {
 
         if (rt.paused != _tokenPaused) {
             rt.paused = _tokenPaused;
+            tokens[_tokenId] = rt;
             emit TokenPausedUpdate(_tokenId, _tokenPaused);
         }
     }
@@ -130,6 +131,7 @@ contract Governance is Config {
         if (rt.tokenAddress != _newTokenAddress) {
             delete tokenIds[rt.tokenAddress];
             rt.tokenAddress = _newTokenAddress;
+            tokens[_tokenId] = rt;
             tokenIds[_newTokenAddress] = _tokenId;
             emit TokenAddressUpdate(_tokenId, _newTokenAddress);
         }
