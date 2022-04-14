@@ -52,46 +52,41 @@ contract Storage {
     /// @notice Once it was raised, it can not be cleared again, and all users must exit
     bool public exodusMode;
 
-    /// @notice Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
+    /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => uint128) internal pendingBalances;
 
     /// @notice Flag indicates that a user has exited in the exodus mode certain token balance (accountId => subAccountId => tokenId)
     mapping(uint32 => mapping(uint8 => mapping(uint16 => bool))) public performedExodus;
 
-    /// @notice Priority Requests mapping (request id - operation)
-    /// @dev Contains op type, pubdata and expiration block of unsatisfied requests.
+    /// @dev Priority Requests mapping (request id - operation)
+    /// Contains op type, pubdata and expiration block of unsatisfied requests.
     /// Numbers are in order of requests receiving
     mapping(uint64 => Operations.PriorityOperation) internal priorityRequests;
 
     /// @notice User authenticated fact hashes for some nonce.
     mapping(address => mapping(uint32 => bytes32)) public authFacts;
 
-    /// @notice Timer for authFacts entry reset (address, nonce -> timer).
-    /// @dev Used when user wants to reset `authFacts` for some nonce.
+    /// @dev Timer for authFacts entry reset (address, nonce -> timer).
+    /// Used when user wants to reset `authFacts` for some nonce.
     mapping(address => mapping(uint32 => uint256)) internal authFactsResetTimer;
 
-    /// @notice Stored hashed StoredBlockInfo for some block number
+    /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
-    /// @Rollup block stored data
-    /// @member blockNumber Rollup block number
-    /// @member priorityOperations Number of priority operations processed
-    /// @member pendingOnchainOperationsHash Hash of all operations that must be processed after verify
-    /// @member timestamp Rollup block timestamp, have the same format as Ethereum block constant
-    /// @member stateHash Root hash of the rollup state
-    /// @member commitment Verified input for the ZkLink circuit
+    /// @notice block stored data
     struct StoredBlockInfo {
-        uint32 blockNumber;
-        uint64 priorityOperations;
-        bytes32 pendingOnchainOperationsHash;
-        uint256 timestamp;
-        bytes32 stateHash;
-        bytes32 commitment;
+        uint32 blockNumber; // Rollup block number
+        uint64 priorityOperations; // Number of priority operations processed
+        bytes32 pendingOnchainOperationsHash; // Hash of all operations that must be processed after verify
+        uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
+        bytes32 stateHash; // Root hash of the rollup state
+        bytes32 commitment; // Verified input for the ZkLink circuit
     }
 
     /// @notice Checks that current state not is exodus mode
-    function requireActive() internal view {
+    modifier active() {
         require(!exodusMode, "ZkLink: not active");
+        _;
     }
 
     /// @notice Packs address and token id into single word to use as a key in balances mapping

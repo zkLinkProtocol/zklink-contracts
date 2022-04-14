@@ -7,7 +7,7 @@ describe('Accept unit tests', function () {
     beforeEach(async () => {
         [wallet,alice,bob,broker] = await hardhat.ethers.getSigners();
         // token
-        const erc20Factory = await hardhat.ethers.getContractFactory('cache/solpp-generated-contracts/dev-contracts/ERC20.sol:ERC20');
+        const erc20Factory = await hardhat.ethers.getContractFactory('MockToken');
         token = await erc20Factory.deploy(10000);
         // governance, alice is networkGovernor
         const governanceFactory = await hardhat.ethers.getContractFactory('Governance');

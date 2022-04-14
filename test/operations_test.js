@@ -14,98 +14,57 @@ describe('Operations unit tests', function () {
 
     // Deposit
     it('Correctly Parse Deposit pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
-        const subAccountId = '0x01';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId, accountId, subAccountId, tokenId, amount, owner };
+        const example = { chainId:1, accountId:13, subAccountId:0, tokenId:25, amount:100, owner };
         const pubdata = getDepositPubdata(example);
         await testContract.testDepositPubdata(example, pubdata);
     });
 
     it('Correctly Write Deposit pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
-        const subAccountId = '0x01';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        await testContract.testWriteDepositPubdata({ chainId, accountId, subAccountId, tokenId, amount, owner });
+        await testContract.testWriteDepositPubdata({ chainId:1, accountId:13, subAccountId:0, tokenId:25, amount:100, owner });
     });
 
     // Withdraw
     it('Correctly Parse Withdraw pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
-        const subAccountId = '0x01';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x0102';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const nonce = '0x00000001';
-        const isFastWithdraw = '0x01';
-        const fastWithdrawFeeRate = '0x0102';
-
-        const example = { chainId, accountId, subAccountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFeeRate };
+        const example = { chainId:1, accountId:32, subAccountId:4, tokenId:34, amount:32, fee:14, owner, nonce:45, isFastWithdraw:true, fastWithdrawFeeRate:45 };
         const pubdata = getWithdrawPubdata(example);
         await testContract.testWithdrawPubdata(example, pubdata);
     });
 
     // FullExit
     it('Correctly Parse FullExit pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
-        const subAccountId = '0x01';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
 
-        const example = { chainId, accountId, subAccountId, owner, tokenId, amount };
+        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, amount:15 };
         const pubdata = getFullExitPubdata(example);
         await testContract.testFullExitPubdata(example, pubdata);
     });
 
     it('Correctly Write FullExit pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
-        const subAccountId = '0x01';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-
-        const example = { chainId, accountId, subAccountId, owner, tokenId, amount };
+        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, amount:15 };
         await testContract.testWriteFullExitPubdata(example);
     });
 
     // ForcedExit
     it('Correctly Parse ForcedExit pubdata', async () => {
-        const chainId = '0x01';
-        const initiatorAccountId = '0x01020304';
-        const targetAccountId = '0x01020305';
-        const targetSubAccountId = '0x01';
-        const tokenId = '0x0102';
-        const amount = '0x101112131415161718191a1b1c1d1e1f';
-        const fee = '0x0102';
         const target = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, amount, fee, target };
+        const example = { chainId:1, initiatorAccountId:2, targetAccountId:3, targetSubAccountId:4, tokenId:5, amount:6, fee:7, target };
         const pubdata = getForcedExitPubdata(example);
         await testContract.testForcedExitPubdata(example, pubdata);
     });
 
     // ChangePubKey
     it('Correctly Parse ChangePubKey pubdata', async () => {
-        const chainId = '0x01';
-        const accountId = '0x01020304';
         const pubKeyHash = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const nonce = '0x01020304';
 
-        const example = { chainId, accountId, pubKeyHash, owner, nonce };
+        const example = { chainId:1, accountId:2, pubKeyHash, owner, nonce:3, tokenId:4, fee:5 };
         const pubdata = getChangePubkeyPubdata(example);
         await testContract.testChangePubkeyPubdata(example, pubdata);
     });

@@ -5,23 +5,27 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../ZkLink.sol";
-import "../zksync/SafeCast.sol";
 
 contract ZkLinkTest is ZkLink {
 
-    constructor() {
+    function setExodus(bool _exodusMode) external {
+        exodusMode = _exodusMode;
+    }
+
+    function setTotalOpenPriorityRequests(uint64 _totalOpenPriorityRequests) external {
+        totalOpenPriorityRequests = _totalOpenPriorityRequests;
     }
 
     function setPriorityExpirationBlock(uint64 index, uint64 eb) external {
         priorityRequests[index].expirationBlock = eb;
     }
 
-    function getPubdataHash(uint64 index) external view returns (bytes20) {
+    function getPriorityHash(uint64 index) external view returns (bytes20) {
         return priorityRequests[index].hashedPubData;
     }
 
-    function hashBytesToBytes20(bytes memory _bytes) external pure returns (bytes20) {
-        return Utils.hashBytesToBytes20(_bytes);
+    function getPubdataHash(uint64 index) external view returns (bytes20) {
+        return priorityRequests[index].hashedPubData;
     }
 
     function testRegisterDeposit(

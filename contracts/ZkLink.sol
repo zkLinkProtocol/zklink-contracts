@@ -135,10 +135,8 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @param _accountId Numerical id of the account
     /// @param _subAccountId The exit sub account
     /// @param _tokenId Token id
-    function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId) external nonReentrant {
+    function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId) external active nonReentrant {
         // ===Checks===
-        // exodus mode MUST not be activated
-        requireActive();
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "ZkLink: too many request");
         // accountId and subAccountId MUST be valid
@@ -327,9 +325,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     ///         2) After `AUTH_FACT_RESET_TIMELOCK` time is passed second `setAuthPubkeyHash` transaction will reset pubkey hash for `_nonce`.
     /// @param _pubkeyHash New pubkey hash
     /// @param _nonce Nonce of the change pubkey L2 transaction
-    function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external {
-        requireActive();
-
+    function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external active {
         require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "ZkLink: invalid pubkeyHash"); // PubKeyHash should be 20 bytes.
         if (authFacts[msg.sender][_nonce] == bytes32(0)) {
             authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
@@ -350,10 +346,9 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @notice Commit block
     /// @dev 1. Checks onchain operations, timestamp.
     /// 2. Store block commitments
-    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external nonReentrant
+    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active nonReentrant
     {
         // ===Checks===
-        requireActive();
         governance.requireActiveValidator(msg.sender);
         // Check that we commit blocks after last committed block
         require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "ZkLink: incorrect previous block data");
@@ -430,8 +425,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
     /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
-    function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external nonReentrant {
-        requireActive();
+    function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external active nonReentrant {
         governance.requireActiveValidator(msg.sender);
 
         uint64 priorityRequestsExecuted = 0;
@@ -452,10 +446,8 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
 
     // =================Internal functions=================
 
-    function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId) internal {
+    function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId) internal active {
         // ===Checks===
-        // exodus mode MUST not be activated
-        requireActive();
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "ZkLink: too many request");
         // token MUST be registered to ZkLink and deposit MUST be enabled
