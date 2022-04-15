@@ -8,5 +8,5 @@ import "./Governance.sol";
 /// @author zk.link
 interface IZkLink {
 
-    function governance() external returns (Governance);
+    function governance() external view returns (Governance);
 }

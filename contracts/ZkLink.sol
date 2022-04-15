@@ -633,12 +633,13 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
                 if (op.chainId == CHAIN_ID) {
-                    if (op.isFastWithdraw) {
+                    // nonce > 0 means fast withdraw
+                    if (op.nonce > 0) {
                         bytes32 fwHash = periphery.calAcceptHash(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce);
-                        address accepter = periphery.getAccepter(fwHash);
+                        address accepter = periphery.getAccepter(op.accountId, fwHash);
                         if (accepter == address(0)) {
                             // receiver act as a accepter
-                            periphery.setAccepter(fwHash, op.owner);
+                            periphery.setAccepter(op.accountId, fwHash, op.owner);
                             withdrawOrStore(op.tokenId, op.owner, op.amount);
                         } else {
                             // just increase the pending balance of accepter

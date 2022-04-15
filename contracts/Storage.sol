@@ -9,11 +9,12 @@ import "./zksync/Verifier.sol";
 import "./zksync/Operations.sol";
 import "./Governance.sol";
 import "./ZkLinkPeriphery.sol";
+import "./IZkLink.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
-contract Storage {
+contract Storage is IZkLink{
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
@@ -28,7 +29,7 @@ contract Storage {
     // governance(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
 
     /// @notice Governance contract. Contains the governor (the owner) of whole system, validators list, possible tokens list
-    Governance public governance;
+    Governance public override governance;
 
     /// @notice Total number of committed blocks i.e. blocks[totalBlocksCommitted] points at the latest committed block
     uint32 public totalBlocksCommitted;

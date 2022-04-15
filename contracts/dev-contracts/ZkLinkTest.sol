@@ -24,8 +24,8 @@ contract ZkLinkTest is ZkLink {
         return priorityRequests[index].hashedPubData;
     }
 
-    function getPubdataHash(uint64 index) external view returns (bytes20) {
-        return priorityRequests[index].hashedPubData;
+    function setAccepter(uint32 accountId, bytes32 hash, address accepter) external {
+        periphery.setAccepter(accountId, hash, accepter);
     }
 
     function testRegisterDeposit(

@@ -157,28 +157,27 @@ library Operations {
     struct Withdraw {
         //uint8 opType; -- present in pubdata, ignored at serialization
         uint8 chainId; // which chain the withdraw happened
-        //uint32 accountId; -- present in pubdata, ignored at serialization
+        uint32 accountId; // the account id to withdraw from
         //uint8 subAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
         address owner; // the address to receive token
-        uint32 nonce;
-        bool isFastWithdraw;
-        uint16 fastWithdrawFeeRate;
-    } // 54
+        uint32 nonce; // zero means normal withdraw, not zero means fast withdraw and the value is the account nonce
+        uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by accepter
+    } // 53
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
-        offset += ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
+        offset += SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         offset += FEE_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
-        (offset, parsed.isFastWithdraw) = Bytes.readBool(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
     }
 
