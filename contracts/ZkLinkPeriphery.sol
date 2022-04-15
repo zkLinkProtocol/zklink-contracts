@@ -10,11 +10,13 @@ import "./zksync/ReentrancyGuard.sol";
 import "./zksync/Config.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeCast.sol";
+import "./zksync/Operations.sol";
 import "./IZkLink.sol";
+import "./PeripheryData.sol";
 
 /// @title ZkLink periphery contract
 /// @author zk.link
-contract ZkLinkPeriphery is ReentrancyGuard, Config {
+contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
     using SafeMath for uint256;
 
     /// @dev When set fee = 100, it means 1%
@@ -61,84 +63,132 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config {
         }
     }
 
-    /// @notice Checks that change operation is correct
-    function verifyChangePubkey(bytes memory _ethWitness,
-        uint32 _accountId,
-        bytes20 _pubKeyHash,
-        address _owner,
-        uint32 _nonce) external pure returns (bool)
+    /// @dev Process one block commit using previous block StoredBlockInfo,
+    /// returns new block StoredBlockInfo
+    /// NOTE: Does not change storage (except events, so we can't mark it view)
+    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external view returns (StoredBlockInfo memory storedNewBlock)
     {
-        ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
-        if (changePkType == ChangePubkeyType.ECRECOVER) {
-            return verifyChangePubkeyECRECOVER(_ethWitness, _accountId, _pubKeyHash, _owner, _nonce);
-        } else if (changePkType == ChangePubkeyType.CREATE2) {
-            return verifyChangePubkeyCREATE2(_ethWitness, _pubKeyHash, _owner, _nonce);
-        } else {
-            revert("ZkLink: incorrect changePkType");
+        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZkLink: not commit next block");
+
+        // Check timestamp of the new block
+        {
+            require(_newBlock.timestamp >= _previousBlock.timestamp, "ZkLink: block should be after previous block");
+            // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
+            require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
+                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZkLink: invalid new block timestamp");
         }
+
+        // Check onchain operations
+        (bytes32 pendingOnchainOpsHash, uint64 priorityReqCommitted, bytes memory onchainOpsOffsetCommitment) =
+        collectOnchainOps(_newBlock);
+
+        // Create block commitment for verification proof
+        bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
+
+        return StoredBlockInfo(
+            _newBlock.blockNumber,
+            priorityReqCommitted,
+            pendingOnchainOpsHash,
+            _newBlock.timestamp,
+            _newBlock.newStateHash,
+            commitment
+        );
     }
 
-    /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness,
-        uint32 _accountId,
-        bytes20 _pubKeyHash,
-        address _owner,
-        uint32 _nonce) internal pure returns (bool)
+    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
+    /// Priority operations must be committed in the same order as they are in the priority queue.
+    /// NOTE: does not change storage! (only emits events)
+    /// processableOperationsHash - hash of the all operations that needs to be executed  (Withdraws, ForcedExits, FullExits)
+    /// priorityOperationsProcessed - number of priority operations processed in this block (Deposits, FullExits)
+    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
+    function collectOnchainOps(CommitBlockInfo memory _newBlockData)
+    internal
+    view
+    returns (
+        bytes32 processableOperationsHash,
+        uint64 priorityOperationsProcessed,
+        bytes memory offsetsCommitment
+    )
     {
-        (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n60", // message len(60) = _pubKeyHash.len(20) + _nonce.len(4) + _accountId.len(4) + 32
-                _pubKeyHash,
-                _nonce,
-                _accountId,
-                bytes32(0)
-            )
-        );
-        address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
-        return recoveredAddress == _owner;
-    }
+        bytes memory pubData = _newBlockData.publicData;
 
-    /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyCREATE2(bytes memory _ethWitness,
-        bytes20 _pubKeyHash,
-        address _owner,
-        uint32 _nonce) internal pure returns (bool)
-    {
-        address creatorAddress;
-        bytes32 saltArg; // salt arg is additional bytes that are encoded in the CREATE2 salt
-        bytes32 codeHash;
-        uint256 offset = 1; // offset is 1 because we skip type of ChangePubkey
-        (offset, creatorAddress) = Bytes.readAddress(_ethWitness, offset);
-        (offset, saltArg) = Bytes.readBytes32(_ethWitness, offset);
-        (offset, codeHash) = Bytes.readBytes32(_ethWitness, offset);
-        // salt from CREATE2 specification
-        bytes32 salt = keccak256(abi.encodePacked(saltArg, _pubKeyHash));
-        // Address computation according to CREATE2 definition: https://eips.ethereum.org/EIPS/eip-1014
-        address recoveredAddress = address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), creatorAddress, salt, codeHash))))
-        );
-        // This type of change pubkey can be done only once
-        return recoveredAddress == _owner && _nonce == 0;
+        // overflow is impossible
+        uint64 uncommittedPriorityRequestsOffset = zkLink.firstPriorityRequestId() + zkLink.totalCommittedPriorityRequests();
+        priorityOperationsProcessed = 0;
+        processableOperationsHash = EMPTY_STRING_KECCAK;
+
+        // pubdata length must be a multiple of CHUNK_BYTES
+        require(pubData.length % CHUNK_BYTES == 0, "ZkLink: invalid pubdata length");
+        offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
+        // NOTE: we MUST ignore ops that are not part of the current chain
+        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
+            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
+
+            uint256 pubdataOffset = onchainOpData.publicDataOffset;
+            require(pubdataOffset < pubData.length, "ZkLink: publicDataOffset overflow");
+            require(pubdataOffset % CHUNK_BYTES == 0, "ZkLink: offsets should be on chunks boundaries");
+            uint256 chunkId = pubdataOffset / CHUNK_BYTES;
+            require(offsetsCommitment[chunkId] == 0x00, "ZkLink: offset commitment should be empty");
+            offsetsCommitment[chunkId] = bytes1(0x01);
+
+            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
+
+            if (opType == Operations.OpType.Deposit) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
+                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
+                if (op.chainId == CHAIN_ID) {
+                    Operations.checkPriorityOperation(op, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
+                    priorityOperationsProcessed++;
+                }
+            } else if (opType == Operations.OpType.ChangePubKey) {
+                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
+                Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
+                if (op.chainId == CHAIN_ID) {
+                    if (onchainOpData.ethWitness.length != 0) {
+                        bool valid = verifyChangePubkey(onchainOpData.ethWitness, op);
+                        require(valid, "ZkLink: verifyChangePubkey failed");
+                    } else {
+                        bool valid = zkLink.getAuthFact(op.owner, op.nonce) == keccak256(abi.encodePacked(op.pubKeyHash));
+                        require(valid, "ZkLink: new pub key hash not authenticated");
+                    }
+                }
+            } else {
+                bytes memory opPubData;
+
+                if (opType == Operations.OpType.Withdraw) {
+                    opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
+                } else if (opType == Operations.OpType.ForcedExit) {
+                    opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
+                } else if (opType == Operations.OpType.FullExit) {
+                    opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
+
+                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
+                    if (fullExitData.chainId == CHAIN_ID) {
+                        Operations.checkPriorityOperation(fullExitData, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
+                        priorityOperationsProcessed++;
+                    }
+                } else {
+                    revert("ZkLink: unsupported op");
+                }
+
+                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
+            }
+        }
     }
 
     /// @dev Creates block commitment from its data
     /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
     function createBlockCommitment(
-        bytes32 _previousStateHash,
-        uint32 _newBlockNumber,
-        uint32 _newFeeAccount,
-        bytes32 _newStateHash,
-        uint256 _newTimestamp,
-        bytes memory _newPublicData,
+        StoredBlockInfo memory _previousBlock,
+        CommitBlockInfo memory _newBlockData,
         bytes memory _offsetCommitment
-    ) external view returns (bytes32 commitment) {
-        bytes32 hash = sha256(abi.encodePacked(uint256(_newBlockNumber), uint256(_newFeeAccount)));
-        hash = sha256(abi.encodePacked(hash, _previousStateHash));
-        hash = sha256(abi.encodePacked(hash, _newStateHash));
-        hash = sha256(abi.encodePacked(hash, uint256(_newTimestamp)));
+    ) internal view returns (bytes32 commitment) {
+        bytes32 hash = sha256(abi.encodePacked(uint256(_newBlockData.blockNumber), uint256(_newBlockData.feeAccount)));
+        hash = sha256(abi.encodePacked(hash, _previousBlock.stateHash));
+        hash = sha256(abi.encodePacked(hash, _newBlockData.newStateHash));
+        hash = sha256(abi.encodePacked(hash, uint256(_newBlockData.timestamp)));
 
-        bytes memory pubdata = abi.encodePacked(_newPublicData, _offsetCommitment);
+        bytes memory pubdata = abi.encodePacked(_newBlockData.publicData, _offsetCommitment);
 
         /// The code below is equivalent to `commitment = sha256(abi.encodePacked(hash, _publicData))`
 
@@ -162,9 +212,58 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config {
                 invalid()
             }
 
-            hash := mload(hashResult)
+            commitment := mload(hashResult)
         }
-        return hash;
+    }
+
+    /// @notice Checks that change operation is correct
+    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
+    {
+        ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
+        if (changePkType == ChangePubkeyType.ECRECOVER) {
+            return verifyChangePubkeyECRECOVER(_ethWitness, _changePk);
+        } else if (changePkType == ChangePubkeyType.CREATE2) {
+            return verifyChangePubkeyCREATE2(_ethWitness, _changePk);
+        } else {
+            revert("ZkLink: incorrect changePkType");
+        }
+    }
+
+    /// @notice Checks that signature is valid for pubkey change message
+    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
+    {
+        (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n60", // message len(60) = _pubKeyHash.len(20) + _nonce.len(4) + _accountId.len(4) + 32
+                _changePk.pubKeyHash,
+                _changePk.nonce,
+                _changePk.accountId,
+                bytes32(0)
+            )
+        );
+        address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
+        return recoveredAddress == _changePk.owner;
+    }
+
+    /// @notice Checks that signature is valid for pubkey change message
+    function verifyChangePubkeyCREATE2(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
+    {
+        address creatorAddress;
+        bytes32 saltArg; // salt arg is additional bytes that are encoded in the CREATE2 salt
+        bytes32 codeHash;
+        uint256 offset = 1; // offset is 1 because we skip type of ChangePubkey
+        (offset, creatorAddress) = Bytes.readAddress(_ethWitness, offset);
+        (offset, saltArg) = Bytes.readBytes32(_ethWitness, offset);
+        (offset, codeHash) = Bytes.readBytes32(_ethWitness, offset);
+        // salt from CREATE2 specification
+        bytes32 salt = keccak256(abi.encodePacked(saltArg, _changePk.pubKeyHash));
+        // Address computation according to CREATE2 definition: https://eips.ethereum.org/EIPS/eip-1014
+        address recoveredAddress = address(
+            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), creatorAddress, salt, codeHash))))
+        );
+        // This type of change pubkey can be done only once
+        return recoveredAddress == _changePk.owner && _changePk.nonce == 0;
     }
 
     // =======================Fast withdraw and Accept======================

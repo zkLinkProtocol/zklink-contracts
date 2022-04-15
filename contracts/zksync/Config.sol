@@ -5,6 +5,8 @@ pragma solidity ^0.7.0;
 /// @title zkSync configuration constants
 /// @author Matter Labs
 contract Config {
+    bytes32 internal constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+
     /// @dev ERC20 tokens and ETH withdrawals gas limit, used only for complete withdrawals
     uint256 internal constant WITHDRAWAL_GAS_LIMIT = 100000;
 
@@ -18,10 +20,10 @@ contract Config {
     uint16 internal constant MAX_AMOUNT_OF_REGISTERED_TOKENS = 8192;
 
     /// @dev Max account id that could be registered in the network
-    uint32 internal constant MAX_ACCOUNT_ID = (2**24) - 1;
+    uint32 internal constant MAX_ACCOUNT_ID = $$((2**24) - 1);
 
     /// @dev Max sub account id that could be bound to account id
-    uint8 internal constant MAX_SUB_ACCOUNT_ID = (2**3) - 1;
+    uint8 internal constant MAX_SUB_ACCOUNT_ID = $$((2**3) - 1);
 
     /// @dev Expected average period of block creation
     uint256 internal constant BLOCK_PERIOD = $(BLOCK_PERIOD);
@@ -78,7 +80,7 @@ contract Config {
     uint256 internal constant AUTH_FACT_RESET_TIMELOCK = 1 days;
 
     /// @dev Max deposit of ERC20 token that is possible to deposit
-    uint128 internal constant MAX_DEPOSIT_AMOUNT = (2**104) - 1;
+    uint128 internal constant MAX_DEPOSIT_AMOUNT = $$((2**104) - 1);
 
     /// @dev Chain id
     uint8 internal constant CHAIN_ID = $(CHAIN_ID);

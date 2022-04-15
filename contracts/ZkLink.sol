@@ -14,52 +14,15 @@ import "./zksync/ReentrancyGuard.sol";
 import "./zksync/Config.sol";
 import "./zksync/Events.sol";
 import "./Storage.sol";
+import "./PeripheryData.sol";
 
 /// @title ZkLink contract
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files
 /// https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct
 /// @author zk.link
-contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
+contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, UpgradeableMaster {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
-
-    bytes32 private constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
-
-    /// @notice Data needed to process onchain operation from block public data.
-    /// @notice Onchain operations is operations that need some processing on L1: Deposits, Withdrawals, ChangePubKey.
-    /// @param ethWitness Some external data that can be needed for operation processing
-    /// @param publicDataOffset Byte offset in public data for onchain operation
-    struct OnchainOperationData {
-        bytes ethWitness;
-        uint32 publicDataOffset;
-    }
-
-    /// @notice Data needed to commit new block
-    struct CommitBlockInfo {
-        bytes32 newStateHash;
-        bytes publicData;
-        uint256 timestamp;
-        OnchainOperationData[] onchainOperations;
-        uint32 blockNumber;
-        uint32 feeAccount;
-    }
-
-    /// @notice Data needed to execute committed and verified block
-    /// @param commitmentsInSlot verified commitments in one slot
-    /// @param commitmentIdx index such that commitmentsInSlot[commitmentIdx] is current block commitment
-    struct ExecuteBlockInfo {
-        StoredBlockInfo storedBlock;
-        bytes[] pendingOnchainOpsPubdata;
-    }
-
-    /// @notice Recursive proof input data (individual commitments are constructed onchain)
-    struct ProofInput {
-        uint256[] recursiveInput;
-        uint256[] proof;
-        uint256[] commitments;
-        uint8[] vkIndexes;
-        uint256[16] subproofsLimbs;
-    }
 
     constructor() {
     }
@@ -347,7 +310,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
 
         // ===Effects===
         for (uint32 i = 0; i < _newBlocksData.length; ++i) {
-            _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
+            _lastCommittedBlockData = periphery.commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
 
             // overflow is impossible
             totalCommittedPriorityRequests += _lastCommittedBlockData.priorityOperations;
@@ -504,124 +467,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
         pendingBalances[_packedBalanceKey] = balance.add(_amount);
     }
 
-    /// @dev Process one block commit using previous block StoredBlockInfo,
-    /// returns new block StoredBlockInfo
-    /// NOTE: Does not change storage (except events, so we can't mark it view)
-    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) internal view returns (StoredBlockInfo memory storedNewBlock)
-    {
-        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZkLink: not commit next block");
 
-        // Check timestamp of the new block
-        {
-            require(_newBlock.timestamp >= _previousBlock.timestamp, "ZkLink: block should be after previous block");
-            // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
-            require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
-                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZkLink: invalid new block timestamp");
-        }
-
-        // Check onchain operations
-        (bytes32 pendingOnchainOpsHash, uint64 priorityReqCommitted, bytes memory onchainOpsOffsetCommitment) =
-        collectOnchainOps(_newBlock);
-
-        // Create block commitment for verification proof
-        bytes32 commitment = periphery.createBlockCommitment(_previousBlock.stateHash,
-            _newBlock.blockNumber,
-            _newBlock.feeAccount,
-            _newBlock.newStateHash,
-            _newBlock.timestamp,
-            _newBlock.publicData,
-            onchainOpsOffsetCommitment);
-
-        return StoredBlockInfo(
-            _newBlock.blockNumber,
-            priorityReqCommitted,
-            pendingOnchainOpsHash,
-            _newBlock.timestamp,
-            _newBlock.newStateHash,
-            commitment
-        );
-    }
-
-    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
-    /// Priority operations must be committed in the same order as they are in the priority queue.
-    /// NOTE: does not change storage! (only emits events)
-    /// processableOperationsHash - hash of the all operations that needs to be executed  (Withdraws, ForcedExits, FullExits)
-    /// priorityOperationsProcessed - number of priority operations processed in this block (Deposits, FullExits)
-    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
-    function collectOnchainOps(CommitBlockInfo memory _newBlockData)
-    internal
-    view
-    returns (
-        bytes32 processableOperationsHash,
-        uint64 priorityOperationsProcessed,
-        bytes memory offsetsCommitment
-    )
-    {
-        bytes memory pubData = _newBlockData.publicData;
-
-        // overflow is impossible
-        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
-        priorityOperationsProcessed = 0;
-        processableOperationsHash = EMPTY_STRING_KECCAK;
-
-        // pubdata length must be a multiple of CHUNK_BYTES
-        require(pubData.length % CHUNK_BYTES == 0, "ZkLink: invalid pubdata length");
-        offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
-        // NOTE: we MUST ignore ops that are not part of the current chain
-        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
-            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
-
-            uint256 pubdataOffset = onchainOpData.publicDataOffset;
-            require(pubdataOffset < pubData.length, "ZkLink: publicDataOffset overflow");
-            require(pubdataOffset % CHUNK_BYTES == 0, "ZkLink: offsets should be on chunks boundaries");
-            uint256 chunkId = pubdataOffset / CHUNK_BYTES;
-            require(offsetsCommitment[chunkId] == 0x00, "ZkLink: offset commitment should be empty");
-            offsetsCommitment[chunkId] = bytes1(0x01);
-
-            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
-
-            if (opType == Operations.OpType.Deposit) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
-                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-                if (op.chainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(op, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                    priorityOperationsProcessed++;
-                }
-            } else if (opType == Operations.OpType.ChangePubKey) {
-                bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
-                Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
-                if (op.chainId == CHAIN_ID) {
-                    if (onchainOpData.ethWitness.length != 0) {
-                        bool valid = periphery.verifyChangePubkey(onchainOpData.ethWitness, op.accountId, op.pubKeyHash, op.owner, op.nonce);
-                        require(valid, "ZkLink: verifyChangePubkey failed");
-                    } else {
-                        bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
-                        require(valid, "ZkLink: new pub key hash not authenticated");
-                    }
-                }
-            } else {
-                bytes memory opPubData;
-
-                if (opType == Operations.OpType.Withdraw) {
-                    opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
-                } else if (opType == Operations.OpType.ForcedExit) {
-                    opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
-                } else if (opType == Operations.OpType.FullExit) {
-                    opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
-
-                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    if (fullExitData.chainId == CHAIN_ID) {
-                        Operations.checkPriorityOperation(fullExitData, priorityRequests[uncommittedPriorityRequestsOffset + priorityOperationsProcessed]);
-                        priorityOperationsProcessed++;
-                    }
-                } else {
-                    revert("ZkLink: unsupported op");
-                }
-
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
-            }
-        }
-    }
 
     /// @dev Executes one block
     /// 1. Processes all pending operations (Send Exits, Complete priority requests)

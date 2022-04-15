@@ -24,7 +24,7 @@ contract Storage is IZkLink{
     uint32 public totalBlocksExecuted;
 
     /// @notice First open priority request id
-    uint64 public firstPriorityRequestId;
+    uint64 public override firstPriorityRequestId;
 
     // governance(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
 
@@ -47,7 +47,7 @@ contract Storage is IZkLink{
 
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
-    uint64 public totalCommittedPriorityRequests;
+    uint64 public override totalCommittedPriorityRequests;
 
     /// @notice Flag indicates that exodus (mass exit) mode is triggered
     /// @notice Once it was raised, it can not be cleared again, and all users must exit
@@ -74,16 +74,6 @@ contract Storage is IZkLink{
     /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
-    /// @notice block stored data
-    struct StoredBlockInfo {
-        uint32 blockNumber; // Rollup block number
-        uint64 priorityOperations; // Number of priority operations processed
-        bytes32 pendingOnchainOperationsHash; // Hash of all operations that must be processed after verify
-        uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
-        bytes32 stateHash; // Root hash of the rollup state
-        bytes32 commitment; // Verified input for the ZkLink circuit
-    }
-
     /// @notice Checks that current state not is exodus mode
     modifier active() {
         require(!exodusMode, "ZkLink: not active");
@@ -107,8 +97,11 @@ contract Storage is IZkLink{
         return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
     }
 
-    /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
-    function hashStoredBlockInfo(StoredBlockInfo memory _storedBlockInfo) internal pure returns (bytes32) {
-        return keccak256(abi.encode(_storedBlockInfo));
+    function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
+        return priorityRequests[idx];
+    }
+
+    function getAuthFact(address owner, uint32 nonce) external view override returns (bytes32) {
+        return authFacts[owner][nonce];
     }
 }
