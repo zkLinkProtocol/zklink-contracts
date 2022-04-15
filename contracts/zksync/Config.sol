@@ -72,7 +72,7 @@ contract Config {
     uint256 internal constant COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 15 minutes;
 
     /// @dev Bit mask to apply for verifier public input before verifying.
-    uint256 internal constant INPUT_MASK = $$(uint(-1) >> 3);
+    uint256 internal constant INPUT_MASK = $$(~uint256(0) >> 3);
 
     /// @dev Auth fact reset timelock
     uint256 internal constant AUTH_FACT_RESET_TIMELOCK = 1 days;

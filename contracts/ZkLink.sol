@@ -227,9 +227,10 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
         // ===Effects===
         uint64 currentDepositIdx = 0;
         for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; ++id) {
-            if (priorityRequests[id].opType == Operations.OpType.Deposit) {
+            Operations.PriorityOperation memory pr = priorityRequests[id];
+            if (pr.opType == Operations.OpType.Deposit) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
-                require(Utils.hashBytesToBytes20(depositPubdata) == priorityRequests[id].hashedPubData, "ZkLink: invalid deposit hash");
+                require(Utils.hashBytesToBytes20(depositPubdata) == pr.hashedPubData, "ZkLink: invalid deposit hash");
                 ++currentDepositIdx;
 
                 Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
@@ -238,6 +239,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
             }
             delete priorityRequests[id];
         }
+        // overflow is impossible
         firstPriorityRequestId += toProcess;
         totalOpenPriorityRequests -= toProcess;
     }
@@ -400,6 +402,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
             delete storedBlockHashes[blocksCommitted];
 
             --blocksCommitted;
+            // overflow is impossible
             revertedPriorityRequests += storedBlockInfo.priorityOperations;
         }
 
@@ -418,18 +421,24 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
         uint64 priorityRequestsExecuted = 0;
         uint32 nBlocks = uint32(_blocksData.length);
+        require(nBlocks > 0, "ZkLink: no block to exec");
+
         for (uint32 i = 0; i < nBlocks; ++i) {
             executeOneBlock(_blocksData[i], i);
+            // overflow is impossible
             priorityRequestsExecuted += _blocksData[i].storedBlock.priorityOperations;
-            emit BlockVerification(_blocksData[i].storedBlock.blockNumber);
         }
 
+        // overflow is impossible
         firstPriorityRequestId += priorityRequestsExecuted;
         totalCommittedPriorityRequests -= priorityRequestsExecuted;
         totalOpenPriorityRequests -= priorityRequestsExecuted;
 
+        // overflow is impossible
         totalBlocksExecuted += nBlocks;
         require(totalBlocksExecuted <= totalBlocksProven, "ZkLink: invalid state of tbp");
+
+        emit BlockVerification(_blocksData[nBlocks-1].storedBlock.blockNumber);
     }
 
     // =================Internal functions=================
@@ -471,9 +480,10 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     /// @param _opType Rollup operation type
     /// @param _pubData Operation pubdata
     function addPriorityRequest(Operations.OpType _opType, bytes memory _pubData) internal {
-        // Expiration block is: current block number + priority expiration delta
+        // Expiration block is: current block number + priority expiration delta, overflow is impossible
         uint64 expirationBlock = uint64(block.number + PRIORITY_EXPIRATION);
 
+        // overflow is impossible
         uint64 nextPriorityRequestId = firstPriorityRequestId + totalOpenPriorityRequests;
 
         bytes20 hashedPubData = Utils.hashBytesToBytes20(_pubData);
@@ -549,6 +559,7 @@ contract ZkLink is ReentrancyGuard, Storage, Config, Events, UpgradeableMaster {
     {
         bytes memory pubData = _newBlockData.publicData;
 
+        // overflow is impossible
         uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
         priorityOperationsProcessed = 0;
         processableOperationsHash = EMPTY_STRING_KECCAK;

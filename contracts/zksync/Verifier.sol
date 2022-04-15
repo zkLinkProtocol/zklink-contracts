@@ -22,8 +22,7 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
         uint256[16] memory _subproofs_limbs
     ) external view returns (bool) {
         for (uint256 i = 0; i < _individual_vks_inputs.length; ++i) {
-            uint256 commitment = _individual_vks_inputs[i];
-            _individual_vks_inputs[i] = commitment & INPUT_MASK;
+            _individual_vks_inputs[i] = _individual_vks_inputs[i] & INPUT_MASK;
         }
         VerificationKey memory vk = getVkAggregated(uint32(_vkIndexes.length));
 
