@@ -63,10 +63,13 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         }
     }
 
+    // =======================Periphery functions======================
+
     /// @dev Process one block commit using previous block StoredBlockInfo,
     /// returns new block StoredBlockInfo
     /// NOTE: Does not change storage (except events, so we can't mark it view)
-    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external view returns (StoredBlockInfo memory storedNewBlock)
+    /// only ZkLink can call this function to add more security
+    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external onlyZkLink view returns (StoredBlockInfo memory storedNewBlock)
     {
         require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZkLink: not commit next block");
 
