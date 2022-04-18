@@ -541,6 +541,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         address _recipient,
         uint128 _amount
     ) internal {
+        if (_amount == 0) {
+            return;
+        }
         Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
         if (!rt.registered) {
             increasePendingBalance(_tokenId, _recipient, _amount);

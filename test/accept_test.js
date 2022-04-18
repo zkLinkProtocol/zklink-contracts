@@ -22,8 +22,6 @@ describe('Accept unit tests', function () {
     });
 
     it('broker approve should success', async () => {
-        await expect(periphery.connect(alice).brokerApprove(ethId, bob.address, 100))
-            .to.be.revertedWith("ZP15");
         await expect(periphery.connect(alice).brokerApprove(token2Id, bob.address, 100))
             .to.be.emit(periphery, "BrokerApprove")
             .withArgs(token2Id, alice.address, bob.address, 100);

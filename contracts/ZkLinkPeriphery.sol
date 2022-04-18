@@ -377,11 +377,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
 
     /// @notice Give allowance to spender to call accept
     function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
-        // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = zkLink.governance().getToken(tokenId);
-        require(rt.registered, "ZP14");
-        require(rt.tokenAddress != ETH_ADDRESS, "ZP15"); // only erc20 token support approve
-        require(spender != address(0), "ZP16");
+        require(spender != address(0), "ZP14");
         brokerAllowances[tokenId][msg.sender][spender] = amount;
         emit BrokerApprove(tokenId, msg.sender, spender, amount);
         return true;
