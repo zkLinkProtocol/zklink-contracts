@@ -11,7 +11,7 @@ import "./UpgradeableMaster.sol";
 /// @author Matter Labs
 contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @dev Storage position of "target" (actual implementation address: keccak256('eip1967.proxy.implementation') - 1)
-    bytes32 private constant targetPosition = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    bytes32 private constant TARGET_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     /// @notice Contract constructor
     /// @dev Calls Ownable contract constructor and initialize target
@@ -19,8 +19,8 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @param targetInitializationParameters Target initialization parameters
     constructor(address target, bytes memory targetInitializationParameters) Ownable(msg.sender) {
         setTarget(target);
-        (bool initializationSuccess, ) =
-            getTarget().delegatecall(abi.encodeWithSignature("initialize(bytes)", targetInitializationParameters));
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool initializationSuccess, ) = getTarget().delegatecall(abi.encodeWithSignature("initialize(bytes)", targetInitializationParameters));
         require(initializationSuccess, "uin11"); // uin11 - target initialization failed
     }
 
@@ -37,7 +37,7 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @notice Returns target of contract
     /// @return target Actual implementation address
     function getTarget() public view returns (address target) {
-        bytes32 position = targetPosition;
+        bytes32 position = TARGET_POSITION;
         assembly {
             target := sload(position)
         }
@@ -46,7 +46,7 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @notice Sets new target of contract
     /// @param _newTarget New actual implementation address
     function setTarget(address _newTarget) internal {
-        bytes32 position = targetPosition;
+        bytes32 position = TARGET_POSITION;
         assembly {
             sstore(position, _newTarget)
         }
@@ -59,8 +59,8 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
         requireMaster(msg.sender);
 
         setTarget(newTarget);
-        (bool upgradeSuccess, ) =
-            getTarget().delegatecall(abi.encodeWithSignature("upgrade(bytes)", newTargetUpgradeParameters));
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool upgradeSuccess, ) = getTarget().delegatecall(abi.encodeWithSignature("upgrade(bytes)", newTargetUpgradeParameters));
         require(upgradeSuccess, "ufu11"); // ufu11 - target upgrade failed
     }
 
@@ -107,6 +107,7 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
 
     /// @notice Notice period before activation preparation status of upgrade mode
     function getNoticePeriod() external override returns (uint256) {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = getTarget().delegatecall(abi.encodeWithSignature("getNoticePeriod()"));
         require(success, "unp11"); // unp11 - upgradeNoticePeriod delegatecall failed
         return abi.decode(result, (uint256));
@@ -115,6 +116,7 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @notice Checks that contract is ready for upgrade
     /// @return bool flag indicating that contract is ready for upgrade
     function isReadyForUpgrade() external override returns (bool) {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = getTarget().delegatecall(abi.encodeWithSignature("isReadyForUpgrade()"));
         require(success, "rfu11"); // rfu11 - readyForUpgrade delegatecall failed
         return abi.decode(result, (bool));

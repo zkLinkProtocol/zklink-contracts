@@ -26,12 +26,12 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
     event BridgeFrom(uint16 indexed lzChainId, address receiver, uint amount);
 
     modifier onlyGovernor {
-        require(msg.sender == networkGovernor, 'ZKL: require governor');
+        require(msg.sender == networkGovernor, "ZKL0");
         _;
     }
 
     modifier onlyLZEndpoint {
-        require(msg.sender == address(endpoint), 'ZKL: require LZ endpoint');
+        require(msg.sender == address(endpoint), "ZKL1");
         _;
     }
 
@@ -66,7 +66,7 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
     /// @param lzChainIds LayerZero chain id on other chains
     /// @param contractAdds ZKL contract address on other chains
     function setDestinations(uint16[] memory lzChainIds, bytes[] memory contractAdds) external onlyGovernor {
-        require(lzChainIds.length == contractAdds.length, 'ZKL: destination length not match');
+        require(lzChainIds.length == contractAdds.length, "ZKL2");
         for(uint i = 0; i < lzChainIds.length; i++) {
             destination[lzChainIds[i]] = contractAdds[i];
         }
@@ -76,7 +76,7 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
     /// @param _lzChainId the destination chainId
     /// @param _receiver the destination receiver address
     /// @param _amount the amount to bridge
-    function estimateBridgeFees(uint16 _lzChainId, bytes calldata _receiver, uint _amount) view external returns(uint) {
+    function estimateBridgeFees(uint16 _lzChainId, bytes calldata _receiver, uint _amount) external view returns (uint) {
         bytes memory payload = abi.encode(_receiver, _amount);
         return endpoint.estimateNativeFees(_lzChainId, address(this), payload, false, bytes(""));
     }
@@ -86,10 +86,10 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
     /// @param _receiver the destination receiver address
     /// @param _amount the amount to bridge
     function bridge(uint16 _lzChainId, bytes calldata _receiver, uint _amount) public payable nonReentrant {
-        require(bridgeable, 'ZKL: bridge disabled');
+        require(bridgeable, "ZKL3");
 
         bytes memory zklDstAdd = destination[_lzChainId];
-        require(zklDstAdd.length > 0, 'ZKL: invalid lz chain id');
+        require(zklDstAdd.length > 0, "ZKL4");
 
         // burn token from sender
         _burn(msg.sender, _amount);
@@ -98,6 +98,7 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
         bytes memory payload = abi.encode(_receiver, _amount);
 
         // send LayerZero message
+        // solhint-disable-next-line  check-send-result
         endpoint.send{value:msg.value}(_lzChainId, zklDstAdd, payload, payable(msg.sender), address(0x0), bytes(""));
 
         emit BridgeTo(_lzChainId, _receiver, _amount);
@@ -105,12 +106,12 @@ contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
 
     /// @notice Receive the bytes payload from the source chain via LayerZero and mint token to receiver
     function lzReceive(uint16 _srcChainId, bytes calldata _srcAddress, uint64 /**_nonce**/, bytes calldata _payload) override external onlyLZEndpoint nonReentrant {
-        require(bridgeable, 'ZKL: bridge disabled');
+        require(bridgeable, "ZKL5");
 
         // reject invalid src contract address
         bytes memory zklSrcAdd = destination[_srcChainId];
-        require(zklSrcAdd.length > 0, 'ZKL: invalid lz chain id');
-        require(keccak256(zklSrcAdd) == keccak256(_srcAddress), 'ZKL: invalid zkl src address');
+        require(zklSrcAdd.length > 0, "ZKL6");
+        require(keccak256(zklSrcAdd) == keccak256(_srcAddress), "ZKL7");
 
         // mint token to receiver
         (bytes memory receiverBytes, uint amount) = abi.decode(_payload, (bytes, uint));

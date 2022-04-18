@@ -43,7 +43,7 @@ contract Governance is Config {
     mapping(address => uint16) public tokenIds;
 
     modifier onlyGovernor {
-        require(msg.sender == networkGovernor, "Gov: no auth");
+        require(msg.sender == networkGovernor, "G0");
         _;
     }
 
@@ -58,12 +58,13 @@ contract Governance is Config {
 
     /// @notice Governance contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
+    // solhint-disable-next-line no-empty-blocks
     function upgrade(bytes calldata upgradeParameters) external {}
 
     /// @notice Change current governor
     /// @param _newGovernor Address of the new governor
     function changeGovernor(address _newGovernor) external onlyGovernor {
-        require(_newGovernor != address(0), "Gov: address not set");
+        require(_newGovernor != address(0), "G1");
         if (networkGovernor != _newGovernor) {
             networkGovernor = _newGovernor;
             emit NewGovernor(_newGovernor);
@@ -75,13 +76,13 @@ contract Governance is Config {
     /// @param _tokenAddress Token address
     function addToken(uint16 _tokenId, address _tokenAddress) public onlyGovernor {
         // token id MUST be in a valid range
-        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "Gov: invalid tokenId");
+        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "G2");
         // token MUST be not zero address
-        require(_tokenAddress != address(0), "Gov: invalid tokenAddress");
+        require(_tokenAddress != address(0), "G3");
         // revert duplicate register
         RegisteredToken memory rt = tokens[_tokenId];
-        require(!rt.registered, "Gov: tokenId registered");
-        require(tokenIds[_tokenAddress] == 0, "Gov: tokenAddress registered");
+        require(!rt.registered, "G4");
+        require(tokenIds[_tokenAddress] == 0, "G5");
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
@@ -94,7 +95,7 @@ contract Governance is Config {
     /// @param _tokenIdList Token id list
     /// @param _tokenAddressList Token address list
     function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList) external {
-        require(_tokenIdList.length == _tokenAddressList.length, "Gov: invalid array length");
+        require(_tokenIdList.length == _tokenAddressList.length, "G6");
         for (uint i; i < _tokenIdList.length; i++) {
             addToken(_tokenIdList[i], _tokenAddressList[i]);
         }
@@ -105,7 +106,7 @@ contract Governance is Config {
     /// @param _tokenPaused Token paused status
     function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external onlyGovernor {
         RegisteredToken memory rt = tokens[_tokenId];
-        require(rt.registered, "Gov: token not registered");
+        require(rt.registered, "G7");
 
         if (rt.paused != _tokenPaused) {
             rt.paused = _tokenPaused;
@@ -119,14 +120,14 @@ contract Governance is Config {
     /// @param _newTokenAddress Token address to replace
     function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external onlyGovernor {
         // new token address MUST not be zero address or eth address
-        require(_newTokenAddress != address(0) && _newTokenAddress != ETH_ADDRESS, "Gov: invalid address");
+        require(_newTokenAddress != address(0) && _newTokenAddress != ETH_ADDRESS, "G8");
         // tokenId MUST be registered
         RegisteredToken memory rt = tokens[_tokenId];
-        require(rt.registered, "Gov: tokenId not registered");
+        require(rt.registered, "G9");
         // tokenAddress MUST not be registered
-        require(tokenIds[_newTokenAddress] == 0, "Gov: tokenAddress registered");
+        require(tokenIds[_newTokenAddress] == 0, "G10");
         // token represent ETH MUST not be updated
-        require(rt.tokenAddress != ETH_ADDRESS, "Gov: eth address update disabled");
+        require(rt.tokenAddress != ETH_ADDRESS, "G11");
 
         if (rt.tokenAddress != _newTokenAddress) {
             delete tokenIds[rt.tokenAddress];
@@ -150,7 +151,7 @@ contract Governance is Config {
     /// @notice Checks if validator is active
     /// @param _address Validator address
     function requireActiveValidator(address _address) external view {
-        require(validators[_address], "Gov: not validator");
+        require(validators[_address], "G12");
     }
 
     /// @notice Get registered token info by id

@@ -21,10 +21,6 @@ describe('Proxy unit tests', function () {
 
     it('checking that requireMaster calls present', async () => {
         await expect(testContract.connect(bob).upgradeTarget(constants.AddressZero, [])).to.be.revertedWith('1c');
-        await expect(testContract.connect(bob).upgradeNoticePeriodStarted()).to.be.revertedWith('1c');
-        await expect(testContract.connect(bob).upgradePreparationStarted()).to.be.revertedWith('1c');
-        await expect(testContract.connect(bob).upgradeCanceled()).to.be.revertedWith('1c');
-        await expect(testContract.connect(bob).upgradeFinishes()).to.be.revertedWith('1c');
     });
 
     it('checking Proxy reverts', async () => {

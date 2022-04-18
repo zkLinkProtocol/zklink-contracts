@@ -26,15 +26,15 @@ describe('ZkLink priority queue ops unit tests', function () {
         const to = "0x72847C8Bdc54b338E787352bceC33ba90cD7aFe0";
         const subAccountId = 0;
         const amount = parseEther("1");
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("ZkLink: not active");
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("Z0");
         await token2.connect(defaultSender).mint(10000);
         await token2.connect(defaultSender).approve(zkLink.address, 100);
-        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("ZkLink: not active");
+        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("Z0");
         await zkLink.setExodus(false);
 
         // ddos?
         await zkLink.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("ZkLink: too many request");
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("Z35");
         await zkLink.setTotalOpenPriorityRequests(tpn);
 
         // token not registered
@@ -42,22 +42,22 @@ describe('ZkLink priority queue ops unit tests', function () {
         const tokenNotRegistered = await stFactory.deploy("Token not registered", "TNR");
         await tokenNotRegistered.connect(defaultSender).mint(10000);
         await tokenNotRegistered.connect(defaultSender).approve(zkLink.address, 100);
-        await expect(zkLink.connect(defaultSender).depositERC20(tokenNotRegistered.address, 30, to, 0)).to.be.revertedWith("ZkLink: token not registered");
+        await expect(zkLink.connect(defaultSender).depositERC20(tokenNotRegistered.address, 30, to, 0)).to.be.revertedWith("Z31");
 
         // token deposit paused
         await governance.connect(governor).setTokenPaused(token2Id, true);
-        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("ZkLink: deposit paused");
+        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("Z32");
         await governance.connect(governor).setTokenPaused(token2Id, false);
 
         // zero amount
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: 0})).to.be.revertedWith("ZkLink: invalid amount");
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: 0})).to.be.revertedWith("Z33");
 
         // zero to address
-        await expect(zkLink.connect(defaultSender).depositETH(hardhat.ethers.constants.AddressZero, subAccountId, {value: amount})).to.be.revertedWith("ZkLink: address not set");
+        await expect(zkLink.connect(defaultSender).depositETH(hardhat.ethers.constants.AddressZero, subAccountId, {value: amount})).to.be.revertedWith("Z34");
 
         // subAccountId too large
         const tooLargeSubId = 8; // 2**3
-        await expect(zkLink.connect(defaultSender).depositETH(to, tooLargeSubId, {value: amount})).to.be.revertedWith("ZkLink: invalid subAccountId");
+        await expect(zkLink.connect(defaultSender).depositETH(to, tooLargeSubId, {value: amount})).to.be.revertedWith("Z30");
     });
 
     it('deposit eth should success', async () => {
@@ -115,24 +115,24 @@ describe('ZkLink priority queue ops unit tests', function () {
         await zkLink.setExodus(true);
         const accountId = 13;
         const subAccountId = 0;
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("ZkLink: not active");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("Z0");
         await zkLink.setExodus(false);
 
         // ddos?
         await zkLink.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("ZkLink: too many request");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("Z5");
         await zkLink.setTotalOpenPriorityRequests(tpn);
 
         // accountId too large
         const tooLargeAccountId = 16777216; // 2**24
-        await expect(zkLink.connect(defaultSender).requestFullExit(tooLargeAccountId, subAccountId, ethId)).to.be.revertedWith("ZkLink: invalid accountId");
+        await expect(zkLink.connect(defaultSender).requestFullExit(tooLargeAccountId, subAccountId, ethId)).to.be.revertedWith("Z2");
 
         // subAccountId too large
         const tooLargeSubId = 8; // 2**3
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, tooLargeSubId, ethId)).to.be.revertedWith("ZkLink: invalid subAccountId");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, tooLargeSubId, ethId)).to.be.revertedWith("Z3");
 
         // tokenId not registered
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, 10000)).to.be.revertedWith("ZkLink: token not registered");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, 10000)).to.be.revertedWith("Z4");
     });
 
     it('requestFullExit should success', async () => {

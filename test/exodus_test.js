@@ -26,6 +26,6 @@ describe('ZkLink exodus unit tests', function () {
         await zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount});
         await zkLink.connect(defaultSender).setPriorityExpirationBlock(0, 1);
         await expect(zkLink.connect(defaultSender).activateExodusMode()).to.be.emit(zkLink, "ExodusMode");
-        await expect(zkLink.connect(defaultSender).activateExodusMode()).to.be.revertedWith("ZkLink: not active");
+        await expect(zkLink.connect(defaultSender).activateExodusMode()).to.be.revertedWith("Z0");
     });
 });

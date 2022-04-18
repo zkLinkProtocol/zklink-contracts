@@ -27,5 +27,5 @@ interface ILayerZeroEndpoint {
         address _userApplication,
         bytes calldata _payload,
         bool _payInZRO,
-        bytes calldata _txParameters) view external returns (uint totalFee);
+        bytes calldata _txParameters) external view returns (uint totalFee);
 }

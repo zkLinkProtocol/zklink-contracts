@@ -4,17 +4,14 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./zksync/IERC20.sol";
 import "./zksync/Verifier.sol";
-import "./zksync/Operations.sol";
-import "./Governance.sol";
 import "./ZkLinkPeriphery.sol";
 import "./IZkLink.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
-contract Storage is IZkLink{
+contract Storage is IZkLink {
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
@@ -73,29 +70,6 @@ contract Storage is IZkLink{
 
     /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
-
-    /// @notice Checks that current state not is exodus mode
-    modifier active() {
-        require(!exodusMode, "ZkLink: not active");
-        _;
-    }
-
-    /// @notice Checks that current state is exodus mode
-    modifier notActive() {
-        require(exodusMode, "ZkLink: active");
-        _;
-    }
-
-    /// @notice Check if msg sender is a validator
-    modifier onlyValidator() {
-        governance.requireActiveValidator(msg.sender);
-        _;
-    }
-
-    /// @notice Packs address and token id into single word to use as a key in balances mapping
-    function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
-        return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
-    }
 
     function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
         return priorityRequests[idx];

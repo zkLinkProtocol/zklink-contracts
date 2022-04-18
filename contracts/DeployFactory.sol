@@ -38,9 +38,9 @@ contract DeployFactory {
         address _governor,
         address _feeAccountAddress
     ) {
-        require(_firstValidator != address(0));
-        require(_governor != address(0));
-        require(_feeAccountAddress != address(0));
+        require(_firstValidator != address(0), "D0");
+        require(_governor != address(0), "D1");
+        require(_feeAccountAddress != address(0), "D2");
 
         // set this contract as governor
         Proxy governance = new Proxy(address(_govTarget), abi.encode(this));

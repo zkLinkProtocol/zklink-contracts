@@ -29,31 +29,31 @@ library Operations {
     // Byte lengths
 
     /// @dev op is uint8
-    uint8 constant OP_TYPE_BYTES = 1;
+    uint8 internal constant OP_TYPE_BYTES = 1;
 
     /// @dev chainId is uint8
-    uint8 constant CHAIN_BYTES = 1;
+    uint8 internal constant CHAIN_BYTES = 1;
 
     /// @dev token is uint16
-    uint8 constant TOKEN_BYTES = 2;
+    uint8 internal constant TOKEN_BYTES = 2;
 
     /// @dev nonce is uint32
-    uint8 constant NONCE_BYTES = 4;
+    uint8 internal constant NONCE_BYTES = 4;
 
     /// @dev address is 20 bytes length
-    uint8 constant ADDRESS_BYTES = 20;
+    uint8 internal constant ADDRESS_BYTES = 20;
 
     /// @dev fee is uint16
-    uint8 constant FEE_BYTES = 2;
+    uint8 internal constant FEE_BYTES = 2;
 
     /// @dev accountId is uint32
-    uint8 constant ACCOUNT_ID_BYTES = 4;
+    uint8 internal constant ACCOUNT_ID_BYTES = 4;
 
     /// @dev subAccountId is uint8
-    uint8 constant SUB_ACCOUNT_ID_BYTES = 1;
+    uint8 internal constant SUB_ACCOUNT_ID_BYTES = 1;
 
     /// @dev amount is uint128
-    uint8 constant AMOUNT_BYTES = 16;
+    uint8 internal constant AMOUNT_BYTES = 16;
 
     // Priority operations: Deposit, FullExit
     struct PriorityOperation {

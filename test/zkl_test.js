@@ -19,13 +19,13 @@ describe('ZKL unit tests', function () {
     });
 
     it('only network governor can set bridgeable', async () => {
-        await expect(zkl.connect(alice).setBridgeable(false)).to.be.revertedWith('ZKL: require governor');
+        await expect(zkl.connect(alice).setBridgeable(false)).to.be.revertedWith('ZKL0');
         await zkl.connect(networkGovernor).setBridgeable(false);
         expect(await zkl.bridgeable()).to.be.equal(false);
     });
 
     it('only network governor can set destination', async () => {
-        await expect(zkl.connect(alice).setDestination(1001, zklInOtherChain.address)).to.be.revertedWith('ZKL: require governor');
+        await expect(zkl.connect(alice).setDestination(1001, zklInOtherChain.address)).to.be.revertedWith('ZKL0');
         await zkl.connect(networkGovernor).setDestination(1001, alice.address);
         expect(await zkl.destination(1001)).to.be.equal(alice.address.toLowerCase());
     });
@@ -33,10 +33,10 @@ describe('ZKL unit tests', function () {
     it('bridge should success', async () => {
         await zkl.connect(networkGovernor).transfer(alice.address, 500);
         await zkl.connect(networkGovernor).setBridgeable(false);
-        await expect(zkl.connect(alice).bridge(1001, alice.address, 100)).to.be.revertedWith('ZKL: bridge disabled');
+        await expect(zkl.connect(alice).bridge(1001, alice.address, 100)).to.be.revertedWith('ZKL3');
 
         await zkl.connect(networkGovernor).setBridgeable(true);
-        await expect(zkl.connect(alice).bridge(1002, alice.address, 100)).to.be.revertedWith('ZKL: invalid lz chain id');
+        await expect(zkl.connect(alice).bridge(1002, alice.address, 100)).to.be.revertedWith('ZKL4');
 
         await expect(zkl.connect(alice).bridge(1001, alice.address, 100, {value:1})).to.be
             .emit(zkl, 'BridgeTo')
@@ -46,7 +46,7 @@ describe('ZKL unit tests', function () {
     });
 
     it('receive bridge token should success', async () => {
-        await expect(zkl.connect(alice).lzReceive(1001, alice.address, 0, [])).to.be.revertedWith('ZKL: require LZ endpoint');
+        await expect(zkl.connect(alice).lzReceive(1001, alice.address, 0, [])).to.be.revertedWith('ZKL1');
 
         await zkl.connect(networkGovernor).transfer(alice.address, 500);
         await zkl.connect(alice).bridge(1001, alice.address, 100, {value:1});

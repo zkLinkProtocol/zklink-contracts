@@ -23,7 +23,7 @@ describe('Accept unit tests', function () {
 
     it('broker approve should success', async () => {
         await expect(periphery.connect(alice).brokerApprove(ethId, bob.address, 100))
-            .to.be.revertedWith("ZkLink: only erc20 token support approve");
+            .to.be.revertedWith("ZP15");
         await expect(periphery.connect(alice).brokerApprove(token2Id, bob.address, 100))
             .to.be.emit(periphery, "BrokerApprove")
             .withArgs(token2Id, alice.address, bob.address, 100);
@@ -32,28 +32,28 @@ describe('Accept unit tests', function () {
 
     it('only zkLink can set accept hash from external', async () => {
         const hash = await periphery.calAcceptHash(bob.address, ethId, 100, 100, 1);
-        await expect(periphery.connect(alice).setAccepter(fwAId, hash, alice.address)).to.be.revertedWith("ZkLink: no auth");
+        await expect(periphery.connect(alice).setAccepter(fwAId, hash, alice.address)).to.be.revertedWith("ZP0");
         await zkLink.setAccepter(fwAId, hash, alice.address);
         expect(await periphery.getAccepter(fwAId, hash)).to.be.eq(alice.address);
     });
 
     it('invalid state or params should failed when accept', async () => {
         await expect(periphery.connect(alice).acceptETH(hardhat.ethers.constants.AddressZero, fwAId, bob.address, 100, 20, 1))
-            .to.be.revertedWith("ZkLink: accepter not set");
+            .to.be.revertedWith("ZP17");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, hardhat.ethers.constants.AddressZero, 100, 20, 1))
-            .to.be.revertedWith("ZkLink: receiver not set");
+            .to.be.revertedWith("ZP18");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, alice.address, 100, 20, 1))
-            .to.be.revertedWith("ZkLink: no need to accept");
+            .to.be.revertedWith("ZP19");
         await expect(periphery.connect(alice).acceptERC20(alice.address, fwAId, bob.address, 10000, 100, 20, 1, 100))
-            .to.be.revertedWith("ZkLink: token not registered");
+            .to.be.revertedWith("ZP20");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 10000, 1))
-            .to.be.revertedWith("ZkLink: invalid amountReceive");
+            .to.be.revertedWith("ZP21");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 0))
-            .to.be.revertedWith("ZkLink: accept nonce not set");
+            .to.be.revertedWith("ZP22");
 
         // this accept hash was set by previous unit test
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 1))
-            .to.be.revertedWith("ZkLink: accepted");
+            .to.be.revertedWith("ZP23");
     });
 
     it('accept eth should success', async () => {
@@ -84,7 +84,7 @@ describe('Accept unit tests', function () {
         // send eth to a contract that has no receive or fallback function
         nonce = 3;
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, periphery.address, amount, feeRate, nonce, {value: amountReceive}))
-            .to.be.revertedWith("ZkLink: eth send failed");
+            .to.be.reverted;
 
         // msg sender is not the accepter
         nonce = 4;
@@ -125,7 +125,7 @@ describe('Accept unit tests', function () {
         // broker allowance not enough
         nonce = 4;
         await expect(periphery.connect(defaultSender).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, nonce, amountReceive))
-            .to.be.revertedWith("ZkLink: broker allowance not enough");
+            .to.be.revertedWith("ZP13");
     });
 
     it('accept non standard erc20 should success', async () => {

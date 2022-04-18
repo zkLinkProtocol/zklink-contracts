@@ -8,7 +8,6 @@ import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 import "./zksync/SafeCast.sol";
 import "./zksync/Utils.sol";
-import "./zksync/Operations.sol";
 import "./zksync/UpgradeableMaster.sol";
 import "./zksync/ReentrancyGuard.sol";
 import "./zksync/Config.sol";
@@ -24,7 +23,22 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
-    constructor() {
+    /// @notice Checks that current state not is exodus mode
+    modifier active() {
+        require(!exodusMode, "Z0");
+        _;
+    }
+
+    /// @notice Checks that current state is exodus mode
+    modifier notActive() {
+        require(exodusMode, "Z1");
+        _;
+    }
+
+    /// @notice Check if msg sender is a validator
+    modifier onlyValidator() {
+        governance.requireActiveValidator(msg.sender);
+        _;
     }
 
     // Upgrade functional
@@ -65,6 +79,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
+    // solhint-disable-next-line no-empty-blocks
     function upgrade(bytes calldata upgradeParameters) external nonReentrant {}
 
     // =================User interface=================
@@ -100,14 +115,14 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     /// @param _tokenId Token id
     function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId) external active nonReentrant {
         // ===Checks===
-        // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "ZkLink: too many request");
         // accountId and subAccountId MUST be valid
-        require(_accountId <= MAX_ACCOUNT_ID, "ZkLink: invalid accountId");
-        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "ZkLink: invalid subAccountId");
+        require(_accountId <= MAX_ACCOUNT_ID, "Z2");
+        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "Z3");
         // token MUST be registered to ZkLink
         Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
-        require(rt.registered, "ZkLink: token not registered");
+        require(rt.registered, "Z4");
+        // to prevent ddos
+        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "Z5");
 
         // ===Effects===
         // Priority Queue request
@@ -155,19 +170,13 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         uint256[] calldata _proof
     ) external notActive {
         // ===Checks===
-        // accountId and subAccountId MUST be valid
-        require(_accountId <= MAX_ACCOUNT_ID, "ZkLink: invalid accountId");
-        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "ZkLink: invalid subAccountId");
-        // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
-        require(rt.registered, "ZkLink: token not registered");
         // performed exodus MUST not be already exited
-        require(!performedExodus[_accountId][_subAccountId][_tokenId], "ZkLink: performed exodus");
+        require(!performedExodus[_accountId][_subAccountId][_tokenId], "Z6");
         // incorrect stored block info
-        require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "ZkLink: incorrect stored block info");
+        require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "Z7");
         // exit proof MUST be correct
         bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, _accountId, _subAccountId, _owner, _tokenId, _amount, _proof);
-        require(proofCorrect, "ZkLink: incorrect proof");
+        require(proofCorrect, "Z8");
 
         // ===Effects===
         performedExodus[_accountId][_subAccountId][_tokenId] = true;
@@ -184,8 +193,8 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external notActive {
         // ===Checks===
         uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
-        require(toProcess > 0, "ZkLink: no deposits to process");
-        require(toProcess == _depositsPubdata.length, "ZkLink: invalid deposits pubdata");
+        require(toProcess > 0, "Z9");
+        require(toProcess == _depositsPubdata.length, "Z10");
 
         // ===Effects===
         uint64 currentDepositIdx = 0;
@@ -193,7 +202,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             Operations.PriorityOperation memory pr = priorityRequests[id];
             if (pr.opType == Operations.OpType.Deposit) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
-                require(Utils.hashBytesToBytes20(depositPubdata) == pr.hashedPubData, "ZkLink: invalid deposit hash");
+                require(Utils.hashBytesToBytes20(depositPubdata) == pr.hashedPubData, "Z11");
                 ++currentDepositIdx;
 
                 Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
@@ -217,13 +226,13 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         // ===Checks===
         // token MUST be registered to ZkLink
         Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
-        require(rt.registered, "ZkLink: token not registered");
+        require(rt.registered, "Z12");
 
         // Set the available amount to withdraw
         bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
         uint128 balance = pendingBalances[packedBalanceKey];
         uint128 amount = Utils.minU128(balance, _amount);
-        require(amount > 0, "ZkLink: nothing to withdraw");
+        require(amount > 0, "Z13");
 
         // ===Effects====
         pendingBalances[packedBalanceKey] = balance - amount; // amount <= balance
@@ -231,8 +240,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         // ===Interactions===
         address tokenAddress = rt.tokenAddress;
         if (tokenAddress == ETH_ADDRESS) {
+            // solhint-disable-next-line  avoid-low-level-calls
             (bool success, ) = _owner.call{value: amount}("");
-            require(success, "ZkLink: eth withdraw failed");
+            require(success, "Z14");
         } else {
             // We will allow withdrawals of `value` such that:
             // `value` <= user pending balance
@@ -260,14 +270,14 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         uint128 _amount,
         uint128 _maxAmount
     ) external returns (uint128 withdrawnAmount) {
-        require(msg.sender == address(this), "ZkLink: not ZkLink"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
+        require(msg.sender == address(this), "Z15"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
 
         uint256 balanceBefore = _token.balanceOf(address(this));
         _token.transfer(_to, _amount);
         uint256 balanceAfter = _token.balanceOf(address(this));
         uint256 balanceDiff = balanceBefore.sub(balanceAfter);
-        require(balanceDiff > 0, "ZkLink: transfer failed"); // transfer is considered successful only if the balance of the contract decreased after transfer
-        require(balanceDiff <= _maxAmount, "ZkLink: transfer too much"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
+        require(balanceDiff > 0, "Z16"); // transfer is considered successful only if the balance of the contract decreased after transfer
+        require(balanceDiff <= _maxAmount, "Z17"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
 
         // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
         return uint128(balanceDiff);
@@ -281,7 +291,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     /// @param _pubkeyHash New pubkey hash
     /// @param _nonce Nonce of the change pubkey L2 transaction
     function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external active {
-        require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "ZkLink: invalid pubkeyHash"); // PubKeyHash should be 20 bytes.
+        require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "Z18"); // PubKeyHash should be 20 bytes.
         if (authFacts[msg.sender][_nonce] == bytes32(0)) {
             authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
         } else {
@@ -289,7 +299,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             if (currentResetTimer == 0) {
                 authFactsResetTimer[msg.sender][_nonce] = block.timestamp;
             } else {
-                require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "ZkLink: too early to reset auth");
+                require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "Z19"); // too early to reset auth
                 authFactsResetTimer[msg.sender][_nonce] = 0;
                 authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
             }
@@ -304,9 +314,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
     {
         // ===Checks===
-        require(_newBlocksData.length > 0, "ZkLink: no commit");
+        require(_newBlocksData.length > 0, "Z20");
         // Check that we commit blocks after last committed block
-        require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "ZkLink: incorrect previous block data");
+        require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "Z21");
 
         // ===Effects===
         for (uint32 i = 0; i < _newBlocksData.length; ++i) {
@@ -316,7 +326,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             totalCommittedPriorityRequests += _lastCommittedBlockData.priorityOperations;
             storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
         }
-        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "ZkLink: invalid state of pr");
+        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "Z22");
 
         // overflow is impossible
         totalBlocksCommitted += uint32(_newBlocksData.length);
@@ -331,14 +341,14 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         // ===Checks===
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
-            require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "ZkLink: incorrect commit block");
+            require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "Z23");
             ++currentTotalBlocksProven;
 
-            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "ZkLink: incorrect block commitment in proof");
+            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "Z24");
         }
 
         // ===Effects===
-        require(currentTotalBlocksProven <= totalBlocksCommitted, "ZkLink: invalid state of tbc");
+        require(currentTotalBlocksProven <= totalBlocksCommitted, "Z25");
         totalBlocksProven = currentTotalBlocksProven;
 
         // ===Interactions===
@@ -349,7 +359,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             _proof.commitments,
             _proof.subproofsLimbs
         );
-        require(success, "ZkLink: aggregated proof verification failed");
+        require(success, "Z26");
     }
 
     /// @notice Reverts unverified blocks
@@ -360,7 +370,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
 
         for (uint32 i = 0; i < blocksToRevert; ++i) {
             StoredBlockInfo memory storedBlockInfo = _blocksToRevert[i];
-            require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "r"); // incorrect stored block info
+            require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "Z27"); // incorrect stored block info
 
             delete storedBlockHashes[blocksCommitted];
 
@@ -384,7 +394,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     function executeBlocks(ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
         uint64 priorityRequestsExecuted = 0;
         uint32 nBlocks = uint32(_blocksData.length);
-        require(nBlocks > 0, "ZkLink: no block to exec");
+        require(nBlocks > 0, "Z28");
 
         for (uint32 i = 0; i < nBlocks; ++i) {
             executeOneBlock(_blocksData[i], i);
@@ -399,7 +409,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
 
         // overflow is impossible
         totalBlocksExecuted += nBlocks;
-        require(totalBlocksExecuted <= totalBlocksProven, "ZkLink: invalid state of tbp");
+        require(totalBlocksExecuted <= totalBlocksProven, "Z29");
 
         emit BlockVerification(_blocksData[nBlocks-1].storedBlock.blockNumber);
     }
@@ -408,18 +418,18 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
 
     function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId) internal active {
         // ===Checks===
-        // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "ZkLink: too many request");
+        // subAccountId MUST be valid
+        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "Z30");
         // token MUST be registered to ZkLink and deposit MUST be enabled
         uint16 tokenId = governance.getTokenId(_tokenAddress);
         Governance.RegisteredToken memory rt = governance.getToken(tokenId);
-        require(rt.registered, "ZkLink: token not registered");
-        require(!rt.paused, "ZkLink: deposit paused");
+        require(rt.registered, "Z31");
+        require(!rt.paused, "Z32");
         // disable deposit to zero address or with zero amount
-        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "ZkLink: invalid amount");
-        require(_zkLinkAddress != address(0), "ZkLink: address not set");
-        // subAccountId MUST be valid
-        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "ZkLink: invalid subAccountId");
+        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "Z33");
+        require(_zkLinkAddress != address(0), "Z34");
+        // to prevent ddos
+        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "Z35");
 
         // ===Effects===
         // Priority Queue request
@@ -478,9 +488,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         require(
             hashStoredBlockInfo(_blockExecuteData.storedBlock) ==
             storedBlockHashes[_blockExecuteData.storedBlock.blockNumber],
-            "ZkLink: exec block not committed"
+            "Z36"
         );
-        require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "ZkLink: invalid exec order");
+        require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "Z37");
 
         bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
@@ -521,7 +531,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             }
             pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
         }
-        require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "ZkLink: incorrect onchain ops executed");
+        require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "Z38");
     }
 
     /// @dev 1. Try to send token to _recipients
@@ -574,7 +584,13 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
     /// @param _amount Amount of tokens to transfer
     /// @return bool flag indicating that transfer is successful
     function sendETHNoRevert(address payable _to, uint256 _amount) internal returns (bool) {
+        // solhint-disable-next-line  avoid-low-level-calls
         (bool callSuccess, ) = _to.call{gas: WITHDRAWAL_GAS_LIMIT, value: _amount}("");
         return callSuccess;
+    }
+
+    /// @notice Packs address and token id into single word to use as a key in balances mapping
+    function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
+        return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
     }
 }

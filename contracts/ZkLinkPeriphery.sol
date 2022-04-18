@@ -43,7 +43,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
     event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
 
     modifier onlyZkLink {
-        require(msg.sender == address(zkLink), "ZkLink: no auth");
+        require(msg.sender == address(zkLink), "ZP0");
         _;
     }
 
@@ -53,6 +53,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
 
     /// @notice Verifier contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
+    // solhint-disable-next-line no-empty-blocks
     function upgrade(bytes calldata upgradeParameters) external {}
 
     /// @notice Set the zkLink proxy address
@@ -71,14 +72,14 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
     /// only ZkLink can call this function to add more security
     function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external onlyZkLink view returns (StoredBlockInfo memory storedNewBlock)
     {
-        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZkLink: not commit next block");
+        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZP1");
 
         // Check timestamp of the new block
         {
-            require(_newBlock.timestamp >= _previousBlock.timestamp, "ZkLink: block should be after previous block");
+            require(_newBlock.timestamp >= _previousBlock.timestamp, "ZP2");
             // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
             require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
-                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZkLink: invalid new block timestamp");
+                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZP3");
         }
 
         // Check onchain operations
@@ -121,17 +122,17 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         processableOperationsHash = EMPTY_STRING_KECCAK;
 
         // pubdata length must be a multiple of CHUNK_BYTES
-        require(pubData.length % CHUNK_BYTES == 0, "ZkLink: invalid pubdata length");
+        require(pubData.length % CHUNK_BYTES == 0, "ZP4");
         offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
         // NOTE: we MUST ignore ops that are not part of the current chain
         for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
             OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
 
             uint256 pubdataOffset = onchainOpData.publicDataOffset;
-            require(pubdataOffset < pubData.length, "ZkLink: publicDataOffset overflow");
-            require(pubdataOffset % CHUNK_BYTES == 0, "ZkLink: offsets should be on chunks boundaries");
+            require(pubdataOffset < pubData.length, "ZP5");
+            require(pubdataOffset % CHUNK_BYTES == 0, "ZP6");
             uint256 chunkId = pubdataOffset / CHUNK_BYTES;
-            require(offsetsCommitment[chunkId] == 0x00, "ZkLink: offset commitment should be empty");
+            require(offsetsCommitment[chunkId] == 0x00, "ZP7"); // offset commitment should be empty
             offsetsCommitment[chunkId] = bytes1(0x01);
 
             Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
@@ -149,10 +150,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
                 if (op.chainId == CHAIN_ID) {
                     if (onchainOpData.ethWitness.length != 0) {
                         bool valid = verifyChangePubkey(onchainOpData.ethWitness, op);
-                        require(valid, "ZkLink: verifyChangePubkey failed");
+                        require(valid, "ZP8");
                     } else {
                         bool valid = zkLink.getAuthFact(op.owner, op.nonce) == keccak256(abi.encodePacked(op.pubKeyHash));
-                        require(valid, "ZkLink: new pub key hash not authenticated");
+                        require(valid, "ZP9");
                     }
                 }
             } else {
@@ -277,7 +278,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
 
     /// @dev Only zkLink can set accepter
     function setAccepter(uint32 accountId, bytes32 hash, address accepter) external onlyZkLink {
-        require(accepts[accountId][hash] == address(0), "ZkLink: accepted");
+        require(accepts[accountId][hash] == address(0), "ZP10");
         accepts[accountId][hash] = accepter;
     }
 
@@ -305,12 +306,14 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         // ===Interactions===
         // make sure msg value >= amountReceive
         uint256 amountReturn = msg.value.sub(amountReceive);
-        (bool success, ) = receiver.call{value: amountReceive}("");
-        require(success, "ZkLink: eth send failed");
+        // do not use send or call to make more security
+        receiver.transfer(amountReceive);
         // if send too more eth then return back to msg sender
         if (amountReturn > 0) {
-            (success, ) = msg.sender.call{value: amountReturn}("");
-            require(success, "ZkLink: eth return back failed");
+            // it's safe to use call to msg.sender and can send all gas left to it
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: amountReturn}("");
+            require(success, "ZP11");
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountReceive, amountReceive);
     }
@@ -352,13 +355,13 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
             uint256 receiverBalanceAfter = IERC20(tokenAddress).balanceOf(_receiver);
             uint256 accepterBalanceAfter = IERC20(tokenAddress).balanceOf(_accepter);
             uint128 receiverBalanceDiff = SafeCast.toUint128(receiverBalanceAfter.sub(receiverBalanceBefore));
-            require(receiverBalanceDiff >= amountReceive, "ZkLink: token transfer too little");
+            require(receiverBalanceDiff >= amountReceive, "ZP12");
             amountReceive = receiverBalanceDiff;
             // amountSent may be larger than amountReceive when the token is a non standard erc20 token
             amountSent = SafeCast.toUint128(accepterBalanceBefore.sub(accepterBalanceAfter));
         }
         if (msg.sender != accepter) {
-            require(brokerAllowance(tokenId, accepter, msg.sender) >= amountSent, 'ZkLink: broker allowance not enough');
+            require(brokerAllowance(tokenId, accepter, msg.sender) >= amountSent, "ZP13");
             brokerAllowances[tokenId][accepter][msg.sender] -= amountSent;
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountSent, amountReceive);
@@ -376,9 +379,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
     function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
         // token MUST be registered to ZkLink
         Governance.RegisteredToken memory rt = zkLink.governance().getToken(tokenId);
-        require(rt.registered, "ZkLink: token not registered");
-        require(rt.tokenAddress != ETH_ADDRESS, "ZkLink: only erc20 token support approve");
-        require(spender != address(0), "ZkLink: approve to the zero address");
+        require(rt.registered, "ZP14");
+        require(rt.tokenAddress != ETH_ADDRESS, "ZP15"); // only erc20 token support approve
+        require(spender != address(0), "ZP16");
         brokerAllowances[tokenId][msg.sender][spender] = amount;
         emit BrokerApprove(tokenId, msg.sender, spender, amount);
         return true;
@@ -392,21 +395,21 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         uint16 withdrawFeeRate,
         uint32 nonce) internal view returns (uint128 amountReceive, bytes32 hash, address tokenAddress) {
         // accepter and receiver MUST be set and MUST not be the same
-        require(accepter != address(0), "ZkLink: accepter not set");
-        require(receiver != address(0), "ZkLink: receiver not set");
-        require(receiver != accepter, "ZkLink: no need to accept");
+        require(accepter != address(0), "ZP17");
+        require(receiver != address(0), "ZP18");
+        require(receiver != accepter, "ZP19");
         // token MUST be registered to ZkLink
         Governance.RegisteredToken memory rt = zkLink.governance().getToken(tokenId);
-        require(rt.registered, "ZkLink: token not registered");
+        require(rt.registered, "ZP20");
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid
         amountReceive = amount * (MAX_WITHDRAW_FEE_RATE - withdrawFeeRate) / MAX_WITHDRAW_FEE_RATE;
-        require(amountReceive > 0 && amountReceive <= amount, 'ZkLink: invalid amountReceive');
+        require(amountReceive > 0 && amountReceive <= amount, "ZP21");
         // nonce MUST not be zero
-        require(nonce > 0, "ZkLink: accept nonce not set");
+        require(nonce > 0, "ZP22");
 
         // accept tx may be later than block exec tx(with user withdraw op)
         hash = calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce);
-        require(accepts[accountId][hash] == address(0), 'ZkLink: accepted');
+        require(accepts[accountId][hash] == address(0), "ZP23");
     }
 }

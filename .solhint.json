@@ -1,0 +1,12 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": [],
+  "rules": {
+    "compiler-version": "off",
+    "func-visibility": ["warn",{"ignoreConstructors": true}],
+    "mark-callable-contracts": "off",
+    "max-states-count": "off",
+    "no-inline-assembly": "off",
+    "not-rely-on-time": "off"
+  }
+}

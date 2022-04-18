@@ -1,0 +1,5 @@
+node_modules/
+artifacts/
+cache/
+contracts/dev-contracts/
+contracts/zksync/PlonkCore.sol
