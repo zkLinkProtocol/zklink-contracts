@@ -418,6 +418,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
 
     function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId) internal active {
         // ===Checks===
+        // disable deposit to zero address or with zero amount
+        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "Z33");
+        require(_zkLinkAddress != address(0), "Z34");
         // subAccountId MUST be valid
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "Z30");
         // token MUST be registered to ZkLink and deposit MUST be enabled
@@ -425,9 +428,6 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         Governance.RegisteredToken memory rt = governance.getToken(tokenId);
         require(rt.registered, "Z31");
         require(!rt.paused, "Z32");
-        // disable deposit to zero address or with zero amount
-        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "Z33");
-        require(_zkLinkAddress != address(0), "Z34");
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "Z35");
 
