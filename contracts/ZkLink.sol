@@ -216,6 +216,14 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         totalOpenPriorityRequests -= toProcess;
     }
 
+    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkLink contract
+    /// @param _address Address of the tokens owner
+    /// @param _tokenId Token id
+    /// @return The pending balance can be withdrawn
+    function getPendingBalance(address _address, uint16 _tokenId) external view returns (uint128) {
+        return pendingBalances[packAddressAndTokenId(_address, _tokenId)];
+    }
+
     /// @notice  Withdraws tokens from zkLink contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _tokenId Token id

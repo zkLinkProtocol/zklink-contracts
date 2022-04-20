@@ -1,4 +1,3 @@
-const hardhat = require('hardhat');
 const { expect } = require('chai');
 const { deploy } = require('./utils');
 const {parseEther} = require("ethers/lib/utils");
