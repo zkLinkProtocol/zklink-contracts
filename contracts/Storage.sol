@@ -48,7 +48,7 @@ contract Storage is IZkLink {
 
     /// @notice Flag indicates that exodus (mass exit) mode is triggered
     /// @notice Once it was raised, it can not be cleared again, and all users must exit
-    bool public exodusMode;
+    bool public override exodusMode;
 
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => uint128) internal pendingBalances;

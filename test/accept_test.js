@@ -52,6 +52,11 @@ describe('Accept unit tests', function () {
         // this accept hash was set by previous unit test
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 1))
             .to.be.revertedWith("ZP23");
+
+        await zkLink.setExodus(true);
+        await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 10000, 100, 1))
+            .to.be.revertedWith("ZP24");
+        await zkLink.setExodus(false);
     });
 
     it('accept eth should success', async () => {

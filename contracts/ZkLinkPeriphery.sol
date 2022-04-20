@@ -407,5 +407,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         // accept tx may be later than block exec tx(with user withdraw op)
         hash = calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce);
         require(accepts[accountId][hash] == address(0), "ZP23");
+
+        // zkLink MUST not be in exodus
+        require(!zkLink.exodusMode(), "ZP24");
     }
 }

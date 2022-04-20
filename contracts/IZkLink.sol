@@ -11,6 +11,8 @@ import "./zksync/Operations.sol";
 /// @author zk.link
 interface IZkLink {
 
+    function exodusMode() external view returns (bool);
+
     function governance() external view returns (Governance);
 
     function firstPriorityRequestId() external view returns (uint64);
