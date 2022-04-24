@@ -175,7 +175,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         // incorrect stored block info
         require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "Z7");
         // exit proof MUST be correct
-        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, _accountId, _subAccountId, _owner, _tokenId, _amount, _proof);
+        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _tokenId, _amount, _proof);
         require(proofCorrect, "Z8");
 
         // ===Effects===

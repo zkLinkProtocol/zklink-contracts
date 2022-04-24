@@ -43,6 +43,7 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
 
     function verifyExitProof(
         bytes32 _rootHash,
+        uint8 _chainId,
         uint32 _accountId,
         uint8 _subAccountId,
         address _owner,
@@ -50,7 +51,7 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
         uint128 _amount,
         uint256[] calldata _proof
     ) external view returns (bool) {
-        bytes32 commitment = sha256(abi.encodePacked(_rootHash, _accountId, _subAccountId, _owner, _tokenId, _amount));
+        bytes32 commitment = sha256(abi.encodePacked(_rootHash, _chainId, _accountId, _subAccountId, _owner, _tokenId, _amount));
 
         uint256[] memory inputs = new uint256[](1);
         inputs[0] = uint256(commitment) & INPUT_MASK;

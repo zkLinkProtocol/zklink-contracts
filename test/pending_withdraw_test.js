@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const { deploy, writeDepositPubdata } = require('./utils');
 const {parseEther} = require("ethers/lib/utils");
 
-describe('ZkLink exodus unit tests', function () {
+describe('ZkLink withdraw pending balance unit tests', function () {
     let deployedInfo;
     let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice;
     before(async () => {
