@@ -10,7 +10,6 @@ require("./script/interact");
 const ethConfig = {
   macro: {
     BLOCK_PERIOD: '15 seconds',
-    // UPGRADE_NOTICE_PERIOD: 0,
     CHAIN_ID: 1
   },
   url: "https://eth-mainnet.alchemyapi.io/v2/YOUK_API_KEY",
@@ -20,7 +19,6 @@ const ethConfig = {
 const bscConfig = {
   macro: {
     BLOCK_PERIOD: '3 seconds',
-    // UPGRADE_NOTICE_PERIOD: 0,
     CHAIN_ID: 2
   },
   url: "https://bsc-dataseed2.binance.org",
@@ -30,7 +28,6 @@ const bscConfig = {
 const avaxConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
-    // UPGRADE_NOTICE_PERIOD: 0,
     CHAIN_ID: 3
   },
   url: "https://api.avax.network/ext/bc/C/rpc",
@@ -40,7 +37,6 @@ const avaxConfig = {
 const polygonConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
-    // UPGRADE_NOTICE_PERIOD: 0,
     CHAIN_ID: 4
   },
   url: "https://matic-mainnet.chainstacklabs.com",
@@ -52,6 +48,7 @@ const polygonTestConfig = {
   macro: {
     BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
+    PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 1
   },
   url: "https://matic-mumbai.chainstacklabs.com",
@@ -62,6 +59,7 @@ const avaxTestConfig = {
   macro: {
     BLOCK_PERIOD: avaxConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
+    PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 2
   },
   url: "https://api.avax-test.network/ext/bc/C/rpc",
@@ -72,6 +70,7 @@ const rinkebyConfig = {
   macro: {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
+    PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 3
   },
   url: "https://eth-rinkeby.alchemyapi.io/v2/YOUK_API_KEY",
@@ -82,6 +81,7 @@ const goerliConfig = {
   macro: {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
+    PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 4
   },
   url: "https://eth-goerli.alchemyapi.io/v2/YOUK_API_KEY",
@@ -92,6 +92,7 @@ const bscTestConfig = {
   macro: {
     BLOCK_PERIOD: bscConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
+    PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 5
   },
   url: "https://data-seed-prebsc-1-s1.binance.org:8545",

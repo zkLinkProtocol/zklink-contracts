@@ -194,7 +194,6 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         // ===Checks===
         uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
         require(toProcess > 0, "Z9");
-        require(toProcess == _depositsPubdata.length, "Z10");
 
         // ===Effects===
         uint64 currentDepositIdx = 0;
