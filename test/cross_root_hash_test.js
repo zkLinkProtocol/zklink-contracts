@@ -1,0 +1,91 @@
+const { ethers, upgrades } = require("hardhat");
+const { expect } = require('chai');
+const {parseEther} = require("ethers/lib/utils");
+
+describe('Cross root hash unit tests', function () {
+    let deployer,networkGovernor,alice,bob,tom;
+    const lzChainIdInETH = 1;
+    const lzChainIdInBSC = 2;
+    let bmInETH, bmInBSC, govInETH, govInBSC, zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
+    before(async () => {
+        [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
+
+        const bmFactory = await ethers.getContractFactory('BridgeManager');
+        bmInETH = await bmFactory.deploy();
+        bmInBSC = await bmFactory.deploy();
+
+        const govFactory = await ethers.getContractFactory('Governance');
+        govInETH = await govFactory.deploy();
+        govInBSC = await govFactory.deploy();
+        await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
+        await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
+        await govInETH.connect(networkGovernor).setBridgeManager(bmInETH.address);
+        await govInBSC.connect(networkGovernor).setBridgeManager(bmInBSC.address);
+
+        const zklinkFactory = await ethers.getContractFactory('CrossRootHashTest');
+        zklinkInETH = await zklinkFactory.deploy(govInETH.address);
+        zklinkInBSC = await zklinkFactory.deploy(govInBSC.address);
+
+        const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
+        lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
+        lzInBSC = await dummyLZFactory.deploy(lzChainIdInBSC);
+        await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
+        await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
+
+        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [lzInETH.address], {kind: "uups"});
+        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [lzInBSC.address], {kind: "uups"});
+
+        await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
+        await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
+
+        await bmInETH.transferOwnership(networkGovernor.address);
+        await bmInBSC.transferOwnership(networkGovernor.address);
+        await lzBridgeInETH.transferOwnership(networkGovernor.address);
+        await lzBridgeInBSC.transferOwnership(networkGovernor.address);
+
+        bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
+        bmInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
+
+        lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
+        lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
+
+        lzBridgeInETH.connect(networkGovernor).setApp(1, zklinkInETH.address);
+        lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address)
+    });
+
+    it('only bridge can call receiveCrossRootHash', async () => {
+        // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
+        await expect(zklinkInETH.connect(alice).receiveCrossRootHash('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
+            .to.be.reverted;
+    });
+
+    it('estimateRootHashBridgeFees should success', async () => {
+        const fees = await lzBridgeInETH.estimateRootHashBridgeFees(lzChainIdInBSC, false, "0x");
+        expect(fees.nativeFee > 0);
+    });
+
+
+    it('bridge root hash should success', async () => {
+        const rh = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+        await zklinkInETH.setTotalBlocksExecuted(10);
+        await zklinkInETH.setTotalBlocksProven(20);
+        await zklinkInETH.setBlockHash(11, rh);
+
+        await zklinkInBSC.setTotalBlocksExecuted(100);
+        await zklinkInBSC.setTotalBlocksProven(200);
+        await zklinkInBSC.setBlockHash(150, rh);
+
+        const fees = await lzBridgeInETH.estimateRootHashBridgeFees(lzChainIdInBSC, false, "0x");
+        const lzParams = {
+            "dstChainId": lzChainIdInBSC,
+            "refundAddress": alice.address,
+            "zroPaymentAddress": ethers.constants.AddressZero,
+            "adapterParams": "0x"
+        }
+        await expect(lzBridgeInETH.connect(alice).bridgeRootHash(11,
+            lzParams, {value: fees.nativeFee}))
+            .to.be.emit(zklinkInBSC, "ReceiveCrossRootHash")
+            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, rh, 1);
+    });
+});

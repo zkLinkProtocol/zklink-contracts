@@ -159,6 +159,15 @@ contract LZEndpointMock is ILayerZeroEndpoint {
         }
     }
 
+    function lzReceiveTest(uint16 _srcChainId,
+        bytes calldata _srcAddress,
+        address _dstAddress,
+        uint64 _nonce,
+        bytes calldata _payload
+    ) external {
+        ILayerZeroReceiver(_dstAddress).lzReceive(_srcChainId, _srcAddress, _nonce, _payload);
+    }
+
     // used to simulate messages received get stored as a payload
     function blockNextMsg() external {
         nextMsgBLocked = true;

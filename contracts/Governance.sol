@@ -24,6 +24,9 @@ contract Governance is Config {
     /// @notice Token address update
     event TokenAddressUpdate(uint16 indexed token, address newAddress);
 
+    /// @notice Bridge manager update
+    event BridgeManagerUpdate(address indexed newBridgeManager);
+
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
     address public networkGovernor;
 
@@ -41,6 +44,9 @@ contract Governance is Config {
 
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
+
+    /// @notice Multiple bridges manager
+    IBridgeManager public bridgeManager;
 
     modifier onlyGovernor {
         require(msg.sender == networkGovernor, "G0");
@@ -163,4 +169,25 @@ contract Governance is Config {
     function getTokenId(address _tokenAddress) external view returns (uint16) {
         return tokenIds[_tokenAddress];
     }
+
+    /// @notice Change BridgeManager
+    /// @param _bm BridgeManager address
+    function setBridgeManager(address _bm) external onlyGovernor {
+        if (address(bridgeManager) != _bm && _bm != address(0)) {
+            bridgeManager = IBridgeManager(_bm);
+            emit BridgeManagerUpdate(_bm);
+        }
+    }
+}
+
+
+interface IBridgeManager {
+
+    /// @notice Check if bridge to enabled
+    /// @param bridge the bridge contract
+    function isBridgeToEnabled(address bridge) external view returns (bool);
+
+    /// @notice Check if bridge from enabled
+    /// @param bridge the bridge contract
+    function isBridgeFromEnabled(address bridge) external view returns (bool);
 }

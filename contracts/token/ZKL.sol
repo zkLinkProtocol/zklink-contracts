@@ -17,8 +17,8 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     bool public constant IS_MINT_CHAIN = $$(CHAIN_ID == 1);
     uint256 public constant CAP = 1000000000 * 1e18;
 
-    event BridgeTo(address indexed bridge, address sender, uint16 chainId, bytes receiver, uint amount, uint64 nonce);
-    event BridgeFrom(address indexed bridge, uint16 chainId, address receiver, uint amount, uint64 nonce);
+    event BridgeTo(address indexed bridge, uint16 chainId, uint64 nonce, address sender, bytes receiver, uint amount);
+    event BridgeFrom(address indexed bridge, uint16 chainId, uint64 nonce, address receiver, uint amount);
 
     IBridgeManager public bridgeManager;
 
@@ -34,7 +34,7 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     }
 
     /// @dev only bridge can call this function
-    function bridgeTo(address spender, address from, uint16 dstChainId, bytes memory to, uint256 amount, uint64 nonce) external override {
+    function bridgeTo(uint16 dstChainId, uint64 nonce, address spender, address from, bytes memory to, uint256 amount) external override {
         address bridge = msg.sender;
         require(bridgeManager.isBridgeToEnabled(bridge), "Bridge to disabled");
 
@@ -43,17 +43,17 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
             _spendAllowance(from, spender, amount);
         }
         _burn(from, amount);
-        emit BridgeTo(bridge, from, dstChainId, to, amount, nonce);
+        emit BridgeTo(bridge, dstChainId, nonce, from, to, amount);
     }
 
     /// @dev only bridge can call this function
-    function bridgeFrom(uint16 srcChainId, address receiver, uint256 amount, uint64 nonce) external override {
+    function bridgeFrom(uint16 srcChainId, uint64 nonce, address receiver, uint256 amount) external override {
         address bridge = msg.sender;
         require(bridgeManager.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
         // mint token to receiver
         _mint(receiver, amount);
-        emit BridgeFrom(bridge, srcChainId, receiver, amount, nonce);
+        emit BridgeFrom(bridge, srcChainId, nonce, receiver, amount);
     }
 
     /**

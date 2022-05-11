@@ -37,6 +37,18 @@ describe('ZKL unit tests', function () {
         await zklInBSC.transferOwnership(networkGovernor.address);
         await lzBridgeInETH.transferOwnership(networkGovernor.address);
         await lzBridgeInBSC.transferOwnership(networkGovernor.address);
+
+        bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
+        bmInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
+
+        lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
+        lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
+
+        // lzBridgeInETH not set, test default is 20
+        lzBridgeInBSC.connect(networkGovernor).setDestinationAddressLength(lzChainIdInETH, 20);
+
+        lzBridgeInETH.connect(networkGovernor).setApp(0, zklInETH.address);
+        lzBridgeInBSC.connect(networkGovernor).setApp(0, zklInBSC.address)
     });
 
     it('only network governor can mint zkl', async () => {
@@ -56,81 +68,12 @@ describe('ZKL unit tests', function () {
             .to.be.revertedWith('ERC20Capped: cap exceeded');
     });
 
-    it('only network governor can add bridge', async () => {
-        await expect(bmInETH.connect(alice).addBridge(lzBridgeInETH.address))
-            .to.be.revertedWith('Ownable: caller is not the owner');
-
-        await expect(bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address))
-            .to.be.emit(bmInETH, "AddBridge")
-            .withArgs(lzBridgeInETH.address);
-        // duplicate add bridge should failed
-        await expect(bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address))
-            .to.be.revertedWith("Bridge exist");
-
-        await expect(bmInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address))
-            .to.be.emit(bmInBSC, "AddBridge")
-            .withArgs(lzBridgeInBSC.address);
-    });
-
-    it('only network governor can disable bridge', async () => {
-        await expect(bmInETH.connect(alice).updateBridge(1, false, false))
-            .to.be.revertedWith('Ownable: caller is not the owner');
-
-        await expect(bmInETH.connect(networkGovernor).updateBridge(0, false, false))
-            .to.be.emit(bmInETH, "UpdateBridge")
-            .withArgs(0, false, false);
-
-        await expect(bmInETH.connect(networkGovernor).updateBridge(0, true, true))
-            .to.be.emit(bmInETH, "UpdateBridge")
-            .withArgs(0, true, true);
-    });
-
     it('only bridge can call bridgeTo and bridgeFrom', async () => {
+        // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
         await expect(zklInETH.connect(alice).bridgeTo(alice.address, alice.address, 2, "0x", 0, 0))
             .to.be.reverted;
         await expect(zklInETH.connect(alice).bridgeFrom(2, alice.address, 0, 0))
             .to.be.reverted;
-    });
-
-    it('only network governor can set bridge destination', async () => {
-        await expect(lzBridgeInETH.connect(alice).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
-            .to.be.revertedWith('Ownable: caller is not the owner');
-
-        // can not set dst to the current chain
-        await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInBSC.address))
-            .to.be.revertedWith('Invalid dstChainId');
-        await expect(lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInETH.address))
-            .to.be.revertedWith('Invalid dstChainId');
-
-        await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
-            .to.be.emit(lzBridgeInETH, "UpdateDestination")
-            .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase());
-
-        await expect(lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address))
-            .to.be.emit(lzBridgeInBSC, "UpdateDestination")
-            .withArgs(lzChainIdInETH, lzBridgeInETH.address.toLowerCase());
-    });
-
-    it('only network governor can set bridge destination address length', async () => {
-        await expect(lzBridgeInETH.connect(alice).setDestinationAddressLength(lzChainIdInBSC, 20))
-            .to.be.revertedWith('Ownable: caller is not the owner');
-
-        await expect(lzBridgeInBSC.connect(networkGovernor).setDestinationAddressLength(lzChainIdInETH, 20))
-            .to.be.emit(lzBridgeInBSC, "UpdateDestinationAddressLength")
-            .withArgs(lzChainIdInETH, 20);
-    });
-
-    it('only network governor can set bridge app', async () => {
-        await expect(lzBridgeInETH.connect(alice).setApp(0, zklInETH.address))
-            .to.be.revertedWith('Ownable: caller is not the owner');
-
-        await expect(lzBridgeInETH.connect(networkGovernor).setApp(0, zklInETH.address))
-            .to.be.emit(lzBridgeInETH, "UpdateAPP")
-            .withArgs(0, zklInETH.address);
-
-        await expect(lzBridgeInBSC.connect(networkGovernor).setApp(0, zklInBSC.address))
-            .to.be.emit(lzBridgeInBSC, "UpdateAPP")
-            .withArgs(0, zklInBSC.address);
     });
 
     it('estimateZKLBridgeFees should success', async () => {
@@ -148,15 +91,18 @@ describe('ZKL unit tests', function () {
             bridgeAmount,
             false,
             "0x");
+        const lzParams = {
+            "dstChainId": lzChainIdInBSC,
+            "refundAddress": alice.address,
+            "zroPaymentAddress": ethers.constants.AddressZero,
+            "adapterParams": "0x"
+        }
         await expect(lzBridgeInETH.connect(alice).bridgeZKL(alice.address,
-            lzChainIdInBSC,
             alice.address,
             bridgeAmount,
-            alice.address,
-            ethers.constants.AddressZero,
-            "0x", {value: fees.nativeFee}))
+            lzParams, {value: fees.nativeFee}))
             .to.be.emit(zklInETH, "BridgeTo")
-            .withArgs(lzBridgeInETH.address, alice.address, lzChainIdInBSC, alice.address.toLowerCase(), bridgeAmount, 1);
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, 1, alice.address, alice.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(alice.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.sub(bridgeAmount));
@@ -172,15 +118,18 @@ describe('ZKL unit tests', function () {
             bridgeAmount,
             false,
             "0x");
+        const lzParams = {
+            "dstChainId": lzChainIdInETH,
+            "refundAddress": alice.address,
+            "zroPaymentAddress": ethers.constants.AddressZero,
+            "adapterParams": "0x"
+        }
         await expect(lzBridgeInBSC.connect(alice).bridgeZKL(alice.address,
-            lzChainIdInETH,
             bob.address,
             bridgeAmount,
-            alice.address,
-            ethers.constants.AddressZero,
-            "0x", {value: fees.nativeFee}))
+            lzParams, {value: fees.nativeFee}))
             .to.be.emit(zklInBSC, "BridgeTo")
-            .withArgs(lzBridgeInBSC.address, alice.address, lzChainIdInETH, bob.address.toLowerCase(), bridgeAmount, 1);
+            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, alice.address, bob.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(bob.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
@@ -197,24 +146,21 @@ describe('ZKL unit tests', function () {
             bridgeAmount,
             false,
             "0x");
+        const lzParams = {
+            "dstChainId": lzChainIdInETH,
+            "refundAddress": tom.address,
+            "zroPaymentAddress": ethers.constants.AddressZero,
+            "adapterParams": "0x"
+        }
         await expect(lzBridgeInBSC.connect(tom).bridgeZKL(alice.address,
-            lzChainIdInETH,
             bob.address,
             bridgeAmount,
-            tom.address,
-            ethers.constants.AddressZero,
-            "0x", {value: fees.nativeFee}))
+            lzParams, {value: fees.nativeFee}))
             .to.be.emit(zklInBSC, "BridgeTo")
-            .withArgs(lzBridgeInBSC.address, alice.address, lzChainIdInETH, bob.address.toLowerCase(), bridgeAmount, 2);
+            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 2, alice.address, bob.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(bob.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
         expect(b1InBSC).eq(b0InBSC.sub(bridgeAmount));
-    });
-
-    it('upgrade bridge to new version should success', async () => {
-        const lzBridgeFactoryV2 = await ethers.getContractFactory('LayerZeroBridgeV2Mock', networkGovernor);
-        lzBridgeInETH = await upgrades.upgradeProxy(lzBridgeInETH.address, lzBridgeFactoryV2);
-        expect(await lzBridgeInETH.version()).to.be.eq(2);
     });
 });

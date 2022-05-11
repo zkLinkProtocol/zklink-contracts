@@ -21,10 +21,13 @@ contract LayerZeroStorage {
     mapping(uint16 => uint8) public destAddressLength;
     /// @notice user applications
     mapping(APP => address) public apps;
+    /// @notice failed message of lz non-blocking model
+    mapping(uint16 => mapping(bytes => mapping(uint64 => bytes32))) public failedMessages;
 
     event UpdateDestination(uint16 lzChainId, bytes destination);
     event UpdateDestinationAddressLength(uint16 lzChainId, uint8 addressLength);
     event UpdateAPP(APP app, address contractAddress);
+    event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
 
     modifier onlyEndpoint {
         require(msg.sender == endpoint, "Require endpoint");

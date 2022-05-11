@@ -86,4 +86,10 @@ describe('Governance unit tests', function () {
             .to.emit(testContract, 'ValidatorStatusUpdate')
             .withArgs(jack.address, false);
     });
+
+    it('Set bridge manager should success', async () => {
+        await expect(testContract.connect(bob).setBridgeManager(jack.address))
+            .to.emit(testContract, 'BridgeManagerUpdate')
+            .withArgs(jack.address);
+    });
 });

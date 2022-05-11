@@ -10,7 +10,6 @@ import "./zksync/SafeCast.sol";
 import "./zksync/Utils.sol";
 import "./zksync/UpgradeableMaster.sol";
 import "./zksync/ReentrancyGuard.sol";
-import "./zksync/Config.sol";
 import "./zksync/Events.sol";
 import "./Storage.sol";
 import "./PeripheryData.sol";
@@ -19,7 +18,7 @@ import "./PeripheryData.sol";
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files
 /// https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct
 /// @author zk.link
-contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, UpgradeableMaster {
+contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableMaster {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
 
@@ -395,6 +394,19 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
 
+    /// @notice Check if block received all cross root hash
+    function verifyCrhBlocks(uint32 blockHeight) external {
+        require(blockHeight > latestVerifiedBlockHeight, "Z39");
+
+        bytes32 blockHash = storedBlockHashes[blockHeight];
+        require(blockHash > 0, "Z40");
+
+        uint256 verifiedChains = blockVerifiedChains[blockHash] | CHAIN_INDEX;
+        require(verifiedChains == ALL_CHAINS, "Z41");
+
+        latestVerifiedBlockHeight = blockHeight;
+    }
+
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
     /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
@@ -498,6 +510,8 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             "Z36"
         );
         require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "Z37");
+        // block must complete cross chain root hash verify before execute
+        require(_blockExecuteData.storedBlock.blockNumber <= latestVerifiedBlockHeight, "Z42");
 
         bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {

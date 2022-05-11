@@ -82,8 +82,14 @@ contract Config {
     /// @dev Max deposit of ERC20 token that is possible to deposit
     uint128 internal constant MAX_DEPOSIT_AMOUNT = $$((2**104) - 1);
 
-    /// @dev Chain id
+    /// @dev Chain id defined by ZkLink
     uint8 internal constant CHAIN_ID = $(CHAIN_ID);
+
+    /// @dev All chain index, for example [1, 2, 3, 4] => 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 = 15
+    uint256 internal constant ALL_CHAINS = $(ALL_CHAINS);
+
+    // @dev Chain index, CHAIN_ID is non-zero value
+    uint256 internal constant CHAIN_INDEX = $(1 << CHAIN_ID - 1);
 
     /// @dev Address represent eth when deposit or withdraw
     address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;

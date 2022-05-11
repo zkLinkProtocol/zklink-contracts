@@ -10,15 +10,23 @@ import "./ILayerZeroEndpoint.sol";
 import "./LayerZeroStorage.sol";
 import "../token/IZKL.sol";
 
-/// @title LayerZero bridge implementation
+/// @title LayerZero bridge implementation of non-blocking model
 /// @dev if message is blocking we should call `retryPayload` of endpoint to retry
 /// the reasons for message blocking may be:
 /// * `_dstAddress` is not deployed to dst chain, and we can deploy LayerZeroBridge to dst chain to fix it.
-/// * lzReceive cost more gas than `_gasLimit` that endpoint send, and we can update `LZ_RECEIVE_GAS_*` constant to fix it.
+/// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
 /// * lzReceive reverted unexpected, and we can fix bug and upgrade contract to fix it.
 /// ILayerZeroUserApplicationConfig does not need to be implemented for now
 /// @author zk.link
 contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, OwnableUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
+
+    // to avoid stack too deep
+    struct LzBridgeParams {
+        uint16 dstChainId; // the destination chainId
+        address payable refundAddress; // native fees(collected by oracle and relayer) refund address if msg.value is too large
+        address zroPaymentAddress; // if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
+        bytes adapterParams; // see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
+    }
 
     /// @dev Put `initializer` modifier here to prevent anyone call this function from proxy after we initialized
     /// No delegatecall exist in this contract, so it's ok to expose this function in logic
@@ -79,92 +87,171 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
         return ILayerZeroEndpoint(endpoint).estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
     }
 
-    // todo estimateRootHashBridgeFees
+    /// @notice Estimate bridge ZkLink root hash fees
+    /// @param lzChainId the destination chainId
+    /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
+    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
+    function estimateRootHashBridgeFees(
+        uint16 lzChainId,
+        bool useZro,
+        bytes calldata adapterParams
+    ) external view returns (uint nativeFee, uint zroFee) {
+        bytes memory payload = buildRootHashBridgePayload(bytes32(0), uint256(0));
+        return ILayerZeroEndpoint(endpoint).estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
+    }
 
     /// @notice Bridge zkl to other chain
     /// @param from the account burned from
-    /// @param dstChainId the destination chainId
     /// @param receiver the destination receiver address
     /// @param amount the amount to bridge
-    /// @param refundAddress native fees(collected by oracle and relayer) refund address if msg.value is too large
-    /// @param zroPaymentAddress if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
-    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function bridgeZKL(address from,
-        uint16 dstChainId,
+    /// @param params lz params
+    function bridgeZKL(
+        address from,
         bytes calldata receiver,
         uint256 amount,
-        address payable refundAddress,
-        address zroPaymentAddress,
-        bytes calldata adapterParams
+        LzBridgeParams calldata params
     ) external nonReentrant payable {
-        // to avoid stack too deep
-        address _from = from;
-        uint16 _dstChainId = dstChainId;
-        bytes memory _receiver = receiver;
-        uint256 _amount = amount;
-        address payable _refundAddress = refundAddress;
-        address _zroPaymentAddress = zroPaymentAddress;
-        bytes memory _adapterParams = adapterParams;
+        uint16 _dstChainId = params.dstChainId;
         // ===Checks===
-        require(_dstChainId != ILayerZeroEndpoint(endpoint).getChainId(), "Invalid dstChainId");
-        bytes memory trustedRemote = destinations[_dstChainId];
-        require(trustedRemote.length > 0, "Trust remote not exist");
+        bytes memory trustedRemote = checkDstChainId(_dstChainId);
 
         uint8 destAddressLength = destAddressLength[_dstChainId];
         if (destAddressLength == 0) {
             destAddressLength = EVM_ADDRESS_LENGTH;
         }
-        require(_receiver.length == destAddressLength, "Invalid receiver");
+        require(receiver.length == destAddressLength, "Invalid receiver");
 
         require(amount > 0, "Amount not set");
 
         address zkl = apps[APP.ZKL];
-        require(zkl != address(0), "Bridge zkl not support");
+        require(zkl != address(0), "ZKL not support");
 
         // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
 
         // ===Interactions===
-        address spender = _msgSender();
         // send LayerZero message
-        bytes memory payload = buildZKLBridgePayload(_receiver, _amount);
-        // solhint-disable-next-line check-send-result
-        ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, _refundAddress, _zroPaymentAddress, _adapterParams);
+        {
+            bytes memory payload = buildZKLBridgePayload(receiver, amount);
+            // solhint-disable-next-line check-send-result
+            ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
+        }
 
         // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
+        address spender = _msgSender();
         uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
-        IZKL(zkl).bridgeTo(spender, _from, _dstChainId, _receiver, _amount, nonce);
+        IZKL(zkl).bridgeTo(_dstChainId, nonce, spender, from, receiver, amount);
     }
 
-    // todo bridge root hash
+    /// @notice Bridge ZkLink root hash to other chain
+    /// @param blockHeight the block proved but not executed at the current chain
+    /// @param params lz params
+    function bridgeRootHash(uint32 blockHeight,
+        LzBridgeParams calldata params
+    ) external nonReentrant payable {
+        uint16 _dstChainId = params.dstChainId;
+        // ===Checks===
+        bytes memory trustedRemote = checkDstChainId(_dstChainId);
 
-    /// @notice Receive the bytes payload from the source chain via LayerZero and mint token to receiver
+        address zklink = apps[APP.ZKLINK];
+        require(zklink != address(0), "ZKLINK not support");
+
+        {
+            // should bridge a block root hash which has be proven but not executed
+            uint32 executedBlockHeight = IZkLink(zklink).totalBlocksExecuted();
+            uint32 provenBlockHeight = IZkLink(zklink).totalBlocksProven();
+            require(blockHeight > executedBlockHeight && blockHeight <= provenBlockHeight, "Invalid block height");
+        }
+
+        // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
+
+        // ===Interactions===
+        // send LayerZero message
+        (bytes32 blockHash, uint256 verifiedChains) = IZkLink(zklink).getCrossRootHash(blockHeight);
+        bytes memory payload = buildRootHashBridgePayload(blockHash, verifiedChains);
+        // solhint-disable-next-line check-send-result
+        ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
+    }
+
+    /// @notice Receive the bytes payload from the source chain via LayerZero
     /// @dev lzReceive can only be called by endpoint
     function lzReceive(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external override onlyEndpoint nonReentrant {
         // reject invalid src contract address
         bytes memory trustedRemote = destinations[srcChainId];
         require(srcAddress.length == trustedRemote.length && keccak256(trustedRemote) == keccak256(srcAddress), "Invalid src");
 
+        // try-catch all errors/exceptions
+        // solhint-disable-next-line no-empty-blocks
+        try this.nonblockingLzReceive(srcChainId, srcAddress, nonce, payload) {
+            // do nothing
+        } catch {
+            // error / exception
+            failedMessages[srcChainId][srcAddress][nonce] = keccak256(payload);
+            emit MessageFailed(srcChainId, srcAddress, nonce, payload);
+        }
+    }
+
+    function nonblockingLzReceive(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) public {
+        // only internal transaction
+        require(_msgSender() == address(this), "Caller must be this bridge");
+        _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
+    }
+
+    /// @notice Retry the failed message, payload hash must be exist
+    function retryMessage(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external payable virtual {
+        // assert there is message to retry
+        bytes32 payloadHash = failedMessages[srcChainId][srcAddress][nonce];
+        require(payloadHash != bytes32(0), "No stored message");
+        require(keccak256(payload) == payloadHash, "Invalid payload");
+        // clear the stored message
+        failedMessages[srcChainId][srcAddress][nonce] = bytes32(0);
+        // execute the message. revert if it fails again
+        _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
+    }
+
+    function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 nonce, bytes calldata payload) internal {
         // unpack payload
         APP app = APP(uint8(payload[0]));
         if (app == APP.ZKL) {
             address zkl = apps[APP.ZKL];
-            require(zkl != address(0), "Bridge zkl not support");
 
-            (bytes memory receiverBytes, uint amount) = abi.decode(payload[1:], (bytes, uint));
+            (bytes memory receiverBytes, uint256 amount) = abi.decode(payload[1:], (bytes, uint256));
             address receiver;
             assembly {
                 receiver := mload(add(receiverBytes, 20))
             }
             // mint token to receiver
-            IZKL(zkl).bridgeFrom(srcChainId, receiver, amount, nonce);
+            IZKL(zkl).bridgeFrom(srcChainId, nonce, receiver, amount);
         } else if (app == APP.ZKLINK) {
-            // todo receive RootHash
+            address zklink = apps[APP.ZKLINK];
+
+            (bytes32 blockHash, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
+            IZkLink(zklink).receiveCrossRootHash(srcChainId, nonce, blockHash, verifiedChains);
         } else {
             revert("APP not support");
         }
     }
 
+    function checkDstChainId(uint16 dstChainId) internal view returns (bytes memory trustedRemote) {
+        require(dstChainId != ILayerZeroEndpoint(endpoint).getChainId(), "Invalid dstChainId");
+        trustedRemote = destinations[dstChainId];
+        require(trustedRemote.length > 0, "Trust remote not exist");
+    }
+
     function buildZKLBridgePayload(bytes memory receiver, uint256 amount) internal pure returns (bytes memory payload) {
         payload = abi.encodePacked(APP.ZKL, abi.encode(receiver, amount));
     }
+
+    function buildRootHashBridgePayload(bytes32 blockHash, uint256 verifiedChains) internal pure returns (bytes memory payload) {
+        payload = abi.encodePacked(APP.ZKLINK, abi.encode(blockHash, verifiedChains));
+    }
+}
+
+interface IZkLink {
+    function totalBlocksProven() external view returns (uint32);
+
+    function totalBlocksExecuted() external view returns (uint32);
+
+    function getCrossRootHash(uint32 blockHeight) external view returns (bytes32 blockHash, uint256 verifiedChains);
+
+    function receiveCrossRootHash(uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains) external;
 }

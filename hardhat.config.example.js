@@ -11,7 +11,8 @@ require("./script/interact");
 const ethConfig = {
   macro: {
     BLOCK_PERIOD: '15 seconds',
-    CHAIN_ID: 1
+    CHAIN_ID: 1,
+    ALL_CHAINS: 15
   },
   url: "https://eth-mainnet.alchemyapi.io/v2/YOUK_API_KEY",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -20,7 +21,8 @@ const ethConfig = {
 const bscConfig = {
   macro: {
     BLOCK_PERIOD: '3 seconds',
-    CHAIN_ID: 2
+    CHAIN_ID: 2,
+    ALL_CHAINS: 15
   },
   url: "https://bsc-dataseed2.binance.org",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -29,7 +31,8 @@ const bscConfig = {
 const avaxConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
-    CHAIN_ID: 3
+    CHAIN_ID: 3,
+    ALL_CHAINS: 15
   },
   url: "https://api.avax.network/ext/bc/C/rpc",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -38,7 +41,8 @@ const avaxConfig = {
 const polygonConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
-    CHAIN_ID: 4
+    CHAIN_ID: 4,
+    ALL_CHAINS: 15
   },
   url: "https://matic-mainnet.chainstacklabs.com",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -50,7 +54,8 @@ const polygonTestConfig = {
     BLOCK_PERIOD: polygonConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
-    CHAIN_ID: 1
+    CHAIN_ID: 1,
+    ALL_CHAINS: 15
   },
   url: "https://matic-mumbai.chainstacklabs.com",
   scan: polygonConfig.scan
@@ -61,7 +66,8 @@ const avaxTestConfig = {
     BLOCK_PERIOD: avaxConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
-    CHAIN_ID: 2
+    CHAIN_ID: 2,
+    ALL_CHAINS: 15
   },
   url: "https://api.avax-test.network/ext/bc/C/rpc",
   scan: avaxConfig.scan
@@ -72,7 +78,8 @@ const rinkebyConfig = {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
-    CHAIN_ID: 3
+    CHAIN_ID: 3,
+    ALL_CHAINS: 15
   },
   url: "https://eth-rinkeby.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -83,7 +90,8 @@ const goerliConfig = {
     BLOCK_PERIOD: ethConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
-    CHAIN_ID: 4
+    CHAIN_ID: 4,
+    ALL_CHAINS: 15
   },
   url: "https://eth-goerli.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -94,7 +102,8 @@ const bscTestConfig = {
     BLOCK_PERIOD: bscConfig.macro.BLOCK_PERIOD,
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
-    CHAIN_ID: 5
+    CHAIN_ID: 5,
+    ALL_CHAINS: 15
   },
   url: "https://data-seed-prebsc-1-s1.binance.org:8545",
   scan: bscConfig.scan
