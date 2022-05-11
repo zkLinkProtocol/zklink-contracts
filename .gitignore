@@ -9,3 +9,6 @@ script/.KEY
 #Hardhat files
 cache
 artifacts
+
+# OpenZeppelin
+.openzeppelin/unknown-*.json

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { readDeployerKey, readDeployContract } = require('./utils');
+const { readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr) {
@@ -118,8 +118,19 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             console.log('tx', tx.hash);
     });
 
-task("setDestination", "Set zkl multi chain destination for testnet")
+task("mintZKL", "Mint zkl for POLYGONTEST")
+    .addParam("zkl", "The zkl contract address on POLYGONTEST")
+    .addParam("account", "The account address")
+    .addParam("amount", "The mint amount")
     .setAction(async (taskArgs, hardhat) => {
+        const zklAddr = taskArgs.zkl;
+        const accountAddr = taskArgs.account;
+        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
+        if (process.env.NET !== 'POLYGONTEST') {
+            console.log('only POLYGONTEST can mint zkl');
+            return;
+        }
+
         const key = readDeployerKey();
         const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
         console.log('governor', governor.address);
@@ -127,92 +138,71 @@ task("setDestination", "Set zkl multi chain destination for testnet")
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        const totalChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
-        const curChain = process.env.NET;
-        if (!totalChains.includes(curChain)) {
-            console.log('%s is not a testnet', curChain);
-            return;
-        }
-
-        // cur chain zkl must exist
-        const curZKL = readDeployContract(curChain, 'zkl');
-        if (curZKL === undefined) {
-            console.log('zkl must be deployed');
-            return;
-        }
         const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = zklFactory.attach(curZKL);
+        const zklContract = zklFactory.attach(zklAddr);
 
-        const lzChains = [];
-        const otherZKLs = [];
-        for (const otherChain of totalChains) {
-            if (otherChain === curChain) {
-                continue;
-            }
-            const lzInfo = layerZero[otherChain];
-            if (lzInfo === undefined) {
-                console.log('%s layerzero not support', otherChain);
-                continue;
-            }
-            const otherZKL = readDeployContract(otherChain, 'zkl');
-            if (otherZKL === undefined) {
-                console.log('%s zkl not exist', otherChain);
-                continue;
-            }
-            lzChains.push(lzInfo.chainId);
-            otherZKLs.push(otherZKL);
-            console.log('prepare to set %s dst zkl address: %s', otherChain, otherZKL);
-        }
+        console.log('Mint zkl...')
+        const tx = await zklContract.connect(governor).mintTo(accountAddr, amount);
+        console.log('tx', tx.hash);
+    });
 
-        if (lzChains.length > 0) {
-            const tx = await zklContract.connect(governor).setDestinations(lzChains, otherZKLs);
-            console.log('tx', tx.hash);
-        } else {
-            console.log('no destinations can be set');
+task("setDestination", "Set layerzero bridge destination for testnet")
+    .addParam("bridge", "The src lz bridge contract address")
+    .addParam("dstName", "The destination chain name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
+    .addParam("dstBridge", "The destination lz bridge contract address")
+    .setAction(async (taskArgs, hardhat) => {
+        const bridgeAddr = taskArgs.bridge;
+        const dstChain = taskArgs.dstName;
+        const dstBridgeAddr = taskArgs.dstBridge;
+        const curChain = process.env.NET;
+        if (curChain === dstChain) {
+            console.log('invalid dst');
+            return;
         }
+        const lzInfo = layerZero[dstChain];
+        if (lzInfo === undefined) {
+            console.log('%s layerzero not support', dstChain);
+            return;
+        }
+        const key = readDeployerKey();
+        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
+
+        console.log('Set destination...')
+        const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
+        console.log('tx', tx.hash);
     });
 
 task("bridge", "Send zkl of deployer to another chain for testnet")
-    .addParam("destination", "The target destination network name")
+    .addParam("bridge", "The src lz bridge contract address")
+    .addParam("dst", "The target destination network name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
     .addParam("amount", "Amount to send")
     .setAction(async (taskArgs, hardhat) => {
-        const dstChain = taskArgs.destination;
-        const amount = taskArgs.amount;
-        console.log('destination', dstChain);
-        console.log('amount', amount);
+        const bridgeAddr = taskArgs.bridge;
+        const dstChain = taskArgs.dst;
+        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
+
+        const curChain = process.env.NET;
+        if (curChain === dstChain) {
+            console.log('invalid dst');
+            return;
+        }
 
         const key = readDeployerKey();
         const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
         console.log('deployer', deployer.address);
 
         const balance = await deployer.getBalance();
-        console.log('deployer eth balance', hardhat.ethers.utils.formatEther(balance));
+        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
-        const totalChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
-        const curChain = process.env.NET;
-        if (!totalChains.includes(curChain)) {
-            console.log('%s is not a testnet', curChain);
-            return;
-        }
-        if (!totalChains.includes(dstChain)) {
-            console.log('%s is not a testnet', dstChain);
-            return;
-        }
-        if (dstChain === curChain) {
-            console.log('can not bridge to the same chain');
-            return;
-        }
-
-        // cur chain zkl must exist
-        const curZKL = readDeployContract(curChain, 'zkl');
-        if (curZKL === undefined) {
-            console.log('zkl must be deployed');
-            return;
-        }
-        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = zklFactory.attach(curZKL);
-        const zklBalance = await zklContract.connect(deployer).balanceOf(deployer.address);
-        console.log('deployer zkl balance', hardhat.ethers.utils.formatEther(zklBalance));
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
 
         // layerzero must support dst chain
         const lzInfo = layerZero[dstChain];
@@ -221,10 +211,18 @@ task("bridge", "Send zkl of deployer to another chain for testnet")
             return;
         }
 
-        const lzFee = await zklContract.connect(deployer)
-            .estimateBridgeFees(lzInfo.chainId, deployer.address, hardhat.ethers.utils.parseEther(amount));
-        console.log('lzFee', hardhat.ethers.utils.formatEther(lzFee));
-        const tx = await zklContract.connect(deployer)
-            .bridge(lzInfo.chainId, deployer.address, hardhat.ethers.utils.parseEther(amount), {value:lzFee});
+        const feeInfo = await bridgeContract.connect(deployer)
+            .estimateZKLBridgeFees(lzInfo.chainId, deployer.address, amount, false, "0x");
+        const nativeFee = feeInfo.nativeFee;
+        console.log('nativeFee', hardhat.ethers.utils.formatEther(nativeFee));
+        const tx = await bridgeContract.connect(deployer)
+            .bridgeZKL(deployer.address,
+                lzInfo.chainId,
+                deployer.address,
+                amount,
+                deployer.address,
+                hardhat.ethers.constants.AddressZero,
+                "0x",
+                {value:nativeFee});
         console.log('tx', tx.hash);
     });

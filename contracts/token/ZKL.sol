@@ -2,126 +2,58 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./ILayerZeroReceiver.sol";
-import "./ILayerZeroEndpoint.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./IZKL.sol";
+import "../bridge/IBridgeManager.sol";
 
-/// @title ZkLink token contract implement ILayerZeroReceiver interface
+/// @title ZkLink token contract
+/// ZKL is a token with native cross-chain capability. User can select different bridges such as LayerZero, MultiChain.
 /// @author zk.link
-contract ZKL is ERC20Capped, ERC20Permit, ReentrancyGuard, ILayerZeroReceiver {
+contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
 
-    /// @notice LayerZero endpoint used to send message to other chains
-    ILayerZeroEndpoint public endpoint;
-    /// @notice controller of this contract
-    address public networkGovernor;
-    /// @notice zkl contract address on other chains
-    mapping(uint16 => bytes) public destination;
-    /// @notice a switch to determine if token can bridge to other chains
-    bool public bridgeable;
+    // the CHAIN_ID is defined in ZkLink, default is Ethereum Mainnet or Polygon Mumbai Testnet
+    bool public constant IS_MINT_CHAIN = $$(CHAIN_ID == 1);
+    uint256 public constant CAP = 1000000000 * 1e18;
 
-    event BridgeTo(uint16 indexed lzChainId, bytes receiver, uint amount);
-    event BridgeFrom(uint16 indexed lzChainId, address receiver, uint amount);
+    event BridgeTo(address indexed bridge, address sender, uint16 chainId, bytes receiver, uint amount, uint64 nonce);
+    event BridgeFrom(address indexed bridge, uint16 chainId, address receiver, uint amount, uint64 nonce);
 
-    modifier onlyGovernor {
-        require(msg.sender == networkGovernor, "ZKL0");
-        _;
+    IBridgeManager public bridgeManager;
+
+    constructor(IBridgeManager _bridgeManager) ERC20("ZKLINK", "ZKL") ERC20Capped(CAP) ERC20Permit("ZKLINK") {
+        bridgeManager = _bridgeManager;
     }
 
-    modifier onlyLZEndpoint {
-        require(msg.sender == address(endpoint), "ZKL1");
-        _;
+    /// @notice Mint ZKL
+    function mintTo(address to, uint256 amount) external onlyOwner {
+        require(IS_MINT_CHAIN, "Not mint chain");
+
+        _mint(to, amount);
     }
 
-    constructor(string memory _name,
-        string memory _symbol,
-        uint256 _cap,
-        address _endpoint,
-        address _networkGovernor,
-        bool _isGenesisChain) ERC20(_name, _symbol) ERC20Capped(_cap) ERC20Permit(_name) {
-        endpoint = ILayerZeroEndpoint(_endpoint);
-        networkGovernor = _networkGovernor;
-        // initial all zkl to networkGovernor at the genesis chain
-        if (_isGenesisChain) {
-            _mint(_networkGovernor, _cap);
+    /// @dev only bridge can call this function
+    function bridgeTo(address spender, address from, uint16 dstChainId, bytes memory to, uint256 amount, uint64 nonce) external override {
+        address bridge = msg.sender;
+        require(bridgeManager.isBridgeToEnabled(bridge), "Bridge to disabled");
+
+        // burn token of `from`
+        if (spender != from) {
+            _spendAllowance(from, spender, amount);
         }
-        bridgeable = true;
+        _burn(from, amount);
+        emit BridgeTo(bridge, from, dstChainId, to, amount, nonce);
     }
 
-    /// @notice Set bridge switch
-    function setBridgeable(bool _bridgeable) external onlyGovernor {
-        bridgeable = _bridgeable;
-    }
-
-    /// @notice Set bridge destination
-    /// @param _lzChainId LayerZero chain id on other chains
-    /// @param _contractAdd ZKL contract address on other chains
-    function setDestination(uint16 _lzChainId, bytes calldata _contractAdd) external onlyGovernor {
-        destination[_lzChainId] = _contractAdd;
-    }
-
-    /// @notice Set multiple bridge destinations
-    /// @param lzChainIds LayerZero chain id on other chains
-    /// @param contractAdds ZKL contract address on other chains
-    function setDestinations(uint16[] memory lzChainIds, bytes[] memory contractAdds) external onlyGovernor {
-        require(lzChainIds.length == contractAdds.length, "ZKL2");
-        for(uint i = 0; i < lzChainIds.length; i++) {
-            destination[lzChainIds[i]] = contractAdds[i];
-        }
-    }
-
-    /// @notice Estimate bridge fees
-    /// @param _lzChainId the destination chainId
-    /// @param _receiver the destination receiver address
-    /// @param _amount the amount to bridge
-    function estimateBridgeFees(uint16 _lzChainId, bytes calldata _receiver, uint _amount) external view returns (uint) {
-        bytes memory payload = abi.encode(_receiver, _amount);
-        return endpoint.estimateNativeFees(_lzChainId, address(this), payload, false, bytes(""));
-    }
-
-    /// @notice Bridge zkl to other chain
-    /// @param _lzChainId the destination chainId
-    /// @param _receiver the destination receiver address
-    /// @param _amount the amount to bridge
-    function bridge(uint16 _lzChainId, bytes calldata _receiver, uint _amount) public payable nonReentrant {
-        require(bridgeable, "ZKL3");
-
-        bytes memory zklDstAdd = destination[_lzChainId];
-        require(zklDstAdd.length > 0, "ZKL4");
-
-        // burn token from sender
-        _burn(msg.sender, _amount);
-
-        // encode the payload with the receiver and amount to send
-        bytes memory payload = abi.encode(_receiver, _amount);
-
-        // send LayerZero message
-        // solhint-disable-next-line  check-send-result
-        endpoint.send{value:msg.value}(_lzChainId, zklDstAdd, payload, payable(msg.sender), address(0x0), bytes(""));
-
-        emit BridgeTo(_lzChainId, _receiver, _amount);
-    }
-
-    /// @notice Receive the bytes payload from the source chain via LayerZero and mint token to receiver
-    function lzReceive(uint16 _srcChainId, bytes calldata _srcAddress, uint64 /**_nonce**/, bytes calldata _payload) override external onlyLZEndpoint nonReentrant {
-        require(bridgeable, "ZKL5");
-
-        // reject invalid src contract address
-        bytes memory zklSrcAdd = destination[_srcChainId];
-        require(zklSrcAdd.length > 0, "ZKL6");
-        require(keccak256(zklSrcAdd) == keccak256(_srcAddress), "ZKL7");
+    /// @dev only bridge can call this function
+    function bridgeFrom(uint16 srcChainId, address receiver, uint256 amount, uint64 nonce) external override {
+        address bridge = msg.sender;
+        require(bridgeManager.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
         // mint token to receiver
-        (bytes memory receiverBytes, uint amount) = abi.decode(_payload, (bytes, uint));
-        address receiver;
-        assembly {
-            receiver := mload(add(receiverBytes, 20))
-        }
         _mint(receiver, amount);
-
-        emit BridgeFrom(_srcChainId, receiver, amount);
+        emit BridgeFrom(bridge, srcChainId, receiver, amount, nonce);
     }
 
     /**

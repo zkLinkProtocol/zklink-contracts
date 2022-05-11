@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solpp");
 require("@nomiclabs/hardhat-etherscan");
+require('@openzeppelin/hardhat-upgrades');
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
 require("./script/deploy_zkl");

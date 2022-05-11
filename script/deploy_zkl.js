@@ -1,4 +1,3 @@
-const fs = require('fs');
 const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
 
@@ -23,45 +22,88 @@ task("deployZKL", "Deploy ZKL token")
         const balance = await deployer.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
-        // deploy log must exist
-        const deployLogPath = `log/deploy_${process.env.NET}.log`;
-        console.log('deploy log path', deployLogPath);
-        if (!fs.existsSync(deployLogPath)) {
-            console.log('deploy log not exist')
-            return;
-        }
-        const data = fs.readFileSync(deployLogPath, 'utf8');
-        let deployLog = JSON.parse(data);
-
         // layerzero must exist
         const lzInfo = layerZero[process.env.NET];
         if (lzInfo === undefined) {
-            console.log('LayerZero not exist')
+            console.log('LayerZero config not exist')
             return;
         }
 
+        // deploy bridge manager
+        console.log('deploy bridge manager...');
+        const bmFactory = await hardhat.ethers.getContractFactory('BridgeManager');
+        const bmContract = await bmFactory.connect(deployer).deploy();
+        await bmContract.deployed();
+        const bmContractAddr = bmContract.address;
+        console.log('bridge manager', bmContractAddr);
+
+        // transfer ownership to governor
+        await bmContract.connect(deployer).transferOwnership(governor);
+
+        // verify bridge manager
+        if (!skipVerify) {
+            console.log('verify bridge manager...');
+            await verifyWithErrorHandle(async () => {
+                await hardhat.run("verify:verify", {
+                    address: bmContractAddr,
+                    constructorArguments: []
+                });
+            }, () => {
+            })
+        }
+
         // deploy zkl
-        let zklContractAddr;
-        const cap = hardhat.ethers.utils.parseEther('1000000000');
-        const isGenesisChain = process.env.NET === 'ETH' || process.env.NET === 'RINKEBY';
         console.log('deploy zkl...');
         const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = await zklFactory.connect(deployer).deploy("ZKLINK", "ZKL", cap, lzInfo.address, governor, isGenesisChain);
+        const zklContract = await zklFactory.connect(deployer).deploy(bmContractAddr);
         await zklContract.deployed();
-        zklContractAddr = zklContract.address;
-        deployLog.zkl = zklContractAddr;
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        const zklContractAddr = zklContract.address;
         console.log('zkl', zklContractAddr);
 
-        // verify contract
-        console.log('verify zkl...');
-        await verifyWithErrorHandle(async () => {
-            await hardhat.run("verify:verify", {
-                address: zklContractAddr,
-                constructorArguments: ["ZKLINK", "ZKL", cap, lzInfo.address, governor, isGenesisChain]
-            });
-        }, () => {
-            deployLog.zklVerified = true;
-        })
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        // transfer ownership to governor
+        await zklContract.connect(deployer).transferOwnership(governor);
+
+        // verify zkl
+        if (!skipVerify) {
+            console.log('verify zkl...');
+            await verifyWithErrorHandle(async () => {
+                await hardhat.run("verify:verify", {
+                    address: zklContractAddr,
+                    constructorArguments: [bmContractAddr]
+                });
+            }, () => {
+            })
+        }
+
+        // deploy lz bridge
+        console.log('deploy layerzero bridge...');
+        const lzBridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge', deployer);
+        const lzBridgeContract = await hardhat.upgrades.deployProxy(lzBridgeFactory, [lzInfo.address], {kind: "uups"});
+        await lzBridgeContract.deployed();
+        const lzBridgeAddr = lzBridgeContract.address;
+        console.log('lzBridge', lzBridgeAddr);
+        const lzBridgeImplAddr = await hardhat.upgrades.erc1967.getImplementationAddress(lzBridgeAddr);
+        console.log('lzBridge implAddr', lzBridgeImplAddr);
+        // transfer ownership to governor
+        await lzBridgeContract.connect(deployer).transferOwnership(governor);
+
+        // verify lz bridge impl
+        if (!skipVerify) {
+            console.log('verify lz bridge impl...');
+            await verifyWithErrorHandle(async () => {
+                await hardhat.run("verify:verify", {
+                    address: lzBridgeImplAddr,
+                    constructorArguments: []
+                });
+            }, () => {
+            })
+        }
+
+        // connect zkl and bridge
+        if (deployer.address === governor) {
+            console.log('connect zkl and bridge...');
+            await bmContract.connect(deployer).addBridge(lzBridgeAddr);
+            await lzBridgeContract.connect(deployer).setApp(0, zklContractAddr);
+            console.log('connect finish');
+        }
 });
