@@ -119,7 +119,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         // overflow is impossible
         uint64 uncommittedPriorityRequestsOffset = zkLink.firstPriorityRequestId() + zkLink.totalCommittedPriorityRequests();
         priorityOperationsProcessed = 0;
-        processableOperationsHash = EMPTY_STRING_KECCAK;
+        bytes memory processableOperations = new bytes(0);
 
         // pubdata length must be a multiple of CHUNK_BYTES
         require(pubData.length % CHUNK_BYTES == 0, "ZP4");
@@ -175,9 +175,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
                     revert("ZkLink: unsupported op");
                 }
 
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, opPubData);
+                processableOperations = Utils.concat(processableOperations, opPubData);
             }
         }
+        processableOperationsHash = keccak256(processableOperations);
     }
 
     /// @dev Creates block commitment from its data
@@ -186,38 +187,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         StoredBlockInfo memory _previousBlock,
         CommitBlockInfo memory _newBlockData,
         bytes memory _offsetCommitment
-    ) internal view returns (bytes32 commitment) {
-        bytes32 hash = sha256(abi.encodePacked(uint256(_newBlockData.blockNumber), uint256(_newBlockData.feeAccount)));
-        hash = sha256(abi.encodePacked(hash, _previousBlock.stateHash));
-        hash = sha256(abi.encodePacked(hash, _newBlockData.newStateHash));
-        hash = sha256(abi.encodePacked(hash, uint256(_newBlockData.timestamp)));
-
-        bytes memory pubdata = abi.encodePacked(_newBlockData.publicData, _offsetCommitment);
-
-        /// The code below is equivalent to `commitment = sha256(abi.encodePacked(hash, _publicData))`
-
-        /// We use inline assembly instead of this concise and readable code in order to avoid copying of `_publicData` (which saves ~90 gas per transfer operation).
-
-        /// Specifically, we perform the following trick:
-        /// First, replace the first 32 bytes of `_publicData` (where normally its length is stored) with the value of `hash`.
-        /// Then, we call `sha256` precompile passing the `_publicData` pointer and the length of the concatenated byte buffer.
-        /// Finally, we put the `_publicData.length` back to its original location (to the first word of `_publicData`).
-        assembly {
-            let hashResult := mload(0x40)
-            let pubDataLen := mload(pubdata)
-            mstore(pubdata, hash)
-        // staticcall to the sha256 precompile at address 0x2
-            let success := staticcall(gas(), 0x2, pubdata, add(pubDataLen, 0x20), hashResult, 0x20)
-            mstore(pubdata, pubDataLen)
-
-        // Use "invalid" to make gas estimation work
-            switch success
-            case 0 {
-                invalid()
-            }
-
-            commitment := mload(hashResult)
-        }
+    ) internal pure returns (bytes32 commitment) {
+        commitment = sha256(abi.encodePacked(
+                uint256(_newBlockData.blockNumber),
+                uint256(_newBlockData.feeAccount),
+                _previousBlock.stateHash,
+                _newBlockData.newStateHash,
+                uint256(_newBlockData.timestamp),
+                _newBlockData.publicData,
+                _offsetCommitment
+            ));
     }
 
     /// @notice Checks that change operation is correct

@@ -499,7 +499,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         );
         require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "Z37");
 
-        bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
+        bytes memory pendingOnchainOps = new bytes(0);
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
             bytes memory pubData = _blockExecuteData.pendingOnchainOpsPubdata[i];
 
@@ -536,8 +536,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
             } else {
                 revert("ZkLink: invalid op");
             }
-            pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
+            pendingOnchainOps = Utils.concat(pendingOnchainOps, pubData);
         }
+        bytes32 pendingOnchainOpsHash = keccak256(pendingOnchainOps);
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "Z38");
     }
 
