@@ -6,21 +6,15 @@ describe('Cross root hash unit tests', function () {
     let deployer,networkGovernor,alice,bob,tom;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
-    let bmInETH, bmInBSC, govInETH, govInBSC, zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
+    let govInETH, govInBSC, zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
     before(async () => {
         [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
-
-        const bmFactory = await ethers.getContractFactory('BridgeManager');
-        bmInETH = await bmFactory.deploy();
-        bmInBSC = await bmFactory.deploy();
 
         const govFactory = await ethers.getContractFactory('Governance');
         govInETH = await govFactory.deploy();
         govInBSC = await govFactory.deploy();
         await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
         await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
-        await govInETH.connect(networkGovernor).setBridgeManager(bmInETH.address);
-        await govInBSC.connect(networkGovernor).setBridgeManager(bmInBSC.address);
 
         const zklinkFactory = await ethers.getContractFactory('CrossRootHashTest');
         zklinkInETH = await zklinkFactory.deploy(govInETH.address);
@@ -33,19 +27,14 @@ describe('Cross root hash unit tests', function () {
         await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [lzInETH.address], {kind: "uups"});
-        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [lzInBSC.address], {kind: "uups"});
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [govInETH.address, lzInETH.address], {kind: "uups"});
+        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [govInBSC.address, lzInBSC.address], {kind: "uups"});
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
 
-        await bmInETH.transferOwnership(networkGovernor.address);
-        await bmInBSC.transferOwnership(networkGovernor.address);
-        await lzBridgeInETH.transferOwnership(networkGovernor.address);
-        await lzBridgeInBSC.transferOwnership(networkGovernor.address);
-
-        bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
-        bmInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
+        govInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
+        govInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
 
         lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
         lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);

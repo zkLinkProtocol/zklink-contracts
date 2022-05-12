@@ -98,7 +98,7 @@ contract Storage is Config, IZkLink {
 
     function receiveCrossRootHash(uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains) external override {
         address bridge = msg.sender;
-        require(governance.bridgeManager().isBridgeFromEnabled(bridge), "Bridge from disabled");
+        require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
         blockVerifiedChains[blockHash] = blockVerifiedChains[blockHash] | verifiedChains;
         emit ReceiveCrossRootHash(bridge, srcChainId, nonce, blockHash, verifiedChains);

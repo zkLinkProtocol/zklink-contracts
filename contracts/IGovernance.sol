@@ -1,8 +1,13 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.7.0;
 
-interface IBridgeManager {
+/// @title Governance interface
+/// @author zk.link
+interface IGovernance {
+
+    /// @notice Return the network governor address
+    function networkGovernor() external view returns (address);
 
     /// @notice Check if bridge to enabled
     /// @param bridge the bridge contract

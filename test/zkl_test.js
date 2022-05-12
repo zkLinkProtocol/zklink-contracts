@@ -6,17 +6,17 @@ describe('ZKL unit tests', function () {
     let deployer,networkGovernor,alice,bob,tom;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
-    let bmInETH, bmInBSC, zklInETH, zklInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
+    let govInETH, govInBSC, zklInETH, zklInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
     before(async () => {
         [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
 
-        const bmFactory = await ethers.getContractFactory('BridgeManager');
-        bmInETH = await bmFactory.deploy();
-        bmInBSC = await bmFactory.deploy();
+        const bmFactory = await ethers.getContractFactory('Governance');
+        govInETH = await bmFactory.deploy();
+        govInBSC = await bmFactory.deploy();
 
         const zklFactory = await ethers.getContractFactory('ZKL');
-        zklInETH = await zklFactory.deploy(bmInETH.address);
-        zklInBSC = await zklFactory.deploy(bmInBSC.address);
+        zklInETH = await zklFactory.deploy(govInETH.address);
+        zklInBSC = await zklFactory.deploy(govInBSC.address);
 
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
@@ -25,21 +25,17 @@ describe('ZKL unit tests', function () {
         await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [lzInETH.address], {kind: "uups"});
-        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [lzInBSC.address], {kind: "uups"});
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [govInETH.address, lzInETH.address], {kind: "uups"});
+        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [govInBSC.address, lzInBSC.address], {kind: "uups"});
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
 
-        await bmInETH.transferOwnership(networkGovernor.address);
-        await bmInBSC.transferOwnership(networkGovernor.address);
-        await zklInETH.transferOwnership(networkGovernor.address);
-        await zklInBSC.transferOwnership(networkGovernor.address);
-        await lzBridgeInETH.transferOwnership(networkGovernor.address);
-        await lzBridgeInBSC.transferOwnership(networkGovernor.address);
+        await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
+        await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
-        bmInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
-        bmInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
+        govInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
+        govInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
 
         lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
         lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
@@ -54,7 +50,7 @@ describe('ZKL unit tests', function () {
     it('only network governor can mint zkl', async () => {
         const amount = parseEther("1");
         await expect(zklInETH.connect(alice).mintTo(alice.address, amount))
-            .to.be.revertedWith('Ownable: caller is not the owner');
+            .to.be.revertedWith('Caller is not governor');
 
         const b0 = await zklInETH.balanceOf(alice.address);
         await zklInETH.connect(networkGovernor).mintTo(alice.address, amount);

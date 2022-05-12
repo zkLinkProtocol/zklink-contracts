@@ -4,14 +4,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IZKL.sol";
-import "../bridge/IBridgeManager.sol";
 
 /// @title ZkLink token contract
 /// ZKL is a token with native cross-chain capability. User can select different bridges such as LayerZero, MultiChain.
 /// @author zk.link
-contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
+contract ZKL is ERC20Capped, ERC20Permit, IZKL {
 
     // the CHAIN_ID is defined in ZkLink, default is Ethereum Mainnet or Polygon Mumbai Testnet
     bool public constant IS_MINT_CHAIN = $$(CHAIN_ID == 1);
@@ -20,14 +18,20 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     event BridgeTo(address indexed bridge, uint16 chainId, uint64 nonce, address sender, bytes receiver, uint amount);
     event BridgeFrom(address indexed bridge, uint16 chainId, uint64 nonce, address receiver, uint amount);
 
-    IBridgeManager public bridgeManager;
+    /// @notice ZkLink governance contract
+    IGovernance public governance;
 
-    constructor(IBridgeManager _bridgeManager) ERC20("ZKLINK", "ZKL") ERC20Capped(CAP) ERC20Permit("ZKLINK") {
-        bridgeManager = _bridgeManager;
+    constructor(IGovernance _governance) ERC20("ZKLINK", "ZKL") ERC20Capped(CAP) ERC20Permit("ZKLINK") {
+        governance = _governance;
+    }
+
+    modifier onlyGovernor {
+        require(msg.sender == governance.networkGovernor(), "Caller is not governor");
+        _;
     }
 
     /// @notice Mint ZKL
-    function mintTo(address to, uint256 amount) external onlyOwner {
+    function mintTo(address to, uint256 amount) external onlyGovernor {
         require(IS_MINT_CHAIN, "Not mint chain");
 
         _mint(to, amount);
@@ -36,7 +40,7 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     /// @dev only bridge can call this function
     function bridgeTo(uint16 dstChainId, uint64 nonce, address spender, address from, bytes memory to, uint256 amount) external override {
         address bridge = msg.sender;
-        require(bridgeManager.isBridgeToEnabled(bridge), "Bridge to disabled");
+        require(governance.isBridgeToEnabled(bridge), "Bridge to disabled");
 
         // burn token of `from`
         if (spender != from) {
@@ -49,7 +53,7 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     /// @dev only bridge can call this function
     function bridgeFrom(uint16 srcChainId, uint64 nonce, address receiver, uint256 amount) external override {
         address bridge = msg.sender;
-        require(bridgeManager.isBridgeFromEnabled(bridge), "Bridge from disabled");
+        require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
         // mint token to receiver
         _mint(receiver, amount);
@@ -62,4 +66,17 @@ contract ZKL is ERC20Capped, ERC20Permit, Ownable, IZKL {
     function _mint(address account, uint256 amount) internal override(ERC20Capped, ERC20) {
         ERC20Capped._mint(account, amount);
     }
+}
+
+interface IGovernance {
+    /// @notice Return the network governor address
+    function networkGovernor() external view returns (address);
+
+    /// @notice Check if bridge to enabled
+    /// @param bridge the bridge contract
+    function isBridgeToEnabled(address bridge) external view returns (bool);
+
+    /// @notice Check if bridge from enabled
+    /// @param bridge the bridge contract
+    function isBridgeFromEnabled(address bridge) external view returns (bool);
 }

@@ -6,7 +6,7 @@ describe('LayerZero bridge unit tests', function () {
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
     let deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH;
-    let lzInETH, lzBridgeInETH;
+    let lzInETH, gov, lzBridgeInETH;
     before(async () => {
         [deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH] = await ethers.getSigners();
 
@@ -14,15 +14,17 @@ describe('LayerZero bridge unit tests', function () {
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
         await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
 
-        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [lzInETH.address], {kind: "uups"});
+        const govFactory = await ethers.getContractFactory('Governance');
+        gov = await govFactory.deploy();
+        await gov.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
-        await lzBridgeInETH.transferOwnership(networkGovernor.address);
+        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [gov.address, lzInETH.address], {kind: "uups"});
     });
 
     it('only network governor can set destination', async () => {
         await expect(lzBridgeInETH.connect(alice).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
-            .to.be.revertedWith('Ownable: caller is not the owner');
+            .to.be.revertedWith('Caller is not governor');
 
         // can not set dst to the current chain
         await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInBSC.address))
@@ -35,7 +37,7 @@ describe('LayerZero bridge unit tests', function () {
 
     it('only network governor can set bridge address length', async () => {
         await expect(lzBridgeInETH.connect(alice).setDestinationAddressLength(lzChainIdInBSC, 20))
-            .to.be.revertedWith('Ownable: caller is not the owner');
+            .to.be.revertedWith('Caller is not governor');
 
         await expect(lzBridgeInETH.connect(networkGovernor).setDestinationAddressLength(lzChainIdInBSC, 20))
             .to.be.emit(lzBridgeInETH, "UpdateDestinationAddressLength")
@@ -44,7 +46,7 @@ describe('LayerZero bridge unit tests', function () {
 
     it('only network governor can set app', async () => {
         await expect(lzBridgeInETH.connect(alice).setApp(0, zklInETH.address))
-            .to.be.revertedWith('Ownable: caller is not the owner');
+            .to.be.revertedWith('Caller is not governor');
 
         await expect(lzBridgeInETH.connect(networkGovernor).setApp(0, zklInETH.address))
             .to.be.emit(lzBridgeInETH, "UpdateAPP")

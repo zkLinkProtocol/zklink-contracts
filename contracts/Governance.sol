@@ -5,10 +5,11 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./zksync/Config.sol";
+import "./IGovernance.sol";
 
 /// @title Governance Contract
 /// @author zk.link
-contract Governance is Config {
+contract Governance is Config, IGovernance {
     /// @notice Token added to ZkLink net
     event NewToken(uint16 indexed tokenId, address indexed token);
 
@@ -21,14 +22,14 @@ contract Governance is Config {
     /// @notice Token pause status update
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
-    /// @notice Token address update
-    event TokenAddressUpdate(uint16 indexed token, address newAddress);
+    /// @notice New bridge added
+    event AddBridge(address indexed bridge);
 
-    /// @notice Bridge manager update
-    event BridgeManagerUpdate(address indexed newBridgeManager);
+    /// @notice Bridge update
+    event UpdateBridge(uint256 indexed bridgeIndex, bool enableBridgeTo, bool enableBridgeFrom);
 
     /// @notice Address which will exercise governance over the network i.e. add tokens, change validator set, conduct upgrades
-    address public networkGovernor;
+    address public override networkGovernor;
 
     /// @notice List of permitted validators
     mapping(address => bool) public validators;
@@ -36,7 +37,7 @@ contract Governance is Config {
     struct RegisteredToken {
         bool registered; // whether token registered to ZkLink or not, default is false
         bool paused; // whether token can deposit to ZkLink or not, default is false
-        address tokenAddress; // the token address, zero represents eth, can be updated
+        address tokenAddress; // the token address
     }
 
     /// @notice A map of registered token infos
@@ -45,11 +46,20 @@ contract Governance is Config {
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
 
-    /// @notice Multiple bridges manager
-    IBridgeManager public bridgeManager;
+    /// @dev We can set `enableBridgeTo` and `enableBridgeTo` to false to disable bridge when `bridge` is compromised
+    struct BridgeInfo {
+        address bridge;
+        bool enableBridgeTo;
+        bool enableBridgeFrom;
+    }
+
+    /// @notice bridges
+    BridgeInfo[] public bridges;
+    // 0 is reversed for non-exist bridge, existing bridges are indexed from 1
+    mapping(address => uint256) public bridgeIndex;
 
     modifier onlyGovernor {
-        require(msg.sender == networkGovernor, "G0");
+        require(msg.sender == networkGovernor, "Caller is not governor");
         _;
     }
 
@@ -70,7 +80,7 @@ contract Governance is Config {
     /// @notice Change current governor
     /// @param _newGovernor Address of the new governor
     function changeGovernor(address _newGovernor) external onlyGovernor {
-        require(_newGovernor != address(0), "G1");
+        require(_newGovernor != address(0), "Governor not set");
         if (networkGovernor != _newGovernor) {
             networkGovernor = _newGovernor;
             emit NewGovernor(_newGovernor);
@@ -82,13 +92,13 @@ contract Governance is Config {
     /// @param _tokenAddress Token address
     function addToken(uint16 _tokenId, address _tokenAddress) public onlyGovernor {
         // token id MUST be in a valid range
-        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "G2");
+        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "Invalid token id");
         // token MUST be not zero address
-        require(_tokenAddress != address(0), "G3");
+        require(_tokenAddress != address(0), "Token address not set");
         // revert duplicate register
         RegisteredToken memory rt = tokens[_tokenId];
-        require(!rt.registered, "G4");
-        require(tokenIds[_tokenAddress] == 0, "G5");
+        require(!rt.registered, "Token registered");
+        require(tokenIds[_tokenAddress] == 0, "Token registered");
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
@@ -101,7 +111,7 @@ contract Governance is Config {
     /// @param _tokenIdList Token id list
     /// @param _tokenAddressList Token address list
     function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList) external {
-        require(_tokenIdList.length == _tokenAddressList.length, "G6");
+        require(_tokenIdList.length == _tokenAddressList.length, "Invalid length");
         for (uint i; i < _tokenIdList.length; i++) {
             addToken(_tokenIdList[i], _tokenAddressList[i]);
         }
@@ -112,35 +122,12 @@ contract Governance is Config {
     /// @param _tokenPaused Token paused status
     function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external onlyGovernor {
         RegisteredToken memory rt = tokens[_tokenId];
-        require(rt.registered, "G7");
+        require(rt.registered, "Token not registered");
 
         if (rt.paused != _tokenPaused) {
             rt.paused = _tokenPaused;
             tokens[_tokenId] = rt;
             emit TokenPausedUpdate(_tokenId, _tokenPaused);
-        }
-    }
-
-    /// @notice Update token address
-    /// @param _tokenId Token id
-    /// @param _newTokenAddress Token address to replace
-    function setTokenAddress(uint16 _tokenId, address _newTokenAddress) external onlyGovernor {
-        // new token address MUST not be zero address or eth address
-        require(_newTokenAddress != address(0) && _newTokenAddress != ETH_ADDRESS, "G8");
-        // tokenId MUST be registered
-        RegisteredToken memory rt = tokens[_tokenId];
-        require(rt.registered, "G9");
-        // tokenAddress MUST not be registered
-        require(tokenIds[_newTokenAddress] == 0, "G10");
-        // token represent ETH MUST not be updated
-        require(rt.tokenAddress != ETH_ADDRESS, "G11");
-
-        if (rt.tokenAddress != _newTokenAddress) {
-            delete tokenIds[rt.tokenAddress];
-            rt.tokenAddress = _newTokenAddress;
-            tokens[_tokenId] = rt;
-            tokenIds[_newTokenAddress] = _tokenId;
-            emit TokenAddressUpdate(_tokenId, _newTokenAddress);
         }
     }
 
@@ -170,24 +157,48 @@ contract Governance is Config {
         return tokenIds[_tokenAddress];
     }
 
-    /// @notice Change BridgeManager
-    /// @param _bm BridgeManager address
-    function setBridgeManager(address _bm) external onlyGovernor {
-        if (address(bridgeManager) != _bm && _bm != address(0)) {
-            bridgeManager = IBridgeManager(_bm);
-            emit BridgeManagerUpdate(_bm);
-        }
+    /// @notice Add a new bridge
+    /// @param bridge the bridge contract
+    function addBridge(address bridge) external onlyGovernor {
+        require(bridge != address(0), "Bridge not set");
+        // the index of non-exist bridge is zero
+        require(bridgeIndex[bridge] == 0, "Bridge exist");
+
+        BridgeInfo memory info = BridgeInfo({
+            bridge: bridge,
+            enableBridgeTo: true,
+            enableBridgeFrom: true
+        });
+        bridges.push(info);
+        bridgeIndex[bridge] = bridges.length;
+        emit AddBridge(bridge);
     }
-}
 
+    /// @notice Update bridge info
+    /// @dev If we want to remove a bridge(not compromised), we should firstly set `enableBridgeTo` to false
+    /// and wait all messages received from this bridge and then set `enableBridgeFrom` to false.
+    /// But when a bridge is compromised, we must set both `enableBridgeTo` and `enableBridgeFrom` to false immediately
+    /// @param index the bridge info index
+    /// @param enableBridgeTo if set to false, bridge to will be disabled
+    /// @param enableBridgeFrom if set to false, bridge from will be disabled
+    function updateBridge(uint256 index, bool enableBridgeTo, bool enableBridgeFrom) external onlyGovernor {
+        require(index < bridges.length, "Invalid bridge index");
+        BridgeInfo memory info = bridges[index];
+        info.enableBridgeTo = enableBridgeTo;
+        info.enableBridgeFrom = enableBridgeFrom;
+        bridges[index] = info;
+        emit UpdateBridge(index, enableBridgeTo, enableBridgeFrom);
+    }
 
-interface IBridgeManager {
+    function isBridgeToEnabled(address bridge) external view override returns (bool) {
+        uint256 index = bridgeIndex[bridge] - 1;
+        BridgeInfo memory info = bridges[index];
+        return info.bridge == bridge && info.enableBridgeTo;
+    }
 
-    /// @notice Check if bridge to enabled
-    /// @param bridge the bridge contract
-    function isBridgeToEnabled(address bridge) external view returns (bool);
-
-    /// @notice Check if bridge from enabled
-    /// @param bridge the bridge contract
-    function isBridgeFromEnabled(address bridge) external view returns (bool);
+    function isBridgeFromEnabled(address bridge) external view override returns (bool) {
+        uint256 index = bridgeIndex[bridge] - 1;
+        BridgeInfo memory info = bridges[index];
+        return info.bridge == bridge && info.enableBridgeFrom;
+    }
 }

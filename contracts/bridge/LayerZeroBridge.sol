@@ -18,7 +18,7 @@ import "../token/IZKL.sol";
 /// * lzReceive reverted unexpected, and we can fix bug and upgrade contract to fix it.
 /// ILayerZeroUserApplicationConfig does not need to be implemented for now
 /// @author zk.link
-contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, OwnableUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
+contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
 
     // to avoid stack too deep
     struct LzBridgeParams {
@@ -28,27 +28,33 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
         bytes adapterParams; // see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
     }
 
+    modifier onlyGovernor {
+        require(msg.sender == governance.networkGovernor(), "Caller is not governor");
+        _;
+    }
+
     /// @dev Put `initializer` modifier here to prevent anyone call this function from proxy after we initialized
     /// No delegatecall exist in this contract, so it's ok to expose this function in logic
     /// @param _endpoint The LayerZero endpoint
-    function initialize(address _endpoint) public initializer {
+    function initialize(address _governance, address _endpoint) public initializer {
+        require(_governance != address(0), "Governance not set");
         require(_endpoint != address(0), "Endpoint not set");
 
         __ReentrancyGuard_init();
-        __Ownable_init();
         __UUPSUpgradeable_init();
 
+        governance = IGovernance(_governance);
         endpoint = _endpoint;
     }
 
     /// @dev Only owner can upgrade logic contract
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernor {}
 
     /// @notice Set bridge destination
     /// @param dstChainId LayerZero chain id on other chains
     /// @param contractAddr LayerZeroBridge contract address on other chains
-    function setDestination(uint16 dstChainId, bytes calldata contractAddr) external onlyOwner {
+    function setDestination(uint16 dstChainId, bytes calldata contractAddr) external onlyGovernor {
         require(dstChainId != ILayerZeroEndpoint(endpoint).getChainId(), "Invalid dstChainId");
         destinations[dstChainId] = contractAddr;
         emit UpdateDestination(dstChainId, contractAddr);
@@ -57,7 +63,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
     /// @notice Set destination address length
     /// @param dstChainId LayerZero chain id on other chains
     /// @param addressLength Address length
-    function setDestinationAddressLength(uint16 dstChainId, uint8 addressLength) external onlyOwner {
+    function setDestinationAddressLength(uint16 dstChainId, uint8 addressLength) external onlyGovernor {
         require(dstChainId != ILayerZeroEndpoint(endpoint).getChainId(), "Invalid dstChainId");
         destAddressLength[dstChainId] = addressLength;
         emit UpdateDestinationAddressLength(dstChainId, addressLength);
@@ -66,7 +72,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
     /// @notice Set app contract address
     /// @param app The app type
     /// @param contractAddress The app contract address
-    function setApp(APP app, address contractAddress) external onlyOwner {
+    function setApp(APP app, address contractAddress) external onlyGovernor {
         apps[app] = contractAddress;
         emit UpdateAPP(app, contractAddress);
     }
@@ -137,9 +143,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
         }
 
         // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
-        address spender = _msgSender();
         uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
-        IZKL(zkl).bridgeTo(_dstChainId, nonce, spender, from, receiver, amount);
+        IZKL(zkl).bridgeTo(_dstChainId, nonce, msg.sender, from, receiver, amount);
     }
 
     /// @notice Bridge ZkLink root hash to other chain
@@ -192,7 +197,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownable
 
     function nonblockingLzReceive(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) public {
         // only internal transaction
-        require(_msgSender() == address(this), "Caller must be this bridge");
+        require(msg.sender == address(this), "Caller must be this bridge");
         _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
 

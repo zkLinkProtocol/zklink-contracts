@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
+const {ethers} = require("hardhat");
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
@@ -215,14 +216,17 @@ task("bridge", "Send zkl of deployer to another chain for testnet")
             .estimateZKLBridgeFees(lzInfo.chainId, deployer.address, amount, false, "0x");
         const nativeFee = feeInfo.nativeFee;
         console.log('nativeFee', hardhat.ethers.utils.formatEther(nativeFee));
+        const lzParams = {
+            "dstChainId": lzInfo.chainId,
+            "refundAddress": deployer.address,
+            "zroPaymentAddress": ethers.constants.AddressZero,
+            "adapterParams": "0x"
+        }
         const tx = await bridgeContract.connect(deployer)
             .bridgeZKL(deployer.address,
-                lzInfo.chainId,
                 deployer.address,
                 amount,
-                deployer.address,
-                hardhat.ethers.constants.AddressZero,
-                "0x",
+                lzParams,
                 {value:nativeFee});
         console.log('tx', tx.hash);
     });
