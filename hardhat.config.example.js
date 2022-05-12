@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solpp");
 require("@nomiclabs/hardhat-etherscan");
 require('@openzeppelin/hardhat-upgrades');
+require("hardhat-gas-reporter");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
 require("./script/deploy_zkl");
@@ -162,5 +163,8 @@ module.exports = {
   },
   etherscan: {
     apiKey: config.scan
+  },
+  gasReporter: {
+    enabled: !!(process.env.REPORT_GAS)
   }
 };

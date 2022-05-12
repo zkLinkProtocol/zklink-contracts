@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./ILayerZeroReceiver.sol";
@@ -222,7 +221,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
             (bytes memory receiverBytes, uint256 amount) = abi.decode(payload[1:], (bytes, uint256));
             address receiver;
             assembly {
-                receiver := mload(add(receiverBytes, 20))
+                receiver := mload(add(receiverBytes, EVM_ADDRESS_LENGTH))
             }
             // mint token to receiver
             IZKL(zkl).bridgeFrom(srcChainId, nonce, receiver, amount);

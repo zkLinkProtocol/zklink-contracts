@@ -1,7 +1,6 @@
 const fs = require('fs');
 const { readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
-const {ethers} = require("hardhat");
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);

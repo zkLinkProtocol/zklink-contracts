@@ -77,4 +77,20 @@ describe('Cross root hash unit tests', function () {
             .to.be.emit(zklinkInBSC, "ReceiveCrossRootHash")
             .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, rh, 1);
     });
+
+    it('test lz receive gas cost', async () => {
+        const blockHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+        const verifiedChains = 15;
+        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [blockHash,verifiedChains])
+        const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[1, payload]);
+        const nonce = 1;
+
+        await expect(lzInETH.lzReceiveTest(lzChainIdInBSC,
+            lzBridgeInBSC.address,
+            lzBridgeInETH.address,
+            nonce,
+            payloadWithType))
+            .to.be.emit(zklinkInETH, "ReceiveCrossRootHash")
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, blockHash, verifiedChains);
+    });
 });

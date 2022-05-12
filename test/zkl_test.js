@@ -159,4 +159,19 @@ describe('ZKL unit tests', function () {
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
         expect(b1InBSC).eq(b0InBSC.sub(bridgeAmount));
     });
+
+    it('test lz receive gas cost', async () => {
+        const address = tom.address;
+        const amount = parseEther("1");
+        const payload = ethers.utils.defaultAbiCoder.encode(["bytes","uint256"], [address,amount])
+        const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[0, payload]);
+        const nonce = 1;
+        await expect(lzInETH.lzReceiveTest(lzChainIdInBSC,
+            lzBridgeInBSC.address,
+            lzBridgeInETH.address,
+            nonce,
+            payloadWithType))
+            .to.be.emit(zklInETH, "BridgeFrom")
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, address, amount);
+    });
 });
