@@ -513,7 +513,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         // block must complete cross chain root hash verify before execute
         require(_blockExecuteData.storedBlock.blockNumber <= latestVerifiedBlockHeight, "Z42");
 
-        bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
+        bytes memory pendingOnchainOps = new bytes(0);
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
             bytes memory pubData = _blockExecuteData.pendingOnchainOpsPubdata[i];
 
@@ -550,8 +550,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
             } else {
                 revert("ZkLink: invalid op");
             }
-            pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
+            pendingOnchainOps = Utils.concat(pendingOnchainOps, pubData);
         }
+        bytes32 pendingOnchainOpsHash = keccak256(pendingOnchainOps);
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "Z38");
     }
 
