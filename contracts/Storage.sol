@@ -18,7 +18,7 @@ contract Storage is Config, IZkLink {
     Verifier public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
-    uint32 public override totalBlocksExecuted;
+    uint32 public totalBlocksExecuted;
 
     /// @notice First open priority request id
     uint64 public override firstPriorityRequestId;
@@ -40,7 +40,7 @@ contract Storage is Config, IZkLink {
     ZkLinkPeriphery public periphery;
 
     /// @notice Total blocks proven.
-    uint32 public override totalBlocksProven;
+    uint32 public totalBlocksProven;
 
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
@@ -75,9 +75,11 @@ contract Storage is Config, IZkLink {
     uint32 public latestVerifiedBlockHeight;
 
     /// @dev if `verifiedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
-    mapping(bytes32 => uint256) internal blockVerifiedChains;
+    // the key of stateVerifiedChains is the `stateHash` of `StoredBlockInfo`
+    // the value of stateVerifiedChains is the `verifiedChains` of `stateHash` collected from all other chains
+    mapping(bytes32 => uint256) internal stateVerifiedChains;
 
-    event ReceiveCrossRootHash(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains);
+    event ReceiveStateHash(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains);
 
     function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
         return priorityRequests[idx];
@@ -87,20 +89,12 @@ contract Storage is Config, IZkLink {
         return authFacts[owner][nonce];
     }
 
-    function getCrossRootHash(uint32 blockHeight) external view override returns (bytes32 blockHash, uint256 verifiedChains) {
-        blockHash = storedBlockHashes[blockHeight];
-        verifiedChains = blockVerifiedChains[blockHash];
-        // combine with current chain
-        if (blockHash > 0) {
-            verifiedChains |= CHAIN_INDEX;
-        }
-    }
-
-    function receiveCrossRootHash(uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains) external override {
+    /// @notice Combine the `verifiedChains` of the other chains of a `stateHash` with self
+    function receiveStateHash(uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains) external {
         address bridge = msg.sender;
         require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
-        blockVerifiedChains[blockHash] = blockVerifiedChains[blockHash] | verifiedChains;
-        emit ReceiveCrossRootHash(bridge, srcChainId, nonce, blockHash, verifiedChains);
+        stateVerifiedChains[stateHash] = stateVerifiedChains[stateHash] | verifiedChains;
+        emit ReceiveStateHash(bridge, srcChainId, nonce, stateHash, verifiedChains);
     }
 }

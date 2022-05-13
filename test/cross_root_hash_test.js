@@ -16,7 +16,7 @@ describe('Cross root hash unit tests', function () {
         await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
         await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
-        const zklinkFactory = await ethers.getContractFactory('CrossRootHashTest');
+        const zklinkFactory = await ethers.getContractFactory('ZkLinkTest');
         zklinkInETH = await zklinkFactory.deploy(govInETH.address);
         zklinkInBSC = await zklinkFactory.deploy(govInBSC.address);
 
@@ -45,7 +45,7 @@ describe('Cross root hash unit tests', function () {
 
     it('only bridge can call receiveCrossRootHash', async () => {
         // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
-        await expect(zklinkInETH.connect(alice).receiveCrossRootHash('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
+        await expect(zklinkInETH.connect(alice).receiveStateHash('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
             .to.be.reverted;
     });
 
@@ -54,16 +54,17 @@ describe('Cross root hash unit tests', function () {
         expect(fees.nativeFee > 0);
     });
 
-
     it('bridge root hash should success', async () => {
         const rh = '0x00000000000000000000000000000000000000000000000000000000000000aa';
-        await zklinkInETH.setTotalBlocksExecuted(10);
-        await zklinkInETH.setTotalBlocksProven(20);
-        await zklinkInETH.setBlockHash(11, rh);
-
-        await zklinkInBSC.setTotalBlocksExecuted(100);
-        await zklinkInBSC.setTotalBlocksProven(200);
-        await zklinkInBSC.setBlockHash(150, rh);
+        const storedBlock = {
+            "blockNumber":11,
+            "priorityOperations":7,
+            "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
+            "timestamp":1652422395,
+            "stateHash":rh,
+            "commitment":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184"
+        };
+        await zklinkInETH.mockProveBlock(storedBlock);
 
         const fees = await lzBridgeInETH.estimateRootHashBridgeFees(lzChainIdInBSC, false, "0x");
         const lzParams = {
@@ -72,16 +73,16 @@ describe('Cross root hash unit tests', function () {
             "zroPaymentAddress": ethers.constants.AddressZero,
             "adapterParams": "0x"
         }
-        await expect(lzBridgeInETH.connect(alice).bridgeRootHash(11,
+        await expect(lzBridgeInETH.connect(alice).bridgeRootHash(storedBlock,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklinkInBSC, "ReceiveCrossRootHash")
+            .to.be.emit(zklinkInBSC, "ReceiveStateHash")
             .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, rh, 1);
     });
 
     it('test lz receive gas cost', async () => {
-        const blockHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+        const stateHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
         const verifiedChains = 15;
-        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [blockHash,verifiedChains])
+        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [stateHash,verifiedChains])
         const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[1, payload]);
         const nonce = 1;
 
@@ -90,7 +91,7 @@ describe('Cross root hash unit tests', function () {
             lzBridgeInETH.address,
             nonce,
             payloadWithType))
-            .to.be.emit(zklinkInETH, "ReceiveCrossRootHash")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, blockHash, verifiedChains);
+            .to.be.emit(zklinkInETH, "ReceiveStateHash")
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, stateHash, verifiedChains);
     });
 });

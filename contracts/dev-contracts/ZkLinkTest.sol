@@ -8,6 +8,10 @@ import "../ZkLink.sol";
 
 contract ZkLinkTest is ZkLink {
 
+    constructor(Governance gov) {
+        governance = gov;
+    }
+
     function setExodus(bool _exodusMode) external {
         exodusMode = _exodusMode;
     }
@@ -35,5 +39,10 @@ contract ZkLinkTest is ZkLink {
     function mockExecBlock(StoredBlockInfo memory storedBlockInfo) external {
         storedBlockHashes[storedBlockInfo.blockNumber] = hashStoredBlockInfo(storedBlockInfo);
         totalBlocksExecuted = storedBlockInfo.blockNumber;
+    }
+
+    function mockProveBlock(StoredBlockInfo memory storedBlockInfo) external {
+        storedBlockHashes[storedBlockInfo.blockNumber] = hashStoredBlockInfo(storedBlockInfo);
+        totalBlocksProven = storedBlockInfo.blockNumber;
     }
 }

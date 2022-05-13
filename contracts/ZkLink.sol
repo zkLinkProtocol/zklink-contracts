@@ -394,17 +394,27 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
 
-    /// @notice Check if block received all cross root hash
-    function verifyCrhBlocks(uint32 blockHeight) external {
-        require(blockHeight > latestVerifiedBlockHeight, "Z39");
+    /// @notice Get all verified chains of `stateHash`
+    function getStateVerifiedChains(StoredBlockInfo memory _block) external view returns (uint256 verifiedChains) {
+        verifiedChains = stateVerifiedChains[_block.stateHash];
+        // combine the current chain if it has proven this block
+        if (_block.blockNumber <= totalBlocksProven &&
+            hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
+            verifiedChains |= CHAIN_ID;
+        }
+    }
 
-        bytes32 blockHash = storedBlockHashes[blockHeight];
+    /// @notice Check if block received all cross root hash
+    function verifyCrhBlocks(uint32 _blockHeight) external {
+        require(_blockHeight > latestVerifiedBlockHeight && _blockHeight <= totalBlocksProven, "Z39");
+
+        bytes32 blockHash = storedBlockHashes[_blockHeight];
         require(blockHash > 0, "Z40");
 
-        uint256 verifiedChains = blockVerifiedChains[blockHash] | CHAIN_INDEX;
+        uint256 verifiedChains = stateVerifiedChains[blockHash] | CHAIN_INDEX;
         require(verifiedChains == ALL_CHAINS, "Z41");
 
-        latestVerifiedBlockHeight = blockHeight;
+        latestVerifiedBlockHeight = _blockHeight;
     }
 
     /// @notice Execute blocks, completing priority operations and processing withdrawals.

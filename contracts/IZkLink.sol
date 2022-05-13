@@ -22,12 +22,4 @@ interface IZkLink {
     function getPriorityRequest(uint64 idx) external view returns(Operations.PriorityOperation memory);
 
     function getAuthFact(address owner, uint32 nonce) external view returns (bytes32);
-
-    function totalBlocksProven() external view returns (uint32);
-
-    function totalBlocksExecuted() external view returns (uint32);
-
-    function getCrossRootHash(uint32 blockHeight) external view returns (bytes32 blockHash, uint256 verifiedChains);
-
-    function receiveCrossRootHash(uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains) external;
 }

@@ -147,9 +147,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     }
 
     /// @notice Bridge ZkLink root hash to other chain
-    /// @param blockHeight the block proved but not executed at the current chain
+    /// @param storedBlockInfo the block proved but not executed at the current chain
     /// @param params lz params
-    function bridgeRootHash(uint32 blockHeight,
+    function bridgeRootHash(
+        IZkLink.StoredBlockInfo calldata storedBlockInfo,
         LzBridgeParams calldata params
     ) external nonReentrant payable {
         uint16 _dstChainId = params.dstChainId;
@@ -159,19 +160,12 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         address zklink = apps[APP.ZKLINK];
         require(zklink != address(0), "ZKLINK not support");
 
-        {
-            // should bridge a block root hash which has be proven but not executed
-            uint32 executedBlockHeight = IZkLink(zklink).totalBlocksExecuted();
-            uint32 provenBlockHeight = IZkLink(zklink).totalBlocksProven();
-            require(blockHeight > executedBlockHeight && blockHeight <= provenBlockHeight, "Invalid block height");
-        }
-
         // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
 
         // ===Interactions===
         // send LayerZero message
-        (bytes32 blockHash, uint256 verifiedChains) = IZkLink(zklink).getCrossRootHash(blockHeight);
-        bytes memory payload = buildRootHashBridgePayload(blockHash, verifiedChains);
+        uint256 verifiedChains = IZkLink(zklink).getStateVerifiedChains(storedBlockInfo);
+        bytes memory payload = buildRootHashBridgePayload(storedBlockInfo.stateHash, verifiedChains);
         // solhint-disable-next-line check-send-result
         ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
     }
@@ -228,8 +222,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         } else if (app == APP.ZKLINK) {
             address zklink = apps[APP.ZKLINK];
 
-            (bytes32 blockHash, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
-            IZkLink(zklink).receiveCrossRootHash(srcChainId, nonce, blockHash, verifiedChains);
+            (bytes32 stateHash, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
+            IZkLink(zklink).receiveStateHash(srcChainId, nonce, stateHash, verifiedChains);
         } else {
             revert("APP not support");
         }
@@ -251,11 +245,17 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 }
 
 interface IZkLink {
-    function totalBlocksProven() external view returns (uint32);
+    // stored block info of ZkLink
+    struct StoredBlockInfo {
+        uint32 blockNumber;
+        uint64 priorityOperations;
+        bytes32 pendingOnchainOperationsHash;
+        uint256 timestamp;
+        bytes32 stateHash;
+        bytes32 commitment;
+    }
 
-    function totalBlocksExecuted() external view returns (uint32);
+    function getStateVerifiedChains(StoredBlockInfo memory block) external view returns (uint256 verifiedChains);
 
-    function getCrossRootHash(uint32 blockHeight) external view returns (bytes32 blockHash, uint256 verifiedChains);
-
-    function receiveCrossRootHash(uint16 srcChainId, uint64 nonce, bytes32 blockHash, uint256 verifiedChains) external;
+    function receiveStateHash(uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains) external;
 }
