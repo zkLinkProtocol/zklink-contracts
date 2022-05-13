@@ -44,7 +44,7 @@ async function deploy() {
     const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
     const governance = await governanceFactory.deploy();
     // verifier
-    const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+    const verifierFactory = await hardhat.ethers.getContractFactory('VerifierMock');
     const verifier = await verifierFactory.deploy();
     // periphery
     const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
@@ -71,7 +71,7 @@ async function deploy() {
     const log = deployer.interface.parseLog(txr.logs[4]);
     const governanceProxy = governanceFactory.attach(log.args.governance);
     const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
-    const verifierProxy = zkLinkFactory.attach(log.args.verifier);
+    const verifierProxy = verifierFactory.attach(log.args.verifier);
     const peripheryProxy = peripheryFactory.attach(log.args.periphery);
     const upgradeGatekeeper = log.args.upgradeGatekeeper;
 

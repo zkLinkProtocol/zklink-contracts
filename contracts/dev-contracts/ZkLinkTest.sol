@@ -28,14 +28,12 @@ contract ZkLinkTest is ZkLink {
         periphery.setAccepter(accountId, hash, accepter);
     }
 
-    function testRegisterDeposit(
-        uint16 _tokenId,
-        uint128 _amount,
-        address _owner) external {
-//        registerDeposit(_tokenId, _amount, _owner);
-    }
-
     function getStoredBlockHashes(uint32 height) external view returns (bytes32) {
         return storedBlockHashes[height];
+    }
+
+    function mockExecBlock(StoredBlockInfo memory storedBlockInfo) external {
+        storedBlockHashes[storedBlockInfo.blockNumber] = hashStoredBlockInfo(storedBlockInfo);
+        totalBlocksExecuted = storedBlockInfo.blockNumber;
     }
 }
