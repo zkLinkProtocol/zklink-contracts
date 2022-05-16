@@ -17,8 +17,10 @@ describe('Cross root hash unit tests', function () {
         await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
         const zklinkFactory = await ethers.getContractFactory('ZkLinkTest');
-        zklinkInETH = await zklinkFactory.deploy(govInETH.address);
-        zklinkInBSC = await zklinkFactory.deploy(govInBSC.address);
+        zklinkInETH = await zklinkFactory.deploy();
+        await zklinkInETH.setGov(govInETH.address);
+        zklinkInBSC = await zklinkFactory.deploy();
+        await zklinkInBSC.setGov(govInBSC.address);
 
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);

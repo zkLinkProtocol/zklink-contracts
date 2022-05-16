@@ -8,7 +8,7 @@ import "../ZkLink.sol";
 
 contract ZkLinkTest is ZkLink {
 
-    constructor(Governance gov) {
+    function setGov(Governance gov) external {
         governance = gov;
     }
 
