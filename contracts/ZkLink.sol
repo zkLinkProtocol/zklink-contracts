@@ -503,36 +503,34 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Config, Events, Upgr
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
             bytes memory pubData = _blockExecuteData.pendingOnchainOpsPubdata[i];
 
+            uint8 chainId = uint8(pubData[1]);
+            if (chainId != CHAIN_ID) {
+                continue;
+            }
             Operations.OpType opType = Operations.OpType(uint8(pubData[0]));
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
-                if (op.chainId == CHAIN_ID) {
-                    // nonce > 0 means fast withdraw
-                    if (op.nonce > 0) {
-                        bytes32 fwHash = periphery.calAcceptHash(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce);
-                        address accepter = periphery.getAccepter(op.accountId, fwHash);
-                        if (accepter == address(0)) {
-                            // receiver act as a accepter
-                            periphery.setAccepter(op.accountId, fwHash, op.owner);
-                            withdrawOrStore(op.tokenId, op.owner, op.amount);
-                        } else {
-                            // just increase the pending balance of accepter
-                            increasePendingBalance(op.tokenId, accepter, op.amount);
-                        }
-                    } else {
+                // nonce > 0 means fast withdraw
+                if (op.nonce > 0) {
+                    bytes32 fwHash = periphery.calAcceptHash(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce);
+                    address accepter = periphery.getAccepter(op.accountId, fwHash);
+                    if (accepter == address(0)) {
+                        // receiver act as a accepter
+                        periphery.setAccepter(op.accountId, fwHash, op.owner);
                         withdrawOrStore(op.tokenId, op.owner, op.amount);
+                    } else {
+                        // just increase the pending balance of accepter
+                        increasePendingBalance(op.tokenId, accepter, op.amount);
                     }
+                } else {
+                    withdrawOrStore(op.tokenId, op.owner, op.amount);
                 }
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                if (op.chainId == CHAIN_ID) {
-                    withdrawOrStore(op.tokenId, op.target, op.amount);
-                }
+                withdrawOrStore(op.tokenId, op.target, op.amount);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                if (op.chainId == CHAIN_ID) {
-                    withdrawOrStore(op.tokenId, op.owner, op.amount);
-                }
+                withdrawOrStore(op.tokenId, op.owner, op.amount);
             } else {
                 revert("ZkLink: invalid op");
             }

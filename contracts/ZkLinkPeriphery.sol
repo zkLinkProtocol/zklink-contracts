@@ -124,7 +124,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         // pubdata length must be a multiple of CHUNK_BYTES
         require(pubData.length % CHUNK_BYTES == 0, "ZP4");
         offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
-        // NOTE: we MUST ignore ops that are not part of the current chain
+
         for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
             OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
 
@@ -135,26 +135,36 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
             require(offsetsCommitment[chunkId] == 0x00, "ZP7"); // offset commitment should be empty
             offsetsCommitment[chunkId] = bytes1(0x01);
 
+            {
+                // the chain id is the next byte after op type if exist
+                // overflow is impossible
+                uint256 chainIdOffset = pubdataOffset + 1;
+                if (chainIdOffset >= pubData.length) {
+                    break;
+                }
+                uint8 chainId = uint8(pubData[chainIdOffset]);
+                // NOTE: we MUST ignore ops that are not part of the current chain
+                if (chainId != CHAIN_ID) {
+                    continue;
+                }
+            }
+
             Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
 
             if (opType == Operations.OpType.Deposit) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
                 Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-                if (op.chainId == CHAIN_ID) {
-                    Operations.checkPriorityOperation(op, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
-                    priorityOperationsProcessed++;
-                }
+                Operations.checkPriorityOperation(op, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
+                priorityOperationsProcessed++;
             } else if (opType == Operations.OpType.ChangePubKey) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
                 Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
-                if (op.chainId == CHAIN_ID) {
-                    if (onchainOpData.ethWitness.length != 0) {
-                        bool valid = verifyChangePubkey(onchainOpData.ethWitness, op);
-                        require(valid, "ZP8");
-                    } else {
-                        bool valid = zkLink.getAuthFact(op.owner, op.nonce) == keccak256(abi.encodePacked(op.pubKeyHash));
-                        require(valid, "ZP9");
-                    }
+                if (onchainOpData.ethWitness.length != 0) {
+                    bool valid = verifyChangePubkey(onchainOpData.ethWitness, op);
+                    require(valid, "ZP8");
+                } else {
+                    bool valid = zkLink.getAuthFact(op.owner, op.nonce) == keccak256(abi.encodePacked(op.pubKeyHash));
+                    require(valid, "ZP9");
                 }
             } else {
                 bytes memory opPubData;
@@ -167,10 +177,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
                     opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
 
                     Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    if (fullExitData.chainId == CHAIN_ID) {
-                        Operations.checkPriorityOperation(fullExitData, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
-                        priorityOperationsProcessed++;
-                    }
+                    Operations.checkPriorityOperation(fullExitData, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
+                    priorityOperationsProcessed++;
                 } else {
                     revert("ZkLink: unsupported op");
                 }
