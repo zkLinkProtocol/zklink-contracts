@@ -2,7 +2,7 @@ const { ethers, upgrades } = require("hardhat");
 const { expect } = require('chai');
 const {parseEther} = require("ethers/lib/utils");
 
-describe('Cross root hash unit tests', function () {
+describe('Bridge commitment unit tests', function () {
     let deployer,networkGovernor,alice,bob,tom;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
@@ -45,46 +45,46 @@ describe('Cross root hash unit tests', function () {
         lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address)
     });
 
-    it('only bridge can call receiveCrossRootHash', async () => {
+    it('only bridge can call receiveCommitment', async () => {
         // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
-        await expect(zklinkInETH.connect(alice).receiveStateHash('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
+        await expect(zklinkInETH.connect(alice).receiveCommitment('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
             .to.be.reverted;
     });
 
-    it('estimateRootHashBridgeFees should success', async () => {
-        const fees = await lzBridgeInETH.estimateRootHashBridgeFees(lzChainIdInBSC, false, "0x");
+    it('estimateCommitmentBridgeFees should success', async () => {
+        const fees = await lzBridgeInETH.estimateCommitmentBridgeFees(lzChainIdInBSC, false, "0x");
         expect(fees.nativeFee > 0);
     });
 
-    it('bridge root hash should success', async () => {
-        const rh = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+    it('bridge commitment should success', async () => {
+        const commitment = '0x00000000000000000000000000000000000000000000000000000000000000aa';
         const storedBlock = {
             "blockNumber":11,
             "priorityOperations":7,
             "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
             "timestamp":1652422395,
-            "stateHash":rh,
-            "commitment":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184"
+            "stateHash":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "commitment":commitment
         };
         await zklinkInETH.mockProveBlock(storedBlock);
 
-        const fees = await lzBridgeInETH.estimateRootHashBridgeFees(lzChainIdInBSC, false, "0x");
+        const fees = await lzBridgeInETH.estimateCommitmentBridgeFees(lzChainIdInBSC, false, "0x");
         const lzParams = {
             "dstChainId": lzChainIdInBSC,
             "refundAddress": alice.address,
             "zroPaymentAddress": ethers.constants.AddressZero,
             "adapterParams": "0x"
         }
-        await expect(lzBridgeInETH.connect(alice).bridgeRootHash(storedBlock,
+        await expect(lzBridgeInETH.connect(alice).bridgeCommitment(storedBlock,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklinkInBSC, "ReceiveStateHash")
-            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, rh, 1);
+            .to.be.emit(zklinkInBSC, "ReceiveCommitment")
+            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, commitment, 1);
     });
 
     it('test lz receive gas cost', async () => {
-        const stateHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+        const commitment = '0x00000000000000000000000000000000000000000000000000000000000000aa';
         const verifiedChains = 15;
-        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [stateHash,verifiedChains])
+        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [commitment,verifiedChains])
         const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[1, payload]);
         const nonce = 1;
 
@@ -93,7 +93,7 @@ describe('Cross root hash unit tests', function () {
             lzBridgeInETH.address,
             nonce,
             payloadWithType))
-            .to.be.emit(zklinkInETH, "ReceiveStateHash")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, stateHash, verifiedChains);
+            .to.be.emit(zklinkInETH, "ReceiveCommitment")
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, commitment, verifiedChains);
     });
 });

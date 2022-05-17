@@ -75,11 +75,11 @@ contract Storage is Config, IZkLink {
     uint32 public latestVerifiedBlockHeight;
 
     /// @dev if `verifiedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
-    // the key of stateVerifiedChains is the `stateHash` of `StoredBlockInfo`
-    // the value of stateVerifiedChains is the `verifiedChains` of `stateHash` collected from all other chains
-    mapping(bytes32 => uint256) internal stateVerifiedChains;
+    // the key is the `commitment` of `StoredBlockInfo`
+    // the value is the `verifiedChains` of `commitment` collected from all other chains
+    mapping(bytes32 => uint256) internal commitmentVerifiedChains;
 
-    event ReceiveStateHash(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains);
+    event ReceiveCommitment(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains);
 
     function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
         return priorityRequests[idx];
@@ -89,12 +89,12 @@ contract Storage is Config, IZkLink {
         return authFacts[owner][nonce];
     }
 
-    /// @notice Combine the `verifiedChains` of the other chains of a `stateHash` with self
-    function receiveStateHash(uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains) external {
+    /// @notice Combine the `verifiedChains` of the other chains of a `commitment` with self
+    function receiveCommitment(uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains) external {
         address bridge = msg.sender;
         require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
-        stateVerifiedChains[stateHash] = stateVerifiedChains[stateHash] | verifiedChains;
-        emit ReceiveStateHash(bridge, srcChainId, nonce, stateHash, verifiedChains);
+        commitmentVerifiedChains[commitment] = commitmentVerifiedChains[commitment] | verifiedChains;
+        emit ReceiveCommitment(bridge, srcChainId, nonce, commitment, verifiedChains);
     }
 }

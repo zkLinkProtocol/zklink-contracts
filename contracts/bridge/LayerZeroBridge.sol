@@ -96,7 +96,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     /// @param lzChainId the destination chainId
     /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
     /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function estimateRootHashBridgeFees(
+    function estimateCommitmentBridgeFees(
         uint16 lzChainId,
         bool useZro,
         bytes calldata adapterParams
@@ -146,10 +146,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         IZKL(zkl).bridgeTo(_dstChainId, nonce, msg.sender, from, receiver, amount);
     }
 
-    /// @notice Bridge ZkLink root hash to other chain
+    /// @notice Bridge ZkLink block commitment to other chain
     /// @param storedBlockInfo the block proved but not executed at the current chain
     /// @param params lz params
-    function bridgeRootHash(
+    function bridgeCommitment(
         IZkLink.StoredBlockInfo calldata storedBlockInfo,
         LzBridgeParams calldata params
     ) external nonReentrant payable {
@@ -164,8 +164,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
         // ===Interactions===
         // send LayerZero message
-        uint256 verifiedChains = IZkLink(zklink).getStateVerifiedChains(storedBlockInfo);
-        bytes memory payload = buildRootHashBridgePayload(storedBlockInfo.stateHash, verifiedChains);
+        uint256 verifiedChains = IZkLink(zklink).getCommitmentVerifiedChains(storedBlockInfo);
+        bytes memory payload = buildRootHashBridgePayload(storedBlockInfo.commitment, verifiedChains);
         // solhint-disable-next-line check-send-result
         ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
     }
@@ -222,8 +222,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         } else if (app == APP.ZKLINK) {
             address zklink = apps[APP.ZKLINK];
 
-            (bytes32 stateHash, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
-            IZkLink(zklink).receiveStateHash(srcChainId, nonce, stateHash, verifiedChains);
+            (bytes32 commitment, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
+            IZkLink(zklink).receiveCommitment(srcChainId, nonce, commitment, verifiedChains);
         } else {
             revert("APP not support");
         }
@@ -255,7 +255,7 @@ interface IZkLink {
         bytes32 commitment;
     }
 
-    function getStateVerifiedChains(StoredBlockInfo memory block) external view returns (uint256 verifiedChains);
+    function getCommitmentVerifiedChains(StoredBlockInfo memory block) external view returns (uint256 verifiedChains);
 
-    function receiveStateHash(uint16 srcChainId, uint64 nonce, bytes32 stateHash, uint256 verifiedChains) external;
+    function receiveCommitment(uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains) external;
 }
