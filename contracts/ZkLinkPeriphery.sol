@@ -135,21 +135,25 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
             require(offsetsCommitment[chunkId] == 0x00, "ZP7"); // offset commitment should be empty
             offsetsCommitment[chunkId] = bytes1(0x01);
 
+            // check op type firstly and then check chain id
+            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
+            require(opType == Operations.OpType.Deposit
+                || opType == Operations.OpType.ChangePubKey
+                || opType == Operations.OpType.Withdraw
+                || opType == Operations.OpType.ForcedExit
+                || opType == Operations.OpType.FullExit, "ZP26");
+
             {
-                // the chain id is the next byte after op type if exist
+                // the chain id is the next byte after op type
                 // overflow is impossible
                 uint256 chainIdOffset = pubdataOffset + 1;
-                if (chainIdOffset >= pubData.length) {
-                    break;
-                }
+                require(chainIdOffset < pubData.length, "ZP25");
                 uint8 chainId = uint8(pubData[chainIdOffset]);
                 // NOTE: we MUST ignore ops that are not part of the current chain
                 if (chainId != CHAIN_ID) {
                     continue;
                 }
             }
-
-            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
 
             if (opType == Operations.OpType.Deposit) {
                 bytes memory opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
@@ -173,14 +177,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
                     opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
                 } else if (opType == Operations.OpType.ForcedExit) {
                     opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
-                } else if (opType == Operations.OpType.FullExit) {
+                } else {
                     opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
 
                     Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
                     Operations.checkPriorityOperation(fullExitData, zkLink.getPriorityRequest(uncommittedPriorityRequestsOffset + priorityOperationsProcessed));
                     priorityOperationsProcessed++;
-                } else {
-                    revert("ZkLink: unsupported op");
                 }
 
                 processableOperations = Utils.concat(processableOperations, opPubData);
