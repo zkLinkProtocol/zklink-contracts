@@ -527,11 +527,17 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
             bytes memory pubData = _blockExecuteData.pendingOnchainOpsPubdata[i];
 
+            // check op type firstly and then check chain id
+            Operations.OpType opType = Operations.OpType(uint8(pubData[0]));
+            require(opType == Operations.OpType.Withdraw
+                || opType == Operations.OpType.ForcedExit
+                || opType == Operations.OpType.FullExit, "Z43");
+
             uint8 chainId = uint8(pubData[1]);
             if (chainId != CHAIN_ID) {
                 continue;
             }
-            Operations.OpType opType = Operations.OpType(uint8(pubData[0]));
+
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
                 // nonce > 0 means fast withdraw
@@ -552,11 +558,9 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.target, op.amount);
-            } else if (opType == Operations.OpType.FullExit) {
+            } else {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.owner, op.amount);
-            } else {
-                revert("ZkLink: invalid op");
             }
             pendingOnchainOps = Utils.concat(pendingOnchainOps, pubData);
         }
