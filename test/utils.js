@@ -31,6 +31,15 @@ function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, 
         [6,chainId,accountId,pubKeyHash,owner,nonce,tokenId,fee]);
 }
 
+function paddingChunk(pubdata) {
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const chunkSize = 14;
+    const zeroPaddingNum = chunkSize - pubdataArray.length % chunkSize;
+    const zeroArray = new Uint8Array(zeroPaddingNum);
+    const pubdataPaddingArray = ethers.utils.concat([pubdataArray, zeroArray]);
+    return ethers.utils.hexlify(pubdataPaddingArray);
+}
+
 async function calFee(tx) {
     let gasPrice = tx.gasPrice;
     let txr = await ethers.provider.getTransactionReceipt(tx.hash);
@@ -47,7 +56,7 @@ async function deploy() {
     const verifierFactory = await hardhat.ethers.getContractFactory('VerifierMock');
     const verifier = await verifierFactory.deploy();
     // periphery
-    const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+    const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
     const periphery = await peripheryFactory.deploy();
     // zkLink
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
@@ -125,6 +134,7 @@ module.exports = {
     getFullExitPubdata,
     getForcedExitPubdata,
     getChangePubkeyPubdata,
+    paddingChunk,
     calFee,
     deploy,
     hashBytesToBytes20
