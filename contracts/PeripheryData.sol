@@ -16,11 +16,12 @@ contract PeripheryData {
     }
 
     /// @notice Data needed to commit new block
+    /// @dev CommitBlockInfo are the same on all chains
     struct CommitBlockInfo {
         bytes32 newStateHash;
-        bytes publicData;
+        bytes publicData; // contain pubdata of all chains
         uint256 timestamp;
-        OnchainOperationData[] onchainOperations;
+        OnchainOperationData[] onchainOperations; // contain onchain ops of all chains
         uint32 blockNumber;
         uint32 feeAccount;
     }
@@ -30,10 +31,12 @@ contract PeripheryData {
     /// @param commitmentIdx index such that commitmentsInSlot[commitmentIdx] is current block commitment
     struct ExecuteBlockInfo {
         StoredBlockInfo storedBlock;
-        bytes[] pendingOnchainOpsPubdata;
+        bytes[] pendingOnchainOpsPubdata; // only contain ops of the current chain
     }
 
     /// @notice block stored data
+    /// @dev `blockNumber`,`timestamp`,`stateHash`,`commitment` are the same on all chains
+    /// `priorityOperations`,`pendingOnchainOperationsHash` is different for each chain
     struct StoredBlockInfo {
         uint32 blockNumber; // Rollup block number
         uint64 priorityOperations; // Number of priority operations processed
