@@ -11,8 +11,8 @@ interface Events {
     /// @notice Event emitted when a block is committed
     event BlockCommit(uint32 indexed blockNumber);
 
-    /// @notice Event emitted when a block is verified
-    event BlockVerification(uint32 indexed blockNumber);
+    /// @notice Event emitted when a block is executed
+    event BlockExecuted(uint32 indexed blockNumber);
 
     /// @notice Event emitted when user funds are withdrawn from the zkLink state and contract
     event Withdrawal(uint16 indexed tokenId, uint128 amount);

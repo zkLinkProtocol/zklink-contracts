@@ -12,4 +12,8 @@ contract StandardToken is ERC20 {
     function mint(uint256 amount) external {
         _mint(msg.sender, amount);
     }
+
+    function mintTo(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
 }

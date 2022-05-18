@@ -35,6 +35,8 @@ contract OperationsTest {
         require(_example.tokenId == parsed.tokenId, "tok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
+        require(_example.nonce == parsed.nonce, "nonce");
+        require(_example.fastWithdrawFeeRate == parsed.fastWithdrawFeeRate, "fr");
     }
 
     function testFullExitPubdata(Operations.FullExit calldata _example, bytes calldata _pubdata) external pure {

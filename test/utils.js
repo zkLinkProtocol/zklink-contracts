@@ -11,9 +11,9 @@ function writeDepositPubdata({ chainId, subAccountId, tokenId, amount, owner }) 
         [1,chainId,0,subAccountId,tokenId,amount,owner]);
 }
 
-function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, amount, fee, owner, nonce, isFastWithdraw, fastWithdrawFeeRate }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","uint16","address","uint32","bool","uint16"],
-        [3,chainId,accountId,subAccountId,tokenId,amount,fee,owner,nonce,isFastWithdraw,fastWithdrawFeeRate]);
+function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","uint16","address","uint32","uint16"],
+        [3,chainId,accountId,subAccountId,tokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
 }
 
 function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, amount}) {

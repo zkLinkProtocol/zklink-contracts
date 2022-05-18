@@ -45,4 +45,8 @@ contract ZkLinkTest is ZkLink {
         storedBlockHashes[storedBlockInfo.blockNumber] = hashStoredBlockInfo(storedBlockInfo);
         totalBlocksProven = storedBlockInfo.blockNumber;
     }
+
+    function executeWithdrawTest(Operations.Withdraw memory op) external {
+        executeWithdraw(op);
+    }
 }

@@ -440,7 +440,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         totalBlocksExecuted += nBlocks;
         require(totalBlocksExecuted <= totalBlocksProven, "Z29");
 
-        emit BlockVerification(_blocksData[nBlocks-1].storedBlock.blockNumber);
+        emit BlockExecuted(_blocksData[nBlocks-1].storedBlock.blockNumber);
     }
 
     // =================Internal functions=================
@@ -520,7 +520,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
             "Z36"
         );
         require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "Z37");
-        // block must complete cross chain root hash verify before execute
+        // block must complete cross chain block commitment verify before execute
         require(_blockExecuteData.storedBlock.blockNumber <= latestVerifiedBlockHeight, "Z42");
 
         bytes memory pendingOnchainOps = new bytes(0);
@@ -534,21 +534,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
 
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
-                // nonce > 0 means fast withdraw
-                if (op.nonce > 0) {
-                    bytes32 fwHash = periphery.calAcceptHash(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce);
-                    address accepter = periphery.getAccepter(op.accountId, fwHash);
-                    if (accepter == address(0)) {
-                        // receiver act as a accepter
-                        periphery.setAccepter(op.accountId, fwHash, op.owner);
-                        withdrawOrStore(op.tokenId, op.owner, op.amount);
-                    } else {
-                        // just increase the pending balance of accepter
-                        increasePendingBalance(op.tokenId, accepter, op.amount);
-                    }
-                } else {
-                    withdrawOrStore(op.tokenId, op.owner, op.amount);
-                }
+                executeWithdraw(op);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.target, op.amount);
@@ -562,6 +548,25 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         }
         bytes32 pendingOnchainOpsHash = keccak256(pendingOnchainOps);
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "Z38");
+    }
+
+    /// @dev Execute withdraw operation
+    function executeWithdraw(Operations.Withdraw memory op) internal {
+        // nonce > 0 means fast withdraw
+        if (op.nonce > 0) {
+            bytes32 fwHash = periphery.calAcceptHash(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce);
+            address accepter = periphery.getAccepter(op.accountId, fwHash);
+            if (accepter == address(0)) {
+                // receiver act as a accepter
+                periphery.setAccepter(op.accountId, fwHash, op.owner);
+                withdrawOrStore(op.tokenId, op.owner, op.amount);
+            } else {
+                // just increase the pending balance of accepter
+                increasePendingBalance(op.tokenId, accepter, op.amount);
+            }
+        } else {
+            withdrawOrStore(op.tokenId, op.owner, op.amount);
+        }
     }
 
     /// @dev 1. Try to send token to _recipients

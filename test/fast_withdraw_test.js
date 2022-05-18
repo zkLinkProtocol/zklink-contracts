@@ -1,75 +1,129 @@
-const hardhat = require('hardhat');
 const { expect } = require('chai');
+const { deploy } = require('./utils');
+const {parseEther} = require("ethers/lib/utils");
+const {BigNumber} = require("ethers");
 
 describe('Fast withdraw unit tests', function () {
-    let token, zkSync, zkSyncBlock, zkSyncExit, governance, vault;
-    let wallet,alice,bob;
-    beforeEach(async () => {
-        [wallet,alice,bob] = await hardhat.ethers.getSigners();
-        // token
-        const erc20Factory = await hardhat.ethers.getContractFactory('MockToken');
-        token = await erc20Factory.deploy(10000);
-        // governance, alice is networkGovernor
-        const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
-        governance = await governanceFactory.deploy();
-        await governance.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
-        );
-        await governance.connect(alice).addToken(token.address); // tokenId = 1
-        await governance.connect(alice).setValidator(bob.address, true); // set bob as validator
-        // verifier
-        const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-        const verifier = await verifierFactory.deploy();
-        // Vault
-        const vaultFactory = await hardhat.ethers.getContractFactory('Vault');
-        vault = await vaultFactory.deploy();
-        await vault.initialize(hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [governance.address]));
-        // ZkSync
-        const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
-        zkSync = await contractFactory.deploy();
-        // ZkSyncCommitBlock
-        const zkSyncBlockFactory = await hardhat.ethers.getContractFactory('ZkLinkBlockTest');
-        const zkSyncBlockRaw = await zkSyncBlockFactory.deploy();
-        zkSyncBlock = zkSyncBlockFactory.attach(zkSync.address);
-        // ZkSyncExit
-        const zkSyncExitFactory = await hardhat.ethers.getContractFactory('ZkLinkExit');
-        const zkSyncExitRaw = await zkSyncExitFactory.deploy();
-        zkSyncExit = zkSyncExitFactory.attach(zkSync.address);
-        await zkSync.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','address','address','bytes32'],
-                [governance.address, verifier.address, vault.address, zkSyncBlockRaw.address, zkSyncExitRaw.address, hardhat.ethers.utils.arrayify("0x1b06adabb8022e89da0ddb78157da7c57a5b7356ccc9ad2f51475a4bb13970c6")])
-        );
-        await vault.setZkLinkAddress(zkSync.address);
+    let deployedInfo;
+    let zkLink, periphery, token2, token2Id, defaultSender, alice, bob;
+    before(async () => {
+        deployedInfo = await deploy();
+        zkLink = deployedInfo.zkLink;
+        periphery = deployedInfo.periphery;
+        token2 = deployedInfo.token2.contract;
+        token2Id = deployedInfo.token2.tokenId;
+        defaultSender = deployedInfo.defaultSender;
+        alice = deployedInfo.alice;
+        bob = deployedInfo.bob;
     });
 
-    it('fast withdraw erc20 token should success', async () => {
-        const opType = 3;
+    it('normal withdraw erc20 token should success', async () => {
         const chainId = 1;
         const accountId = 1;
-        const tokenId = 1;
+        const subAccountId = 1;
+        const tokenId = token2Id;
+        const amount = parseEther("10");
         const fee = 0;
-        const accepter = alice.address;
-        const receiver = bob.address;
-        const nonce = 134;
+        const owner = bob.address;
+        const nonce = 0;
+        const fastWithdrawFeeRate = 50;
 
-        let amount = hardhat.ethers.utils.parseEther("1000");
-        let fastWithdrawFeeRatio = 30; // 0.3%
-        let bobReceive = hardhat.ethers.utils.parseEther("997");
+        const op = {
+            "chainId": chainId,
+            "accountId":accountId,
+            "subAccountId":subAccountId,
+            "tokenId":tokenId,
+            "amount":amount,
+            "fee":fee,
+            "owner":owner,
+            "nonce":nonce,
+            "fastWithdrawFeeRate":fastWithdrawFeeRate
+        }
 
-        await token.connect(alice).mint(amount);
-        await token.connect(alice).approve(zkSync.address, amount);
-        await expect(zkSyncExit.connect(alice).accept(accepter, receiver, tokenId, amount, fastWithdrawFeeRatio, nonce))
-            .to.emit(zkSync, 'Accept')
-            .withArgs(accepter, receiver, tokenId, bobReceive);
-        expect(await token.balanceOf(receiver)).to.eq(bobReceive);
+        await token2.mintTo(zkLink.address, amount);
 
-        await token.mintTo(vault.address, amount);
-        const encodePubdata = hardhat.ethers.utils.solidityPack(["uint8","uint8","uint32","uint16","uint128","uint16","address","uint32","bool","uint16"],
-            [opType,chainId,accountId,tokenId,amount,fee,receiver,nonce,true,fastWithdrawFeeRatio]);
-        const pubdata = ethers.utils.arrayify(encodePubdata);
-        const b0 = await token.balanceOf(accepter);
-        await zkSyncBlock.testExecPartialExit(pubdata);
-        const b1 = await token.balanceOf(accepter);
+        const b0 = await token2.balanceOf(owner);
+        await zkLink.executeWithdrawTest(op);
+        const b1 = await token2.balanceOf(owner);
         expect(b1.sub(b0)).to.eq(amount);
+    });
+
+    it('fast withdraw and accept finish, token should be sent to accepter', async () => {
+        const chainId = 1;
+        const accountId = 1;
+        const subAccountId = 1;
+        const tokenId = token2Id;
+        const amount = parseEther("10");
+        const fee = 0;
+        const owner = alice.address;
+        const nonce = 1;
+        const fastWithdrawFeeRate = 50;
+        const MAX_WITHDRAW_FEE_RATE = 10000;
+
+        const bobBalance0 = await token2.balanceOf(bob.address);
+        const bobPendingBalance0 = await zkLink.getPendingBalance(bob.address, token2Id);
+        const aliceBalance0 = await token2.balanceOf(alice.address);
+
+        await token2.mintTo(bob.address, amount);
+        const amountTransfer = amount.mul(BigNumber.from(MAX_WITHDRAW_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_WITHDRAW_FEE_RATE));
+        await token2.connect(bob).approve(periphery.address, amountTransfer);
+        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, amount, fastWithdrawFeeRate, nonce, amountTransfer);
+
+        const op = {
+            "chainId": chainId,
+            "accountId":accountId,
+            "subAccountId":subAccountId,
+            "tokenId":tokenId,
+            "amount":amount,
+            "fee":fee,
+            "owner":owner,
+            "nonce":nonce,
+            "fastWithdrawFeeRate":fastWithdrawFeeRate
+        }
+
+        await token2.mintTo(zkLink.address, amount);
+
+        await zkLink.executeWithdrawTest(op);
+
+        const aliceBalance1 = await token2.balanceOf(alice.address);
+        const bobBalance1 = await token2.balanceOf(bob.address);
+        const bobPendingBalance1 = await zkLink.getPendingBalance(bob.address, token2Id);
+        expect(aliceBalance1.sub(aliceBalance0)).to.eq(amountTransfer);
+        expect(bobBalance1.sub(bobBalance0)).to.eq(amount.sub(amountTransfer)); // amount - amountTransfer is the profit of accept
+        expect(bobPendingBalance1.sub(bobPendingBalance0)).to.eq(amount); // accepter pending balance increase
+    });
+
+    it('fast withdraw but accept not finish, token should be sent to owner as normal', async () => {
+        const chainId = 1;
+        const accountId = 1;
+        const subAccountId = 1;
+        const tokenId = token2Id;
+        const amount = parseEther("10");
+        const fee = 0;
+        const owner = alice.address;
+        const nonce = 2;
+        const fastWithdrawFeeRate = 50;
+
+        const aliceBalance0 = await token2.balanceOf(alice.address);
+
+        const op = {
+            "chainId": chainId,
+            "accountId":accountId,
+            "subAccountId":subAccountId,
+            "tokenId":tokenId,
+            "amount":amount,
+            "fee":fee,
+            "owner":owner,
+            "nonce":nonce,
+            "fastWithdrawFeeRate":fastWithdrawFeeRate
+        }
+
+        await token2.mintTo(zkLink.address, amount);
+
+        await zkLink.executeWithdrawTest(op);
+        const aliceBalance1 = await token2.balanceOf(alice.address);
+        expect(aliceBalance1.sub(aliceBalance0)).to.eq(amount);
+        const hash = await periphery.calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, nonce);
+        expect(await periphery.getAccepter(accountId, hash)).to.eq(owner);
     });
 });
