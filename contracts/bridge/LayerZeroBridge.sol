@@ -92,16 +92,16 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         return ILayerZeroEndpoint(endpoint).estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
     }
 
-    /// @notice Estimate bridge ZkLink root hash fees
+    /// @notice Estimate bridge ZkLink Block fees
     /// @param lzChainId the destination chainId
     /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
     /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function estimateCommitmentBridgeFees(
+    function estimateZkLinkBlockBridgeFees(
         uint16 lzChainId,
         bool useZro,
         bytes calldata adapterParams
     ) external view returns (uint nativeFee, uint zroFee) {
-        bytes memory payload = buildRootHashBridgePayload(bytes32(0), uint256(0));
+        bytes memory payload = buildZkLinkBlockBridgePayload(bytes32(0), uint256(0));
         return ILayerZeroEndpoint(endpoint).estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
     }
 
@@ -146,10 +146,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         IZKL(zkl).bridgeTo(_dstChainId, nonce, msg.sender, from, receiver, amount);
     }
 
-    /// @notice Bridge ZkLink block commitment to other chain
+    /// @notice Bridge ZkLink block to other chain
     /// @param storedBlockInfo the block proved but not executed at the current chain
     /// @param params lz params
-    function bridgeCommitment(
+    function bridgeZkLinkBlock(
         IZkLink.StoredBlockInfo calldata storedBlockInfo,
         LzBridgeParams calldata params
     ) external nonReentrant payable {
@@ -164,8 +164,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
         // ===Interactions===
         // send LayerZero message
-        uint256 verifiedChains = IZkLink(zklink).getCommitmentVerifiedChains(storedBlockInfo);
-        bytes memory payload = buildRootHashBridgePayload(storedBlockInfo.commitment, verifiedChains);
+        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
+        bytes memory payload = buildZkLinkBlockBridgePayload(storedBlockInfo.syncHash, progress);
         // solhint-disable-next-line check-send-result
         ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
     }
@@ -222,8 +222,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         } else if (app == APP.ZKLINK) {
             address zklink = apps[APP.ZKLINK];
 
-            (bytes32 commitment, uint256 verifiedChains) = abi.decode(payload[1:], (bytes32, uint256));
-            IZkLink(zklink).receiveCommitment(srcChainId, nonce, commitment, verifiedChains);
+            (bytes32 syncHash, uint256 progress) = abi.decode(payload[1:], (bytes32, uint256));
+            IZkLink(zklink).receiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
         } else {
             revert("APP not support");
         }
@@ -239,8 +239,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         payload = abi.encodePacked(APP.ZKL, abi.encode(receiver, amount));
     }
 
-    function buildRootHashBridgePayload(bytes32 blockHash, uint256 verifiedChains) internal pure returns (bytes memory payload) {
-        payload = abi.encodePacked(APP.ZKLINK, abi.encode(blockHash, verifiedChains));
+    function buildZkLinkBlockBridgePayload(bytes32 syncHash, uint256 progress) internal pure returns (bytes memory payload) {
+        payload = abi.encodePacked(APP.ZKLINK, abi.encode(syncHash, progress));
     }
 }
 
@@ -253,9 +253,10 @@ interface IZkLink {
         uint256 timestamp;
         bytes32 stateHash;
         bytes32 commitment;
+        bytes32 syncHash;
     }
 
-    function getCommitmentVerifiedChains(StoredBlockInfo memory block) external view returns (uint256 verifiedChains);
+    function getSynchronizedProgress(StoredBlockInfo memory block) external view returns (uint256 progress);
 
-    function receiveCommitment(uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains) external;
+    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external;
 }

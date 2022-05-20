@@ -26,7 +26,8 @@ describe('ZkLink exodus unit tests', function () {
             "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
             "timestamp":1652422395,
             "stateHash":"0xbb66ffc06a476f05a218f6789ca8946e4f0cf29f1efc2e4d0f9a8e70f0326313",
-            "commitment":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184"
+            "commitment":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "syncHash":"0xab04d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184"
         };
     });
 

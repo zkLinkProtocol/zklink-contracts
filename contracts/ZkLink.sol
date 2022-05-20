@@ -71,7 +71,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
-            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0));
+            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0), EMPTY_STRING_KECCAK);
 
         storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
     }
@@ -315,9 +315,25 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
     // =================Validator interface=================
 
     /// @notice Commit block
-    /// @dev 1. Checks onchain operations, timestamp.
-    /// 2. Store block commitments
-    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
+    /// @dev 1. Checks onchain operations of all chains, timestamp.
+    /// 2. Store block commitments, sync hash
+    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external
+    {
+        CompressedBlockExtraInfo[] memory _newBlocksExtraData = new CompressedBlockExtraInfo[](_newBlocksData.length);
+        _commitBlocks(_lastCommittedBlockData, _newBlocksData, false, _newBlocksExtraData);
+    }
+
+    /// @notice Commit compressed block
+    /// @dev 1. Checks onchain operations of current chain, timestamp.
+    /// 2. Store block commitments, sync hash
+    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData,
+        CommitBlockInfo[] memory _newBlocksData,
+        CompressedBlockExtraInfo[] memory _newBlocksExtraData) external
+    {
+        _commitBlocks(_lastCommittedBlockData, _newBlocksData, true, _newBlocksExtraData);
+    }
+
+    function _commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, bool compressed, CompressedBlockExtraInfo[] memory _newBlocksExtraData) internal active onlyValidator nonReentrant
     {
         // ===Checks===
         require(_newBlocksData.length > 0, "Z20");
@@ -326,7 +342,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
 
         // ===Effects===
         for (uint32 i = 0; i < _newBlocksData.length; ++i) {
-            _lastCommittedBlockData = periphery.commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
+            _lastCommittedBlockData = periphery.commitOneBlock(_lastCommittedBlockData, _newBlocksData[i], compressed, _newBlocksExtraData[i]);
 
             // overflow is impossible
             totalCommittedPriorityRequests += _lastCommittedBlockData.priorityOperations;
@@ -368,7 +384,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         require(success, "Z26");
     }
 
-    /// @notice Reverts unverified blocks
+    /// @notice Reverts unExecuted blocks
     function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
         uint32 blocksCommitted = totalBlocksCommitted;
         uint32 blocksToRevert = Utils.minU32(uint32(_blocksToRevert.length), blocksCommitted - totalBlocksExecuted);
@@ -390,31 +406,32 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         if (totalBlocksCommitted < totalBlocksProven) {
             totalBlocksProven = totalBlocksCommitted;
         }
+        if (totalBlocksProven < totalBlocksSynchronized) {
+            totalBlocksSynchronized = totalBlocksProven;
+        }
 
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
 
-    /// @notice Get all verified chains of `commitment`
-    function getCommitmentVerifiedChains(StoredBlockInfo memory _block) external view returns (uint256 verifiedChains) {
-        verifiedChains = commitmentVerifiedChains[_block.commitment];
+    /// @notice Get synchronized progress of current chain known
+    function getSynchronizedProgress(StoredBlockInfo memory _block) public view returns (uint256 progress) {
+        progress = synchronizedChains[_block.syncHash];
         // combine the current chain if it has proven this block
         if (_block.blockNumber <= totalBlocksProven &&
             hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
-            verifiedChains |= CHAIN_ID;
+            progress |= CHAIN_ID;
         }
     }
 
-    /// @notice Check if received all commitment from other chains at the block height
-    function verifyBlocks(uint32 _blockHeight) external {
-        require(_blockHeight > latestVerifiedBlockHeight && _blockHeight <= totalBlocksProven, "Z39");
+    /// @notice Check if received all syncHash from other chains at the block height
+    function syncBlocks(StoredBlockInfo memory _block) external active onlyValidator nonReentrant {
+        uint256 progress = getSynchronizedProgress(_block);
+        require(progress == ALL_CHAINS, "Z40");
 
-        bytes32 blockHash = storedBlockHashes[_blockHeight];
-        require(blockHash > 0, "Z40");
+        uint32 blockNumber = _block.blockNumber;
+        require(blockNumber > totalBlocksSynchronized);
 
-        uint256 verifiedChains = commitmentVerifiedChains[blockHash] | CHAIN_INDEX;
-        require(verifiedChains == ALL_CHAINS, "Z41");
-
-        latestVerifiedBlockHeight = _blockHeight;
+        totalBlocksSynchronized = blockNumber;
     }
 
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
@@ -520,8 +537,8 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
             "Z36"
         );
         require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "Z37");
-        // block must complete cross chain block commitment verify before execute
-        require(_blockExecuteData.storedBlock.blockNumber <= latestVerifiedBlockHeight, "Z42");
+        // block must complete cross chain block synchronization before execute
+        require(_blockExecuteData.storedBlock.blockNumber <= totalBlocksSynchronized, "Z41");
 
         bytes memory pendingOnchainOps = new bytes(0);
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {

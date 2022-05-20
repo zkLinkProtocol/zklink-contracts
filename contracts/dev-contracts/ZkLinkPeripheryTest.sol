@@ -12,7 +12,8 @@ contract ZkLinkPeripheryTest is ZkLinkPeriphery {
     returns (
         bytes32 processableOperationsHash,
         uint64 priorityOperationsProcessed,
-        bytes memory offsetsCommitment
+        bytes memory offsetsCommitment,
+        bytes[] memory onchainOperationPubdatas
     ) {
         return collectOnchainOps(_newBlockData);
     }

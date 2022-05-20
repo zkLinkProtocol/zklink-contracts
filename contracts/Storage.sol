@@ -71,15 +71,15 @@ contract Storage is Config, IZkLink {
     /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
-    /// @dev Latest cross root hash verified block height
-    uint32 public latestVerifiedBlockHeight;
+    /// @dev Latest synchronized block height
+    uint32 public totalBlocksSynchronized;
 
-    /// @dev if `verifiedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
-    // the key is the `commitment` of `StoredBlockInfo`
-    // the value is the `verifiedChains` of `commitment` collected from all other chains
-    mapping(bytes32 => uint256) internal commitmentVerifiedChains;
+    /// @dev if `synchronizedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
+    // the key is the `syncHash` of `StoredBlockInfo`
+    // the value is the `synchronizedChains` of `syncHash` collected from all other chains
+    mapping(bytes32 => uint256) internal synchronizedChains;
 
-    event ReceiveCommitment(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains);
+    event ReceiveSynchronizationProgress(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress);
 
     function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
         return priorityRequests[idx];
@@ -89,12 +89,12 @@ contract Storage is Config, IZkLink {
         return authFacts[owner][nonce];
     }
 
-    /// @notice Combine the `verifiedChains` of the other chains of a `commitment` with self
-    function receiveCommitment(uint16 srcChainId, uint64 nonce, bytes32 commitment, uint256 verifiedChains) external {
+    /// @notice Combine the `progress` of the other chains of a `syncHash` with self
+    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external {
         address bridge = msg.sender;
         require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
 
-        commitmentVerifiedChains[commitment] = commitmentVerifiedChains[commitment] | verifiedChains;
-        emit ReceiveCommitment(bridge, srcChainId, nonce, commitment, verifiedChains);
+        synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
+        emit ReceiveSynchronizationProgress(bridge, srcChainId, nonce, syncHash, progress);
     }
 }

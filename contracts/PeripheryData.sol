@@ -16,14 +16,21 @@ contract PeripheryData {
     }
 
     /// @notice Data needed to commit new block
-    /// @dev CommitBlockInfo are the same on all chains
+    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enable
+    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enable
     struct CommitBlockInfo {
         bytes32 newStateHash;
-        bytes publicData; // contain pubdata of all chains
+        bytes publicData;
         uint256 timestamp;
-        OnchainOperationData[] onchainOperations; // contain onchain ops of all chains
+        OnchainOperationData[] onchainOperations;
         uint32 blockNumber;
         uint32 feeAccount;
+    }
+
+    struct CompressedBlockExtraInfo {
+        bytes32 publicDataHash; // pubdata hash of all chains
+        bytes32 offsetCommitmentHash; // all chains pubdata offset commitment hash
+        bytes32[] onchainOperationPubdataHashs; // onchain operation pubdata hash of the all other chains
     }
 
     /// @notice Data needed to execute committed and verified block
@@ -44,6 +51,7 @@ contract PeripheryData {
         uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
         bytes32 stateHash; // Root hash of the rollup state
         bytes32 commitment; // Verified input for the ZkLink circuit
+        bytes32 syncHash; // Used for cross chain block verify
     }
 
     /// @notice Recursive proof input data (individual commitments are constructed onchain)

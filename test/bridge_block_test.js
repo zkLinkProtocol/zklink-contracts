@@ -2,7 +2,7 @@ const { ethers, upgrades } = require("hardhat");
 const { expect } = require('chai');
 const {parseEther} = require("ethers/lib/utils");
 
-describe('Bridge commitment unit tests', function () {
+describe('Bridge ZkLink block unit tests', function () {
     let deployer,networkGovernor,alice,bob,tom;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
@@ -45,46 +45,47 @@ describe('Bridge commitment unit tests', function () {
         lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address)
     });
 
-    it('only bridge can call receiveCommitment', async () => {
+    it('only bridge can call receiveSynchronizationProgress', async () => {
         // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
-        await expect(zklinkInETH.connect(alice).receiveCommitment('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
+        await expect(zklinkInETH.connect(alice).receiveSynchronizationProgress('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
             .to.be.reverted;
     });
 
-    it('estimateCommitmentBridgeFees should success', async () => {
-        const fees = await lzBridgeInETH.estimateCommitmentBridgeFees(lzChainIdInBSC, false, "0x");
+    it('estimateZkLinkBlockBridgeFees should success', async () => {
+        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, false, "0x");
         expect(fees.nativeFee > 0);
     });
 
-    it('bridge commitment should success', async () => {
-        const commitment = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+    it('bridge ZkLink block should success', async () => {
+        const syncHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
         const storedBlock = {
             "blockNumber":11,
             "priorityOperations":7,
             "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
             "timestamp":1652422395,
             "stateHash":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
-            "commitment":commitment
+            "commitment":"0xff04d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "syncHash":syncHash,
         };
         await zklinkInETH.mockProveBlock(storedBlock);
 
-        const fees = await lzBridgeInETH.estimateCommitmentBridgeFees(lzChainIdInBSC, false, "0x");
+        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, false, "0x");
         const lzParams = {
             "dstChainId": lzChainIdInBSC,
             "refundAddress": alice.address,
             "zroPaymentAddress": ethers.constants.AddressZero,
             "adapterParams": "0x"
         }
-        await expect(lzBridgeInETH.connect(alice).bridgeCommitment(storedBlock,
+        await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(storedBlock,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklinkInBSC, "ReceiveCommitment")
-            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, commitment, 1);
+            .to.be.emit(zklinkInBSC, "ReceiveSynchronizationProgress")
+            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, syncHash, 1);
     });
 
     it('test lz receive gas cost', async () => {
-        const commitment = '0x00000000000000000000000000000000000000000000000000000000000000aa';
-        const verifiedChains = 15;
-        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [commitment,verifiedChains])
+        const syncHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
+        const syncProgress = 15;
+        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [syncHash,syncProgress])
         const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[1, payload]);
         const nonce = 1;
 
@@ -93,7 +94,7 @@ describe('Bridge commitment unit tests', function () {
             lzBridgeInETH.address,
             nonce,
             payloadWithType))
-            .to.be.emit(zklinkInETH, "ReceiveCommitment")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, commitment, verifiedChains);
+            .to.be.emit(zklinkInETH, "ReceiveSynchronizationProgress")
+            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, syncHash, syncProgress);
     });
 });

@@ -13,7 +13,7 @@ const ethConfig = {
   macro: {
     BLOCK_PERIOD: '15 seconds',
     CHAIN_ID: 1,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: true
   },
   url: "https://eth-mainnet.alchemyapi.io/v2/YOUK_API_KEY",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -23,7 +23,7 @@ const bscConfig = {
   macro: {
     BLOCK_PERIOD: '3 seconds',
     CHAIN_ID: 2,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://bsc-dataseed2.binance.org",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -33,7 +33,7 @@ const avaxConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
     CHAIN_ID: 3,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://api.avax.network/ext/bc/C/rpc",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -43,7 +43,7 @@ const polygonConfig = {
   macro: {
     BLOCK_PERIOD: '2 seconds',
     CHAIN_ID: 4,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://matic-mainnet.chainstacklabs.com",
   scan: "YOUR_ETHERSCAN_KEY"
@@ -56,7 +56,7 @@ const polygonTestConfig = {
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 1,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: true
   },
   url: "https://matic-mumbai.chainstacklabs.com",
   scan: polygonConfig.scan
@@ -68,7 +68,7 @@ const avaxTestConfig = {
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 2,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://api.avax-test.network/ext/bc/C/rpc",
   scan: avaxConfig.scan
@@ -80,7 +80,7 @@ const rinkebyConfig = {
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 3,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://eth-rinkeby.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -92,7 +92,7 @@ const goerliConfig = {
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 4,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://eth-goerli.alchemyapi.io/v2/YOUK_API_KEY",
   scan: ethConfig.scan
@@ -104,7 +104,7 @@ const bscTestConfig = {
     UPGRADE_NOTICE_PERIOD: 0,
     PRIORITY_EXPIRATION: 0,
     CHAIN_ID: 5,
-    ALL_CHAINS: 15
+    ENABLE_COMMIT_COMPRESSED_BLOCK: false
   },
   url: "https://data-seed-prebsc-1-s1.binance.org:8545",
   scan: bscConfig.scan
