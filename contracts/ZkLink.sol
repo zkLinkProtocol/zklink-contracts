@@ -429,7 +429,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
         require(progress == ALL_CHAINS, "Z40");
 
         uint32 blockNumber = _block.blockNumber;
-        require(blockNumber > totalBlocksSynchronized);
+        require(blockNumber > totalBlocksSynchronized, "Z42");
 
         totalBlocksSynchronized = blockNumber;
     }
@@ -455,7 +455,7 @@ contract ZkLink is ReentrancyGuard, Storage, PeripheryData, Events, UpgradeableM
 
         // overflow is impossible
         totalBlocksExecuted += nBlocks;
-        require(totalBlocksExecuted <= totalBlocksProven, "Z29");
+        require(totalBlocksExecuted <= totalBlocksSynchronized, "Z29");
 
         emit BlockExecuted(_blocksData[nBlocks-1].storedBlock.blockNumber);
     }

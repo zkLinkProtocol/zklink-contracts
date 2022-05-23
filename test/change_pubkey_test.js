@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
-const { deploy, getChangePubkeyPubdata, paddingChunk } = require('./utils');
+const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER } = require('./utils');
 
 describe('ZkLink change pubkey unit tests', function () {
     let zkLink, periphery, alice;
@@ -60,7 +60,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.collectOnchainOpsTest(commitBlockInfo);
+        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');
@@ -71,11 +71,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const accountId = 15;
         const pubdata = getChangePubkeyPubdata({chainId:1, accountId, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
-        const sigMsg = ethers.utils.solidityPack(
-            ["bytes20","uint32","uint32","bytes32"],
-            [pubKeyHash,nonce,accountId,'0x0000000000000000000000000000000000000000000000000000000000000000']);
-        const signature = await alice.signMessage(ethers.utils.arrayify(sigMsg));
-        const ethWitness = ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
+        const ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,alice);
         const onchainOperations = [{
             "ethWitness":ethWitness,
             "publicDataOffset":0
@@ -88,7 +84,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.collectOnchainOpsTest(commitBlockInfo);
+        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');
@@ -118,7 +114,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.collectOnchainOpsTest(commitBlockInfo);
+        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');

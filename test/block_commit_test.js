@@ -1,0 +1,403 @@
+const { expect } = require('chai');
+const { deploy,
+    paddingChunk,
+    getDepositPubdata,
+    writeDepositPubdata,
+    getChangePubkeyPubdata,
+    getWithdrawPubdata,
+    getFullExitPubdata,
+    writeFullExitPubdata,
+    getForcedExitPubdata,
+    mockTransferPubdata,
+    mockNoopPubdata,
+    createEthWitnessOfECRECOVER,
+    OP_DEPOSIT,
+    OP_FULL_EXIT,
+    CHUNK_BYTES,
+    MIN_CHAIN_ID,
+    MAX_CHAIN_ID,
+    CHAIN_ID,
+    COMMIT_TIMESTAMP_NOT_OLDER,
+    COMMIT_TIMESTAMP_APPROXIMATION_DELTA
+} = require('./utils');
+const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("ethers/lib/utils");
+
+describe('Block commit unit tests', function () {
+    let deployedInfo;
+    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governance, governor, verifier;
+    let commitBlockTemplate;
+    before(async () => {
+        deployedInfo = await deploy();
+        zkLink = deployedInfo.zkLink;
+        periphery = deployedInfo.periphery;
+        ethId = deployedInfo.eth.tokenId;
+        token2 = deployedInfo.token2.contract;
+        token2Id = deployedInfo.token2.tokenId;
+        token3 = deployedInfo.token3.contract;
+        token3Id = deployedInfo.token3.tokenId;
+        defaultSender = deployedInfo.defaultSender;
+        alice = deployedInfo.alice;
+        bob = deployedInfo.bob;
+        governance = deployedInfo.governance;
+        governor = deployedInfo.governor;
+        verifier = deployedInfo.verifier;
+
+        commitBlockTemplate = {
+            newStateHash:"0xbb66ffc06a476f05a218f6789ca8946e4f0cf29f1efc2e4d0f9a8e70f0326313",
+            publicData:"0x",
+            timestamp:1652422395,
+            onchainOperations:[],
+            blockNumber:10,
+            feeAccount:0
+        };
+    });
+
+    function createOffsetCommitment(opPadding, isOnchainOp) {
+        const chunkSize = arrayify(opPadding).length / CHUNK_BYTES;
+        const offsetCommitment = [];
+        offsetCommitment[0] = isOnchainOp ? '0x01' : '0x00';
+        for ( let i = 1; i < chunkSize; i++) {
+            offsetCommitment[i] = '0x00';
+        }
+        return hexlify(concat(offsetCommitment));
+    }
+
+    async function buildTestBlock () {
+        const block = Object.assign({}, commitBlockTemplate);
+        const pubdatas = [];
+        const ops = [];
+        const opsOfChain1 = [];
+        // no op of chain 2
+        const pubdatasOfChain1 = [];
+        const pubdatasOfChain3 = [];
+        const pubdatasOfChain4 = [];
+        let publicDataOffset = 0;
+        let publicDataOffsetOfChain1 = 0;
+        let priorityOperationsProcessed = 0;
+        let processableOps = [];
+        let offsetsCommitment = [];
+
+        // deposit of current chain
+        let op = getDepositPubdata({chainId:CHAIN_ID,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+        let opOfWrite = writeDepositPubdata({chainId:CHAIN_ID,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+        await zkLink.testAddPriorityRequest(OP_DEPOSIT, opOfWrite);
+        let opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain1.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
+        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffsetOfChain1 += arrayify(opPadding).length;
+        priorityOperationsProcessed++;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // change pubkey of chain 3
+        op = getChangePubkeyPubdata({chainId:3,accountId:2,pubKeyHash:'0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',owner:alice.address,nonce:32,tokenId:token2Id,fee:145});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain3.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // transfer of chain 4
+        op = mockTransferPubdata({from:alice.address,to:alice.address,token:ethId,amount:parseEther("12.45")});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, false));
+
+        // change pubkey of current chain
+        op = getChangePubkeyPubdata({chainId:CHAIN_ID,accountId:2,pubKeyHash:'0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',owner:alice.address,nonce:32,tokenId:token2Id,fee:145});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain1.push(opPadding);
+        let ethWitness = await createEthWitnessOfECRECOVER('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',32,2,alice);
+        ops.push({ethWitness,publicDataOffset});
+        opsOfChain1.push({ethWitness,publicDataOffset:publicDataOffsetOfChain1});
+        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffsetOfChain1 += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // deposit of chain4
+        op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token3Id,amount:parseEther("0.345"),owner:bob.address});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain4.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // full exit of chain4
+        op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:bob.address,tokenId:token3Id,amount:parseEther("24.5")});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain4.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // mock Noop
+        op = mockNoopPubdata();
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, false));
+
+        // force exit of chain3
+        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain3.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // withdraw of current chain
+        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,amount:900,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain1.push(opPadding);
+        processableOps.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
+        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffsetOfChain1 += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // full exit of current chain
+        op = getFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId,amount:parseEther("14")});
+        opOfWrite = writeFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId})
+        await zkLink.testAddPriorityRequest(OP_FULL_EXIT, opOfWrite);
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain1.push(opPadding);
+        processableOps.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
+        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffsetOfChain1 += arrayify(opPadding).length;
+        priorityOperationsProcessed++;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // force exit of current chain
+        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain1.push(opPadding);
+        processableOps.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
+        publicDataOffset += arrayify(opPadding).length;
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        // withdraw of chain4
+        op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,amount:1000,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
+        opPadding = paddingChunk(op);
+        pubdatas.push(opPadding);
+        pubdatasOfChain4.push(opPadding);
+        ops.push({ethWitness:"0x",publicDataOffset});
+        offsetsCommitment.push(createOffsetCommitment(opPadding, true));
+
+        block.publicData = hexlify(concat(pubdatas));
+        block.onchainOperations = ops;
+        const expected = {
+            processableOperations:concat(processableOps),
+            priorityOperationsProcessed,
+            offsetsCommitment:hexlify(concat(offsetsCommitment)),
+            onchainOperationPubdatas:["0x",hexlify(concat(pubdatasOfChain1)),"0x",hexlify(concat(pubdatasOfChain3)),hexlify(concat(pubdatasOfChain4))]
+        }
+        return {block, expected, opsOfChain1};
+    }
+
+    describe('Collect onchain ops', function () {
+        it('invalid pubdata length should be failed', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            block.publicData = "0x01"; // 1 bytes
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP4");
+
+            block.publicData = "0x01010101010101010101010101"; // 13 bytes
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP4");
+        });
+
+        async function collectOnchainOps(block, expected) {
+            const actual = await periphery.testCollectOnchainOps(block);
+            expect(actual.processableOperationsHash).eq(keccak256(expected.processableOperations));
+            expect(actual.priorityOperationsProcessed).eq(expected.priorityOperationsProcessed);
+            expect(actual.offsetsCommitment).eq(expected.offsetsCommitment);
+            expect(actual.onchainOperationPubdatas).eql(expected.onchainOperationPubdatas);
+        }
+
+        it('no pubdata should be success', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            block.publicData = "0x";
+            const expected = {
+                processableOperations:"0x",
+                priorityOperationsProcessed:0,
+                offsetsCommitment:"0x",
+                onchainOperationPubdatas:["0x","0x","0x","0x","0x"]
+            }
+            await collectOnchainOps(block, expected);
+        });
+
+        it('invalid pubdata offset should be failed', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            block.publicData = paddingChunk("0x00"); // Noop
+            block.onchainOperations = [{
+                ethWitness:"0x",
+                publicDataOffset:arrayify(block.publicData).length
+            }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP5");
+
+            block.onchainOperations = [{
+                ethWitness:"0x",
+                publicDataOffset:1
+            }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP6");
+
+            block.onchainOperations = [{
+                ethWitness:"0x",
+                publicDataOffset:CHUNK_BYTES-1
+            }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP6");
+        });
+
+        it('invalid op type should be failed', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            block.publicData = paddingChunk("0x00"); // Noop
+            block.onchainOperations = [{
+                ethWitness:"0x",
+                publicDataOffset:0
+            }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP26");
+        });
+
+        it('invalid chain id should be failed', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            let depositData = getDepositPubdata({chainId:MIN_CHAIN_ID-1,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+            block.publicData = paddingChunk(depositData);
+            block.onchainOperations = [{
+                ethWitness:"0x",
+                publicDataOffset:0
+            }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP27");
+
+            depositData = getDepositPubdata({chainId:MAX_CHAIN_ID+1,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+            block.publicData = paddingChunk(depositData);
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP27");
+        });
+
+        it('duplicate pubdata offset should be failed', async () => {
+            const block = Object.assign({}, commitBlockTemplate);
+            const depositData0 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address}));
+            const depositData1 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address}));
+            block.publicData = hexlify(concat([depositData0, depositData1]));
+            block.onchainOperations = [
+                {
+                    ethWitness:"0x",
+                    publicDataOffset:0
+                },
+                {
+                    ethWitness:"0x",
+                    publicDataOffset:0
+                }];
+            await expect(periphery.testCollectOnchainOps(block))
+                .to.be.revertedWith("ZP7");
+        });
+
+        it('pubdata of all chains should be success', async () => {
+            const testBlockInfo = await buildTestBlock();
+            const block = testBlockInfo.block;
+            const expected = testBlockInfo.expected;
+            await collectOnchainOps(block, expected);
+        });
+    });
+
+    describe('Commit one block', function () {
+        const preBlock = {
+            blockNumber:10,
+            priorityOperations:0,
+            pendingOnchainOperationsHash:"0x0000000000000000000000000000000000000000000000000000000000000001",
+            timestamp:1652422395,
+            stateHash:"0x0000000000000000000000000000000000000000000000000000000000000002",
+            commitment:"0x0000000000000000000000000000000000000000000000000000000000000003",
+            syncHash:"0x0000000000000000000000000000000000000000000000000000000000000004"
+        }
+        const commitBlock = {
+            newStateHash:"0x0000000000000000000000000000000000000000000000000000000000000005",
+            publicData:"0x",
+            timestamp:1652422395,
+            onchainOperations:[],
+            blockNumber:11,
+            feeAccount:0
+        };
+        const extraBlock = {
+            publicDataHash:"0x0000000000000000000000000000000000000000000000000000000000000000",
+            offsetCommitmentHash:"0x0000000000000000000000000000000000000000000000000000000000000000",
+            onchainOperationPubdataHashs:[]
+        }
+
+        it('invalid block number should be failed', async () => {
+            commitBlock.blockNumber = 12;
+            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
+                .to.be.revertedWith("ZP1");
+        });
+
+        it('invalid block timestamp should be failed', async () => {
+            commitBlock.blockNumber = 11;
+            const l1Block = await zkLink.provider.getBlock('latest');
+            preBlock.timestamp = l1Block.timestamp;
+            commitBlock.timestamp = preBlock.timestamp - 1;
+            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
+                .to.be.revertedWith("ZP2");
+
+            commitBlock.timestamp = l1Block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER - 1;
+            preBlock.timestamp = commitBlock.timestamp - 1;
+            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
+                .to.be.revertedWith("ZP3");
+
+            commitBlock.timestamp = l1Block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA + 1;
+            preBlock.timestamp = commitBlock.timestamp - 1;
+            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
+                .to.be.revertedWith("ZP3");
+        });
+
+        it('commit compressed block should return a result same as full block', async () => {
+            const l1Block = await zkLink.provider.getBlock('latest');
+            preBlock.timestamp = l1Block.timestamp;
+            commitBlock.timestamp = preBlock.timestamp + 1;
+
+            const testBlockInfo = await buildTestBlock();
+            const fullBlock = testBlockInfo.block;
+            const expected = testBlockInfo.expected;
+            const opsOfChain1 = testBlockInfo.opsOfChain1;
+
+            commitBlock.publicData = fullBlock.publicData;
+            commitBlock.onchainOperations = fullBlock.onchainOperations;
+
+            const r0 = await zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock);
+
+            const compressedBlock = Object.assign({}, commitBlock);
+            compressedBlock.publicData = expected.onchainOperationPubdatas[CHAIN_ID];
+            compressedBlock.onchainOperations = opsOfChain1;
+
+            extraBlock.publicDataHash = sha256(arrayify(commitBlock.publicData));
+            extraBlock.offsetCommitmentHash = sha256(arrayify(expected.offsetsCommitment));
+            for (let i = 0; i < expected.onchainOperationPubdatas.length; i++) {
+                const hash = keccak256(arrayify(expected.onchainOperationPubdatas[i]));
+                extraBlock.onchainOperationPubdataHashs.push(hash);
+            }
+            const r1 = await zkLink.testCommitOneBlock(preBlock, compressedBlock, true, extraBlock);
+
+            expect(r1).to.eql(r0);
+        });
+    });
+});

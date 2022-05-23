@@ -1,40 +1,67 @@
 const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
+const OP_NOOP = 0;
+const OP_DEPOSIT = 1;
+const OP_WITHDRAW = 3;
+const OP_TRANSFER = 4;
+const OP_FULL_EXIT = 5;
+const OP_CHANGE_PUBKEY = 6;
+const OP_FORCE_EXIT = 7;
+const CHUNK_BYTES = 14;
+const MIN_CHAIN_ID = 1;
+const MAX_CHAIN_ID = 4;
+const CHAIN_ID = 1; // chain id of UnitTest env
+const COMMIT_TIMESTAMP_NOT_OLDER = 86400; // 24 hours
+const COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 900; // 15 minutes
+
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
-        [1,chainId,accountId,subAccountId,tokenId,amount,owner]);
+        [OP_DEPOSIT,chainId,accountId,subAccountId,tokenId,amount,owner]);
 }
 
 function writeDepositPubdata({ chainId, subAccountId, tokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
-        [1,chainId,0,subAccountId,tokenId,amount,owner]);
+        [OP_DEPOSIT,chainId,0,subAccountId,tokenId,amount,owner]);
 }
 
 function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","uint16","address","uint32","uint16"],
-        [3,chainId,accountId,subAccountId,tokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
+        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
 }
 
 function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, amount}) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint128"],
-        [5,chainId,accountId,subAccountId,owner,tokenId,amount]);
+        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,amount]);
+}
+
+function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId}) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint128"],
+        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,0]);
 }
 
 function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, amount, fee, target }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint128","uint16","address"],
-        [7,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,amount,fee,target]);
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,amount,fee,target]);
 }
 
 function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, tokenId, fee}) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","bytes20","address","uint32","uint16","uint16"],
-        [6,chainId,accountId,pubKeyHash,owner,nonce,tokenId,fee]);
+        [OP_CHANGE_PUBKEY,chainId,accountId,pubKeyHash,owner,nonce,tokenId,fee]);
+}
+
+function mockTransferPubdata({from, to, token, amount}) {
+    return ethers.utils.solidityPack(["uint8","address","address","uint16","uint128"],
+        [OP_TRANSFER,from,to,token,amount]);
+}
+
+function mockNoopPubdata() {
+    return ethers.utils.solidityPack(["uint8"], [OP_NOOP]);
 }
 
 function paddingChunk(pubdata) {
     const pubdataArray = ethers.utils.arrayify(pubdata);
-    const chunkSize = 14;
-    const zeroPaddingNum = chunkSize - pubdataArray.length % chunkSize;
+    const zeroPaddingNum = CHUNK_BYTES - pubdataArray.length % CHUNK_BYTES;
     const zeroArray = new Uint8Array(zeroPaddingNum);
     const pubdataPaddingArray = ethers.utils.concat([pubdataArray, zeroArray]);
     return ethers.utils.hexlify(pubdataPaddingArray);
@@ -127,15 +154,38 @@ function hashBytesToBytes20(pubData) {
     return ethers.utils.hexlify(ethers.utils.arrayify(ethers.utils.keccak256(pubData)).slice(12));
 }
 
+async function createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,owner) {
+    const sigMsg = ethers.utils.solidityPack(
+        ["bytes20","uint32","uint32","bytes32"],
+        [pubKeyHash,nonce,accountId,'0x0000000000000000000000000000000000000000000000000000000000000000']);
+    const signature = await owner.signMessage(ethers.utils.arrayify(sigMsg));
+    return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
+}
+
 module.exports = {
     getDepositPubdata,
     writeDepositPubdata,
     getWithdrawPubdata,
     getFullExitPubdata,
+    writeFullExitPubdata,
     getForcedExitPubdata,
     getChangePubkeyPubdata,
+    mockTransferPubdata,
+    mockNoopPubdata,
     paddingChunk,
     calFee,
     deploy,
-    hashBytesToBytes20
+    hashBytesToBytes20,
+    createEthWitnessOfECRECOVER,
+    OP_DEPOSIT,
+    OP_WITHDRAW,
+    OP_FULL_EXIT,
+    OP_FORCE_EXIT,
+    OP_CHANGE_PUBKEY,
+    CHUNK_BYTES,
+    MIN_CHAIN_ID,
+    MAX_CHAIN_ID,
+    CHAIN_ID,
+    COMMIT_TIMESTAMP_NOT_OLDER,
+    COMMIT_TIMESTAMP_APPROXIMATION_DELTA
 };

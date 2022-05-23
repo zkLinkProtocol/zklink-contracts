@@ -8,7 +8,7 @@ import "../ZkLinkPeriphery.sol";
 
 contract ZkLinkPeripheryTest is ZkLinkPeriphery {
 
-    function collectOnchainOpsTest(CommitBlockInfo memory _newBlockData) external view
+    function testCollectOnchainOps(CommitBlockInfo memory _newBlockData) external view
     returns (
         bytes32 processableOperationsHash,
         uint64 priorityOperationsProcessed,

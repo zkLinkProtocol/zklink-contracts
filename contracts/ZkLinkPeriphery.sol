@@ -91,7 +91,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, _compressed, _newBlockExtra, onchainOpsOffsetCommitment);
 
         // Create synchronization hash for cross chain block verify
-        bytes32 syncHash = createSyncHash(commitment, onchainOperationPubdatas, _compressed, _newBlockExtra);
+        bytes32 syncHash = createSyncHash(commitment, onchainOperationPubdatas, _compressed, _newBlockExtra.onchainOperationPubdataHashs);
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
@@ -183,6 +183,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         uint8 chainId = uint8(pubData[chainIdOffset]);
         require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "ZP27");
         // revert if invalid chain id exist
+        // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
         uint256 chainIndex = 1 << chainId - 1;
         require(chainIndex & ALL_CHAINS == chainIndex, "ZP28");
         return chainId;
@@ -238,17 +239,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
     }
 
     /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(bytes32 commitment, bytes[] memory onchainOperationPubdatas, bool compressed, CompressedBlockExtraInfo memory _newBlockData)
+    function createSyncHash(bytes32 commitment, bytes[] memory onchainOperationPubdatas, bool compressed, bytes32[] memory onchainOperationPubdataHashs)
         internal pure returns (bytes32 syncHash) {
         bytes memory hashData = abi.encodePacked(commitment);
         for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; i++) {
             bytes32 hash;
             // current chain pubdata hash always need to calculate from pubdata
             if (i == CHAIN_ID || !compressed) {
-                bytes memory data = onchainOperationPubdatas[i];
-                hash = keccak256(data);
+                hash = keccak256(onchainOperationPubdatas[i]);
             } else {
-                hash = _newBlockData.onchainOperationPubdataHashs[i];
+                hash = onchainOperationPubdataHashs[i];
             }
             hashData = abi.encodePacked(hashData, hash);
         }

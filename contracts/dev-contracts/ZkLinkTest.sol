@@ -49,4 +49,12 @@ contract ZkLinkTest is ZkLink {
     function executeWithdrawTest(Operations.Withdraw memory op) external {
         executeWithdraw(op);
     }
+
+    function testAddPriorityRequest(Operations.OpType _opType, bytes memory _pubData) external {
+        addPriorityRequest(_opType, _pubData);
+    }
+
+    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) external view returns (StoredBlockInfo memory storedNewBlock) {
+        return periphery.commitOneBlock(_previousBlock, _newBlock, _compressed, _newBlockExtra);
+    }
 }
