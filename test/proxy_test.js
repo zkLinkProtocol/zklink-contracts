@@ -1,6 +1,8 @@
 const hardhat = require('hardhat');
 const constants = hardhat.ethers.constants;
 const { expect } = require('chai');
+const {defaultAbiCoder} = require("ethers/lib/utils");
+
 
 describe('Proxy unit tests', function () {
     let testContract;
@@ -40,5 +42,12 @@ describe('Proxy unit tests', function () {
         const dummySecond = await dummyFactory.deploy();
         await testContract.connect(alice).upgradeTarget(dummySecond.address, [3,4]);
         expect(await dummyProxy.get_DUMMY_INDEX()).to.equal(2);
+    });
+
+    it('call upgrade from zklink itself should fail', async () => {
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+        const zkLink = await zkLinkFactory.deploy();
+        const p1 = defaultAbiCoder.encode(["address","address"],[alice.address, bob.address]);
+        await expect(zkLink.upgrade(p1)).to.be.revertedWith("2");
     });
 });

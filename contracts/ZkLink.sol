@@ -96,7 +96,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
-    function upgrade(bytes calldata upgradeParameters) external nonReentrant onlyDelegateCall {
+    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {
         (address _verifier, address _periphery) = abi.decode(upgradeParameters, (address, address));
         verifier = _verifier;
         periphery = _periphery;
