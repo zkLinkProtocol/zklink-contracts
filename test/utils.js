@@ -14,6 +14,8 @@ const MAX_CHAIN_ID = 4;
 const CHAIN_ID = 1; // chain id of UnitTest env
 const COMMIT_TIMESTAMP_NOT_OLDER = 86400; // 24 hours
 const COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 900; // 15 minutes
+const EMPTY_STRING_KECCAK = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
+const GENESIS_ROOT = "0x209d742ecb062db488d20e7f8968a40673d718b24900ede8035e05a78351d956";
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
@@ -111,6 +113,9 @@ async function deploy() {
     const peripheryProxy = peripheryFactory.attach(log.args.periphery);
     const upgradeGatekeeper = log.args.upgradeGatekeeper;
 
+    // add validator
+    await governanceProxy.connect(governor).setValidator(validator.address, true);
+
     // add some tokens
     const ethId = 1;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
@@ -187,5 +192,7 @@ module.exports = {
     MAX_CHAIN_ID,
     CHAIN_ID,
     COMMIT_TIMESTAMP_NOT_OLDER,
-    COMMIT_TIMESTAMP_APPROXIMATION_DELTA
+    COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
+    EMPTY_STRING_KECCAK,
+    GENESIS_ROOT
 };
