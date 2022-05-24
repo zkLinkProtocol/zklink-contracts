@@ -14,34 +14,34 @@ describe('ZkLink change pubkey unit tests', function () {
 
     it('set auth pubkey should be success', async () => {
         const pubkeyHashInvalidLength = '0xfefefefefefefefefefefefefefefefefefefe';
-        await expect(zkLink.connect(alice).setAuthPubkeyHash(pubkeyHashInvalidLength, nonce))
-            .to.be.revertedWith('Z18');
+        await expect(periphery.connect(alice).setAuthPubkeyHash(pubkeyHashInvalidLength, nonce))
+            .to.be.revertedWith('B0');
 
         const pubkeyHash = '0xfefefefefefefefefefefefefefefefefefefefe';
-        await zkLink.connect(alice).setAuthPubkeyHash(pubkeyHash, nonce);
+        await periphery.connect(alice).setAuthPubkeyHash(pubkeyHash, nonce);
 
         const expectedAuthFact = ethers.utils.keccak256(pubkeyHash);
-        expect(await zkLink.getAuthFact(alice.address, nonce)).to.eq(expectedAuthFact);
+        expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(expectedAuthFact);
     });
 
     it('reset auth pubkey should be success', async () => {
         const newPubkeyHash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
-        const oldHash = await zkLink.getAuthFact(alice.address, nonce);
+        const oldHash = await periphery.getAuthFact(alice.address, nonce);
         // reset time count down begin
-        await zkLink.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
-        expect(await zkLink.getAuthFact(alice.address, nonce)).to.eq(oldHash);
+        await periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
+        expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(oldHash);
 
         // must wait 24 hours
         const latestBlock = await zkLink.provider.getBlock('latest');
         const resetTimestampTooEarly = latestBlock.timestamp + 23 * 60 * 60;
         await zkLink.provider.send('evm_setNextBlockTimestamp', [resetTimestampTooEarly]);
-        await expect(zkLink.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce)).to.be.revertedWith("Z19");
+        await expect(periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce)).to.be.revertedWith("B1");
 
         const resetTimestamp = latestBlock.timestamp + 24 * 60 * 60;
         await zkLink.provider.send('evm_setNextBlockTimestamp', [resetTimestamp]);
-        await zkLink.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
-        expect(await zkLink.getAuthFact(alice.address, nonce)).to.eq(ethers.utils.keccak256(newPubkeyHash));
+        await periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
+        expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(ethers.utils.keccak256(newPubkeyHash));
     });
 
     it('verify onchain pubkey should be success', async () => {
@@ -60,7 +60,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
+        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');
@@ -84,7 +84,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
+        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');
@@ -114,7 +114,7 @@ describe('ZkLink change pubkey unit tests', function () {
             "blockNumber":1,
             "feeAccount":0
         };
-        const result = await periphery.testCollectOnchainOps(commitBlockInfo);
+        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x01000000');

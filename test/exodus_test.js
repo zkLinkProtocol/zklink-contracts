@@ -4,11 +4,12 @@ const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink exodus unit tests', function () {
     let deployedInfo;
-    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governance, governor, verifier;
+    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governance, governor, verifier;
     let storedBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
         zkLink = deployedInfo.zkLink;
+        periphery = deployedInfo.periphery;
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
@@ -38,17 +39,17 @@ describe('ZkLink exodus unit tests', function () {
         const tokenId = 58;
         const amount = parseEther("1.56");
         const proof = [3,0,9,5];
-        await expect(zkLink.connect(defaultSender).performExodus(storedBlockTemplate,
+        await expect(verifier.connect(defaultSender).performExodus(storedBlockTemplate,
             owner,
             accountId,
             subAccountId,
             tokenId,
             amount,
             proof))
-            .to.be.revertedWith("Z1");
+            .to.be.revertedWith("1");
 
-        await expect(zkLink.connect(defaultSender).cancelOutstandingDepositsForExodusMode(3, []))
-            .to.be.revertedWith("Z1");
+        await expect(periphery.connect(defaultSender).cancelOutstandingDepositsForExodusMode(3, []))
+            .to.be.revertedWith("1");
     });
 
     it('active exodus should success', async () => {
@@ -57,8 +58,8 @@ describe('ZkLink exodus unit tests', function () {
         const amount = parseEther("1");
         await zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount});
         await zkLink.connect(defaultSender).setPriorityExpirationBlock(0, 1);
-        await expect(zkLink.connect(defaultSender).activateExodusMode()).to.be.emit(zkLink, "ExodusMode");
-        await expect(zkLink.connect(defaultSender).activateExodusMode()).to.be.revertedWith("Z0");
+        await expect(periphery.connect(defaultSender).activateExodusMode()).to.be.emit(zkLink, "ExodusMode");
+        await expect(periphery.connect(defaultSender).activateExodusMode()).to.be.revertedWith("0");
     });
 
     it('performExodus should success', async () => {
@@ -76,29 +77,29 @@ describe('ZkLink exodus unit tests', function () {
         const proof = [3,0,9,5];
 
         // not the last executed block
-        await expect(zkLink.connect(defaultSender).performExodus(block5,
+        await expect(verifier.connect(defaultSender).performExodus(block5,
             owner,
             accountId,
             subAccountId,
             tokenId,
             amount,
             proof))
-            .to.be.revertedWith("Z7");
+            .to.be.revertedWith("y1");
 
         // verify failed
         await verifier.setVerifyResult(false);
-        await expect(zkLink.connect(defaultSender).performExodus(block6,
+        await expect(verifier.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
             tokenId,
             amount,
             proof))
-            .to.be.revertedWith("Z8");
+            .to.be.revertedWith("y2");
 
         // pending balance should increase if success
         await verifier.setVerifyResult(true);
-        await expect(zkLink.connect(defaultSender).performExodus(block6,
+        await expect(verifier.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
@@ -107,22 +108,22 @@ describe('ZkLink exodus unit tests', function () {
             proof))
             .to.be.emit(zkLink, "WithdrawalPending")
             .withArgs(tokenId, owner, amount);
-        expect(await zkLink.getPendingBalance(owner, tokenId)).to.be.eq(amount);
+        expect(await periphery.getPendingBalance(owner, tokenId)).to.be.eq(amount);
 
         // duplicate perform should be failed
-        await expect(zkLink.connect(defaultSender).performExodus(block6,
+        await expect(verifier.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
             tokenId,
             amount,
             proof))
-            .to.be.revertedWith("Z6");
+            .to.be.revertedWith("y0");
 
         // diff subAccount should success
         const subAccountId1 = 3;
         const amount1 = parseEther("0.5");
-        await expect(zkLink.connect(defaultSender).performExodus(block6,
+        await expect(verifier.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId1,
@@ -131,13 +132,13 @@ describe('ZkLink exodus unit tests', function () {
             proof))
             .to.be.emit(zkLink, "WithdrawalPending")
             .withArgs(tokenId, owner, amount1);
-        expect(await zkLink.getPendingBalance(owner, tokenId)).to.be.eq(amount.add(amount1));
+        expect(await periphery.getPendingBalance(owner, tokenId)).to.be.eq(amount.add(amount1));
     });
 
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
         // there should be priority requests exist
-        await zkLink.setTotalOpenPriorityRequests(0);
-        await expect(zkLink.cancelOutstandingDepositsForExodusMode(3, [])).to.be.revertedWith("Z9");
+        await periphery.setTotalOpenPriorityRequests(0);
+        await expect(periphery.cancelOutstandingDepositsForExodusMode(3, [])).to.be.revertedWith("A0");
 
         await zkLink.setExodus(false);
         await token2.connect(defaultSender).mint(parseEther("1000"));
@@ -153,8 +154,8 @@ describe('ZkLink exodus unit tests', function () {
         const pubdata0 = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, amount:amount0, owner:defaultSender.address });
         const pubdata1 = writeDepositPubdata({ chainId:1, subAccountId:1, tokenId:token2Id, amount:amount1, owner:alice.address });
 
-        await zkLink.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
-        expect(await zkLink.getPendingBalance(defaultSender.address, token2Id)).to.be.eq(amount0);
-        expect(await zkLink.getPendingBalance(alice.address, token2Id)).to.be.eq(amount1);
+        await periphery.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
+        expect(await periphery.getPendingBalance(defaultSender.address, token2Id)).to.be.eq(amount0);
+        expect(await periphery.getPendingBalance(alice.address, token2Id)).to.be.eq(amount1);
     });
 });

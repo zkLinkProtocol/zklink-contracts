@@ -16,7 +16,7 @@ describe('Bridge ZkLink block unit tests', function () {
         await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
         await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
-        const zklinkFactory = await ethers.getContractFactory('ZkLinkTest');
+        const zklinkFactory = await ethers.getContractFactory('ZkLinkPeripheryTest');
         zklinkInETH = await zklinkFactory.deploy();
         await zklinkInETH.setGov(govInETH.address);
         zklinkInBSC = await zklinkFactory.deploy();

@@ -14,6 +14,9 @@ interface Events {
     /// @notice Event emitted when a block is executed
     event BlockExecuted(uint32 indexed blockNumber);
 
+    /// @notice Event emmitted when receive cross chain block sync progress from bridge
+    event ReceiveSynchronizationProgress(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress);
+
     /// @notice Event emitted when user funds are withdrawn from the zkLink state and contract
     event Withdrawal(uint16 indexed tokenId, uint128 amount);
 
@@ -37,6 +40,12 @@ interface Events {
         bytes pubData,
         uint256 expirationBlock
     );
+
+    /// @notice Event emitted when accepter accept a fast withdraw
+    event Accept(address indexed accepter, uint32 indexed accountId, address receiver, uint16 tokenId, uint128 amountSent, uint128 amountReceive);
+
+    /// @notice Event emitted when set broker allowance
+    event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
 }
 
 /// @title Upgrade events

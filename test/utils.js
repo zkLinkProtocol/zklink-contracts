@@ -1,4 +1,5 @@
 const hardhat = require("hardhat");
+const {keccak256, solidityPack} = require("ethers/lib/utils");
 const ethers = hardhat.ethers;
 
 const OP_NOOP = 0;
@@ -91,26 +92,24 @@ async function deploy() {
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
     const zkLink = await zkLinkFactory.deploy();
 
-    const genesisRoot = hardhat.ethers.utils.arrayify("0x209d742ecb062db488d20e7f8968a40673d718b24900ede8035e05a78351d956");
+    const genesisRoot = hardhat.ethers.utils.arrayify(GENESIS_ROOT);
 
     // deployer
     const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
     const deployer = await deployerFactory.deploy(
         governance.address,
+        zkLink.address,
         verifier.address,
         periphery.address,
-        zkLink.address,
         genesisRoot,
         validator.address,
         governor.address,
         feeAccount.address
     );
     const txr = await deployer.deployTransaction.wait();
-    const log = deployer.interface.parseLog(txr.logs[4]);
+    const log = deployer.interface.parseLog(txr.logs[2]);
     const governanceProxy = governanceFactory.attach(log.args.governance);
     const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
-    const verifierProxy = verifierFactory.attach(log.args.verifier);
-    const peripheryProxy = peripheryFactory.attach(log.args.periphery);
     const upgradeGatekeeper = log.args.upgradeGatekeeper;
 
     // add validator
@@ -132,8 +131,8 @@ async function deploy() {
     return {
         governance: governanceProxy,
         zkLink: zkLinkProxy,
-        verifier: verifierProxy,
-        periphery: peripheryProxy,
+        periphery: peripheryFactory.attach(zkLinkProxy.address),
+        verifier: verifierFactory.attach(zkLinkProxy.address),
         upgradeGatekeeper: upgradeGatekeeper,
         governor: governor,
         validator: validator,
@@ -167,6 +166,10 @@ async function createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,owner) {
     return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
 }
 
+function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce) {
+    return  keccak256(solidityPack(["address","uint16","uint128","uint16","uint32"], [receiver, tokenId, amount, withdrawFeeRate, nonce]));
+}
+
 module.exports = {
     getDepositPubdata,
     writeDepositPubdata,
@@ -182,6 +185,7 @@ module.exports = {
     deploy,
     hashBytesToBytes20,
     createEthWitnessOfECRECOVER,
+    calAcceptHash,
     OP_DEPOSIT,
     OP_WITHDRAW,
     OP_FULL_EXIT,

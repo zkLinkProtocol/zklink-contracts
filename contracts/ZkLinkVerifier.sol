@@ -4,18 +4,14 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../zksync/KeysWithPlonkVerifier.sol";
-import "../zksync/ReentrancyGuard.sol";
-import "../zksync/Events.sol";
-import "../Storage.sol";
+import "./zksync/KeysWithPlonkVerifier.sol";
+import "./zksync/ReentrancyGuard.sol";
+import "./zksync/Events.sol";
+import "./Storage.sol";
 
-contract VerifierMock is ReentrancyGuard, Storage, Events {
-
-    bool public verifyResult;
-
-    function setVerifyResult(bool r) external {
-        verifyResult = r;
-    }
+/// @title ZkLink verifier contract
+/// @author zk.link
+contract ZkLinkVerifier is ReentrancyGuard, Storage, Events, KeysWithPlonkVerifier, KeysWithPlonkVerifierOld {
 
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
     struct ProofInput {
@@ -89,25 +85,47 @@ contract VerifierMock is ReentrancyGuard, Storage, Events {
     }
 
     function verifyAggregatedBlockProof(
-        uint256[] memory,
-        uint256[] memory,
-        uint8[] memory,
-        uint256[] memory,
-        uint256[16] memory
+        uint256[] memory _recursiveInput,
+        uint256[] memory _proof,
+        uint8[] memory _vkIndexes,
+        uint256[] memory _individualVksInputs,
+        uint256[16] memory _subProofsLimbs
     ) internal view returns (bool) {
-        return verifyResult;
+        for (uint256 i = 0; i < _individualVksInputs.length; ++i) {
+            _individualVksInputs[i] = _individualVksInputs[i] & INPUT_MASK;
+        }
+        VerificationKey memory vk = getVkAggregated(uint32(_vkIndexes.length));
+
+        return
+        verify_serialized_proof_with_recursion(
+            _recursiveInput,
+            _proof,
+            VK_TREE_ROOT,
+            VK_MAX_INDEX,
+            _vkIndexes,
+            _individualVksInputs,
+            _subProofsLimbs,
+            vk
+        );
     }
 
     function verifyExitProof(
-        bytes32,
-        uint8,
-        uint32,
-        uint8,
-        address,
-        uint16,
-        uint128,
-        uint256[] calldata
+        bytes32 _rootHash,
+        uint8 _chainId,
+        uint32 _accountId,
+        uint8 _subAccountId,
+        address _owner,
+        uint16 _tokenId,
+        uint128 _amount,
+        uint256[] calldata _proof
     ) internal view returns (bool) {
-        return verifyResult;
+        bytes32 commitment = sha256(abi.encodePacked(_rootHash, _chainId, _accountId, _subAccountId, _owner, _tokenId, _amount));
+
+        uint256[] memory inputs = new uint256[](1);
+        inputs[0] = uint256(commitment) & INPUT_MASK;
+        ProofOld memory proof = deserialize_proof_old(inputs, _proof);
+        VerificationKeyOld memory vk = getVkExit();
+        require(vk.num_inputs == inputs.length, "z");
+        return verify_old(proof, vk);
     }
 }

@@ -4,340 +4,139 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./zksync/ReentrancyGuard.sol";
+import "./zksync/Events.sol";
+import "./Storage.sol";
 import "./zksync/Bytes.sol";
 import "./zksync/Utils.sol";
-import "./zksync/ReentrancyGuard.sol";
-import "./zksync/Config.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeCast.sol";
-import "./zksync/Operations.sol";
-import "./IZkLink.sol";
-import "./PeripheryData.sol";
 
 /// @title ZkLink periphery contract
 /// @author zk.link
-contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
+contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     using SafeMath for uint256;
 
-    /// @dev When set fee = 100, it means 1%
-    uint16 internal constant MAX_WITHDRAW_FEE_RATE = 10000;
+    // =================Delegate call=================
 
-    /// @dev zkLink proxy address
-    IZkLink public zkLink;
-
-    /// @dev Accept infos of fast withdraw of account
-    /// uint32 is the account id
-    /// byte32 is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce))
-    /// address is the accepter
-    mapping(uint32 => mapping(bytes32 => address)) public accepts;
-
-    /// @dev Broker allowance used in accept
-    mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
-
-    enum ChangePubkeyType {ECRECOVER, CREATE2}
-
-    /// @notice Event emitted when accepter accept a fast withdraw
-    event Accept(address indexed accepter, uint32 indexed accountId, address receiver, uint16 tokenId, uint128 amountSent, uint128 amountReceive);
-
-    /// @notice Event emitted when set broker allowance
-    event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
-
-    modifier onlyZkLink {
-        require(msg.sender == address(zkLink), "ZP0");
-        _;
+    /// @notice Will run when no functions matches call data
+    fallback() external payable {
+        _fallback(verifier);
     }
 
-    function initialize(bytes calldata /**initializationParameters**/) external {
-        initializeReentrancyGuard();
+    /// @notice Same as fallback but called when calldata is empty
+    receive() external payable {
+        _fallback(verifier);
     }
 
-    /// @notice Verifier contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
-    /// @param upgradeParameters Encoded representation of upgrade parameters
-    // solhint-disable-next-line no-empty-blocks
-    function upgrade(bytes calldata upgradeParameters) external {}
+    // =================User interface=================
 
-    /// @notice Set the zkLink proxy address
-    /// @dev MUST be called at once when deployed ZkLink
-    function setZkLinkAddress(address _zkLink) external {
-        if (_zkLink != address(0)) {
-            zkLink = IZkLink(_zkLink);
+    /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
+    /// @dev Exodus mode must be entered in case of current ethereum block number is higher than the oldest
+    /// of existed priority requests expiration block number.
+    function activateExodusMode() external active {
+        bool trigger = block.number >= priorityRequests[firstPriorityRequestId].expirationBlock &&
+        priorityRequests[firstPriorityRequestId].expirationBlock != 0;
+
+        if (trigger) {
+            exodusMode = true;
+            emit ExodusMode();
         }
     }
 
-    // =======================Periphery functions======================
+    /// @notice Accrues users balances from deposit priority requests in Exodus mode
+    /// @dev WARNING: Only for Exodus mode
+    /// Canceling may take several separate transactions to be completed
+    /// @param _n number of requests to process
+    /// @param _depositsPubdata deposit details
+    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external notActive {
+        // ===Checks===
+        uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
+        require(toProcess > 0, "A0");
 
-    /// @dev Process one block commit using previous block StoredBlockInfo,
-    /// returns new block StoredBlockInfo
-    /// NOTE: Does not change storage (except events, so we can't mark it view)
-    /// only ZkLink can call this function to add more security
-    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) external onlyZkLink view returns (StoredBlockInfo memory storedNewBlock)
-    {
-        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "ZP1");
-        require(!_compressed || ENABLE_COMMIT_COMPRESSED_BLOCK, "ZP29");
+        // ===Effects===
+        uint64 currentDepositIdx = 0;
+        for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; ++id) {
+            Operations.PriorityOperation memory pr = priorityRequests[id];
+            if (pr.opType == Operations.OpType.Deposit) {
+                bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
+                require(Utils.hashBytesToBytes20(depositPubdata) == pr.hashedPubData, "A1");
+                ++currentDepositIdx;
 
-        // Check timestamp of the new block
-        {
-            require(_newBlock.timestamp >= _previousBlock.timestamp, "ZP2");
-            // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
-            require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
-                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "ZP3");
+                Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
+                bytes22 packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
+                increaseBalanceToWithdraw(packedBalanceKey, op.amount);
+            }
+            delete priorityRequests[id];
         }
-
-        // Check onchain operations
-        (bytes32 pendingOnchainOpsHash, uint64 priorityReqCommitted, bytes memory onchainOpsOffsetCommitment, bytes[] memory onchainOperationPubdatas) =
-        collectOnchainOps(_newBlock);
-
-        // Create block commitment for verification proof
-        bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, _compressed, _newBlockExtra, onchainOpsOffsetCommitment);
-
-        // Create synchronization hash for cross chain block verify
-        bytes32 syncHash = createSyncHash(commitment, onchainOperationPubdatas, _compressed, _newBlockExtra.onchainOperationPubdataHashs);
-
-        return StoredBlockInfo(
-            _newBlock.blockNumber,
-            priorityReqCommitted,
-            pendingOnchainOpsHash,
-            _newBlock.timestamp,
-            _newBlock.newStateHash,
-            commitment,
-            syncHash
-        );
-    }
-
-    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
-    /// Priority operations must be committed in the same order as they are in the priority queue.
-    /// NOTE: does not change storage! (only emits events)
-    /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
-    /// priorityOperationsProcessed - number of priority operations processed in this block (Deposits, FullExits)
-    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
-    /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
-    function collectOnchainOps(CommitBlockInfo memory _newBlockData)
-    internal
-    view
-    returns (
-        bytes32 processableOperationsHash,
-        uint64 priorityOperationsProcessed,
-        bytes memory offsetsCommitment,
-        bytes[] memory onchainOperationPubdatas
-    )
-    {
-        bytes memory pubData = _newBlockData.publicData;
-        // pubdata length must be a multiple of CHUNK_BYTES
-        require(pubData.length % CHUNK_BYTES == 0, "ZP4");
-        offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
-
         // overflow is impossible
-        uint64 uncommittedPriorityRequestsOffset = zkLink.firstPriorityRequestId() + zkLink.totalCommittedPriorityRequests();
-        priorityOperationsProcessed = 0;
-        onchainOperationPubdatas = new bytes[](MAX_CHAIN_ID + 1);
-        bytes memory processableOperationData = new bytes(0);
-
-        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
-            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
-
-            uint256 pubdataOffset = onchainOpData.publicDataOffset;
-            require(pubdataOffset < pubData.length, "ZP5");
-            require(pubdataOffset % CHUNK_BYTES == 0, "ZP6");
-
-            {
-                uint256 chunkId = pubdataOffset / CHUNK_BYTES;
-                require(offsetsCommitment[chunkId] == 0x00, "ZP7"); // offset commitment should be empty
-                offsetsCommitment[chunkId] = bytes1(0x01);
-            }
-
-            // check op type firstly and then check chain id
-            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
-            require(opType == Operations.OpType.Deposit
-                || opType == Operations.OpType.ChangePubKey
-                || opType == Operations.OpType.Withdraw
-                || opType == Operations.OpType.ForcedExit
-                || opType == Operations.OpType.FullExit, "ZP26");
-
-            uint8 chainId = checkChainId(pubData, pubdataOffset);
-
-            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
-            (uint64 newPriorityProceeded, bytes memory opPubData, bool isProcessable) = checkOnchainOp(
-                opType,
-                chainId,
-                pubData,
-                pubdataOffset,
-                nextPriorityOpIndex,
-                onchainOpData.ethWitness);
-            priorityOperationsProcessed += newPriorityProceeded;
-            // group onchain operations pubdata by chain id
-            onchainOperationPubdatas[chainId] = Utils.concat(onchainOperationPubdatas[chainId], opPubData);
-            if (isProcessable) {
-                // concat processable onchain operations pubdata of current chain
-                processableOperationData = Utils.concat(processableOperationData, opPubData);
-            }
-        }
-
-        processableOperationsHash = keccak256(processableOperationData);
+        firstPriorityRequestId += toProcess;
+        totalOpenPriorityRequests -= toProcess;
     }
 
-    function checkChainId(bytes memory pubData, uint256 pubdataOffset) internal pure returns (uint8) {
-        // the chain id is the next byte after these op type
-        // overflow is impossible
-        uint256 chainIdOffset = pubdataOffset + 1;
-        require(chainIdOffset < pubData.length, "ZP25");
-        uint8 chainId = uint8(pubData[chainIdOffset]);
-        require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "ZP27");
-        // revert if invalid chain id exist
-        // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
-        uint256 chainIndex = 1 << chainId - 1;
-        require(chainIndex & ALL_CHAINS == chainIndex, "ZP28");
-        return chainId;
-    }
-
-    function checkOnchainOp(Operations.OpType opType,
-        uint8 chainId,
-        bytes memory pubData,
-        uint256 pubdataOffset,
-        uint64 nextPriorityOpIdx,
-        bytes memory ethWitness)
-    internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bool isProcessable) {
-        priorityOperationsProcessed = 0;
-        opPubData = new bytes(0);
-        isProcessable = false;
-        // ignore check if ops are not part of the current chain
-        if (opType == Operations.OpType.Deposit) {
-            opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
-            if (chainId == CHAIN_ID) {
-                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-                Operations.checkPriorityOperation(op, zkLink.getPriorityRequest(nextPriorityOpIdx));
-                priorityOperationsProcessed = 1;
-            }
-        } else if (opType == Operations.OpType.ChangePubKey) {
-            opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
-            if (chainId == CHAIN_ID) {
-                Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
-                if (ethWitness.length != 0) {
-                    bool valid = verifyChangePubkey(ethWitness, op);
-                    require(valid, "ZP8");
-                } else {
-                    bool valid = zkLink.getAuthFact(op.owner, op.nonce) == keccak256(abi.encodePacked(op.pubKeyHash));
-                    require(valid, "ZP9");
-                }
-            }
+    /// @notice Set data for changing pubkey hash using onchain authorization.
+    ///         Transaction author (msg.sender) should be L2 account address
+    /// New pubkey hash can be reset, to do that user should send two transactions:
+    ///         1) First `setAuthPubkeyHash` transaction for already used `_nonce` will set timer.
+    ///         2) After `AUTH_FACT_RESET_TIMELOCK` time is passed second `setAuthPubkeyHash` transaction will reset pubkey hash for `_nonce`.
+    /// @param _pubkeyHash New pubkey hash
+    /// @param _nonce Nonce of the change pubkey L2 transaction
+    function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external active {
+        require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "B0"); // PubKeyHash should be 20 bytes.
+        if (authFacts[msg.sender][_nonce] == bytes32(0)) {
+            authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
         } else {
-            if (opType == Operations.OpType.Withdraw) {
-                opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
-            } else if (opType == Operations.OpType.ForcedExit) {
-                opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
+            uint256 currentResetTimer = authFactsResetTimer[msg.sender][_nonce];
+            if (currentResetTimer == 0) {
+                authFactsResetTimer[msg.sender][_nonce] = block.timestamp;
             } else {
-                opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
-                if (chainId == CHAIN_ID) {
-                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    Operations.checkPriorityOperation(fullExitData, zkLink.getPriorityRequest(nextPriorityOpIdx));
-                    priorityOperationsProcessed = 1;
-                }
-            }
-            if (chainId == CHAIN_ID) {
-                isProcessable = true;
+                require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "B1"); // too early to reset auth
+                authFactsResetTimer[msg.sender][_nonce] = 0;
+                authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
             }
         }
     }
 
-    /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(bytes32 commitment, bytes[] memory onchainOperationPubdatas, bool compressed, bytes32[] memory onchainOperationPubdataHashs)
-        internal pure returns (bytes32 syncHash) {
-        bytes memory hashData = abi.encodePacked(commitment);
-        for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; i++) {
-            bytes32 hash;
-            // current chain pubdata hash always need to calculate from pubdata
-            if (i == CHAIN_ID || !compressed) {
-                hash = keccak256(onchainOperationPubdatas[i]);
-            } else {
-                hash = onchainOperationPubdataHashs[i];
-            }
-            hashData = abi.encodePacked(hashData, hash);
-        }
-        syncHash = keccak256(hashData);
+    /// @notice Returns amount of tokens that can be withdrawn by `address` from zkLink contract
+    /// @param _address Address of the tokens owner
+    /// @param _tokenId Token id
+    /// @return The pending balance can be withdrawn
+    function getPendingBalance(address _address, uint16 _tokenId) external view returns (uint128) {
+        return pendingBalances[packAddressAndTokenId(_address, _tokenId)];
+    }
+    // =======================Cross chain block synchronization======================
+
+    /// @notice Combine the `progress` of the other chains of a `syncHash` with self
+    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external {
+        address bridge = msg.sender;
+        require(governance.isBridgeFromEnabled(bridge), "C");
+
+        synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
+        emit ReceiveSynchronizationProgress(bridge, srcChainId, nonce, syncHash, progress);
     }
 
-    /// @dev Creates block commitment from its data
-    /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
-    function createBlockCommitment(
-        StoredBlockInfo memory _previousBlock,
-        CommitBlockInfo memory _newBlockData,
-        bool _compressed,
-        CompressedBlockExtraInfo memory _newBlockExtraData,
-        bytes memory offsetsCommitment
-    ) internal pure returns (bytes32 commitment) {
-        bytes32 offsetsCommitmentHash = !_compressed ? sha256(offsetsCommitment) : _newBlockExtraData.offsetCommitmentHash;
-        bytes32 newBlockPubDataHash = !_compressed ? sha256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
-        commitment = sha256(abi.encodePacked(
-                uint256(_newBlockData.blockNumber),
-                uint256(_newBlockData.feeAccount),
-                _previousBlock.stateHash,
-                _newBlockData.newStateHash,
-                uint256(_newBlockData.timestamp),
-                newBlockPubDataHash,
-                offsetsCommitmentHash
-            ));
-    }
-
-    /// @notice Checks that change operation is correct
-    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
-    {
-        ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
-        if (changePkType == ChangePubkeyType.ECRECOVER) {
-            return verifyChangePubkeyECRECOVER(_ethWitness, _changePk);
-        } else if (changePkType == ChangePubkeyType.CREATE2) {
-            return verifyChangePubkeyCREATE2(_ethWitness, _changePk);
-        } else {
-            revert("ZkLink: incorrect changePkType");
+    /// @notice Get synchronized progress of current chain known
+    function getSynchronizedProgress(StoredBlockInfo memory _block) public view returns (uint256 progress) {
+        progress = synchronizedChains[_block.syncHash];
+        // combine the current chain if it has proven this block
+        if (_block.blockNumber <= totalBlocksProven &&
+            hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
+            progress |= CHAIN_ID;
         }
     }
 
-    /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
-    {
-        (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n60", // message len(60) = _pubKeyHash.len(20) + _nonce.len(4) + _accountId.len(4) + 32
-                _changePk.pubKeyHash,
-                _changePk.nonce,
-                _changePk.accountId,
-                bytes32(0)
-            )
-        );
-        address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
-        return recoveredAddress == _changePk.owner;
-    }
+    /// @notice Check if received all syncHash from other chains at the block height
+    function syncBlocks(StoredBlockInfo memory _block) external nonReentrant {
+        uint256 progress = getSynchronizedProgress(_block);
+        require(progress == ALL_CHAINS, "D0");
 
-    /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyCREATE2(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
-    {
-        address creatorAddress;
-        bytes32 saltArg; // salt arg is additional bytes that are encoded in the CREATE2 salt
-        bytes32 codeHash;
-        uint256 offset = 1; // offset is 1 because we skip type of ChangePubkey
-        (offset, creatorAddress) = Bytes.readAddress(_ethWitness, offset);
-        (offset, saltArg) = Bytes.readBytes32(_ethWitness, offset);
-        (offset, codeHash) = Bytes.readBytes32(_ethWitness, offset);
-        // salt from CREATE2 specification
-        bytes32 salt = keccak256(abi.encodePacked(saltArg, _changePk.pubKeyHash));
-        // Address computation according to CREATE2 definition: https://eips.ethereum.org/EIPS/eip-1014
-        address recoveredAddress = address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), creatorAddress, salt, codeHash))))
-        );
-        // This type of change pubkey can be done only once
-        return recoveredAddress == _changePk.owner && _changePk.nonce == 0;
+        uint32 blockNumber = _block.blockNumber;
+        require(blockNumber > totalBlocksSynchronized, "D1");
+
+        totalBlocksSynchronized = blockNumber;
     }
 
     // =======================Fast withdraw and Accept======================
-
-    function getAccepter(uint32 accountId, bytes32 hash) external view returns (address) {
-        return accepts[accountId][hash];
-    }
-
-    /// @dev Only zkLink can set accepter
-    function setAccepter(uint32 accountId, bytes32 hash, address accepter) external onlyZkLink {
-        require(accepts[accountId][hash] == address(0), "ZP10");
-        accepts[accountId][hash] = accepter;
-    }
 
     /// @notice Accepter accept a eth fast withdraw, accepter will get a fee for profit
     /// @param accepter Accepter who accept a fast withdraw
@@ -353,7 +152,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         uint16 withdrawFeeRate,
         uint32 nonce) external payable nonReentrant {
         // ===Checks===
-        uint16 tokenId = zkLink.governance().getTokenId(ETH_ADDRESS);
+        uint16 tokenId = governance.getTokenId(ETH_ADDRESS);
         (uint128 amountReceive, bytes32 hash, ) =
         _checkAccept(accepter, accountId, receiver, tokenId, amount, withdrawFeeRate, nonce);
 
@@ -370,7 +169,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
             // it's safe to use call to msg.sender and can send all gas left to it
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = msg.sender.call{value: amountReturn}("");
-            require(success, "ZP11");
+            require(success, "E");
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountReceive, amountReceive);
     }
@@ -412,20 +211,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
             uint256 receiverBalanceAfter = IERC20(tokenAddress).balanceOf(_receiver);
             uint256 accepterBalanceAfter = IERC20(tokenAddress).balanceOf(_accepter);
             uint128 receiverBalanceDiff = SafeCast.toUint128(receiverBalanceAfter.sub(receiverBalanceBefore));
-            require(receiverBalanceDiff >= amountReceive, "ZP12");
+            require(receiverBalanceDiff >= amountReceive, "F0");
             amountReceive = receiverBalanceDiff;
             // amountSent may be larger than amountReceive when the token is a non standard erc20 token
             amountSent = SafeCast.toUint128(accepterBalanceBefore.sub(accepterBalanceAfter));
         }
         if (msg.sender != accepter) {
-            require(brokerAllowance(tokenId, accepter, msg.sender) >= amountSent, "ZP13");
+            require(brokerAllowance(tokenId, accepter, msg.sender) >= amountSent, "F1");
             brokerAllowances[tokenId][accepter][msg.sender] -= amountSent;
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountSent, amountReceive);
-    }
-
-    function calAcceptHash(address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 nonce) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce));
     }
 
     function brokerAllowance(uint16 tokenId, address owner, address spender) public view returns (uint128) {
@@ -434,7 +229,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
 
     /// @notice Give allowance to spender to call accept
     function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
-        require(spender != address(0), "ZP14");
+        require(spender != address(0), "G");
         brokerAllowances[tokenId][msg.sender][spender] = amount;
         emit BrokerApprove(tokenId, msg.sender, spender, amount);
         return true;
@@ -446,26 +241,23 @@ contract ZkLinkPeriphery is ReentrancyGuard, Config, PeripheryData {
         uint16 tokenId,
         uint128 amount,
         uint16 withdrawFeeRate,
-        uint32 nonce) internal view returns (uint128 amountReceive, bytes32 hash, address tokenAddress) {
+        uint32 nonce) internal active view returns (uint128 amountReceive, bytes32 hash, address tokenAddress) {
         // accepter and receiver MUST be set and MUST not be the same
-        require(accepter != address(0), "ZP17");
-        require(receiver != address(0), "ZP18");
-        require(receiver != accepter, "ZP19");
+        require(accepter != address(0), "H0");
+        require(receiver != address(0), "H1");
+        require(receiver != accepter, "H2");
         // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = zkLink.governance().getToken(tokenId);
-        require(rt.registered, "ZP20");
+        Governance.RegisteredToken memory rt = governance.getToken(tokenId);
+        require(rt.registered, "H3");
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid
         amountReceive = amount * (MAX_WITHDRAW_FEE_RATE - withdrawFeeRate) / MAX_WITHDRAW_FEE_RATE;
-        require(amountReceive > 0 && amountReceive <= amount, "ZP21");
+        require(amountReceive > 0 && amountReceive <= amount, "H4");
         // nonce MUST not be zero
-        require(nonce > 0, "ZP22");
+        require(nonce > 0, "H5");
 
         // accept tx may be later than block exec tx(with user withdraw op)
-        hash = calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce);
-        require(accepts[accountId][hash] == address(0), "ZP23");
-
-        // zkLink MUST not be in exodus
-        require(!zkLink.exodusMode(), "ZP24");
+        hash = keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce));
+        require(accepts[accountId][hash] == address(0), "H6");
     }
 }

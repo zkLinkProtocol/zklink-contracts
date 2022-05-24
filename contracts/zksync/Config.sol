@@ -102,4 +102,7 @@ contract Config {
 
     /// @dev Address represent eth when deposit or withdraw
     address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    /// @dev When set fee = 100, it means 1%
+    uint16 internal constant MAX_WITHDRAW_FEE_RATE = 10000;
 }

@@ -5,11 +5,12 @@ const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
     let deployedInfo;
-    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, governance, governor;
+    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, governance, governor;
     let tpn = 0;
     before(async () => {
         deployedInfo = await deploy();
         zkLink = deployedInfo.zkLink;
+        periphery = deployedInfo.periphery;
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
@@ -26,38 +27,38 @@ describe('ZkLink priority queue ops unit tests', function () {
         const to = "0x72847C8Bdc54b338E787352bceC33ba90cD7aFe0";
         const subAccountId = 0;
         const amount = parseEther("1");
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("Z0");
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("0");
         await token2.connect(defaultSender).mint(10000);
         await token2.connect(defaultSender).approve(zkLink.address, 100);
-        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("Z0");
+        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("0");
         await zkLink.setExodus(false);
 
         // ddos?
-        await zkLink.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("Z35");
-        await zkLink.setTotalOpenPriorityRequests(tpn);
+        await periphery.setTotalOpenPriorityRequests(4096);
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("e5");
+        await periphery.setTotalOpenPriorityRequests(tpn);
 
         // token not registered
         const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
         const tokenNotRegistered = await stFactory.deploy("Token not registered", "TNR");
         await tokenNotRegistered.connect(defaultSender).mint(10000);
         await tokenNotRegistered.connect(defaultSender).approve(zkLink.address, 100);
-        await expect(zkLink.connect(defaultSender).depositERC20(tokenNotRegistered.address, 30, to, 0)).to.be.revertedWith("Z31");
+        await expect(zkLink.connect(defaultSender).depositERC20(tokenNotRegistered.address, 30, to, 0)).to.be.revertedWith("e3");
 
         // token deposit paused
         await governance.connect(governor).setTokenPaused(token2Id, true);
-        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("Z32");
+        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("e4");
         await governance.connect(governor).setTokenPaused(token2Id, false);
 
         // zero amount
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: 0})).to.be.revertedWith("Z33");
+        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: 0})).to.be.revertedWith("e0");
 
         // zero to address
-        await expect(zkLink.connect(defaultSender).depositETH(hardhat.ethers.constants.AddressZero, subAccountId, {value: amount})).to.be.revertedWith("Z34");
+        await expect(zkLink.connect(defaultSender).depositETH(hardhat.ethers.constants.AddressZero, subAccountId, {value: amount})).to.be.revertedWith("e1");
 
         // subAccountId too large
         const tooLargeSubId = 8; // 2**3
-        await expect(zkLink.connect(defaultSender).depositETH(to, tooLargeSubId, {value: amount})).to.be.revertedWith("Z30");
+        await expect(zkLink.connect(defaultSender).depositETH(to, tooLargeSubId, {value: amount})).to.be.revertedWith("e2");
     });
 
     it('deposit eth should success', async () => {
@@ -115,24 +116,24 @@ describe('ZkLink priority queue ops unit tests', function () {
         await zkLink.setExodus(true);
         const accountId = 13;
         const subAccountId = 0;
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("Z0");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("0");
         await zkLink.setExodus(false);
 
         // ddos?
-        await zkLink.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("Z5");
-        await zkLink.setTotalOpenPriorityRequests(tpn);
+        await periphery.setTotalOpenPriorityRequests(4096);
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId)).to.be.revertedWith("a3");
+        await periphery.setTotalOpenPriorityRequests(tpn);
 
         // accountId too large
         const tooLargeAccountId = 16777216; // 2**24
-        await expect(zkLink.connect(defaultSender).requestFullExit(tooLargeAccountId, subAccountId, ethId)).to.be.revertedWith("Z2");
+        await expect(zkLink.connect(defaultSender).requestFullExit(tooLargeAccountId, subAccountId, ethId)).to.be.revertedWith("a0");
 
         // subAccountId too large
         const tooLargeSubId = 8; // 2**3
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, tooLargeSubId, ethId)).to.be.revertedWith("Z3");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, tooLargeSubId, ethId)).to.be.revertedWith("a1");
 
         // tokenId not registered
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, 10000)).to.be.revertedWith("Z4");
+        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, 10000)).to.be.revertedWith("a2");
     });
 
     it('requestFullExit should success', async () => {

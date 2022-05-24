@@ -67,7 +67,7 @@ describe('Gas estimate unit tests', function () {
                     publicData:"0x",
                     timestamp:l1Block.timestamp + i,
                     onchainOperations:[],
-                    blockNumber:i + 1,
+                    blockNumber:i,
                     feeAccount:0
                 };
                 commitBlocks.push(commitBlock);

@@ -24,12 +24,11 @@ const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("eth
 
 describe('Block commit unit tests', function () {
     let deployedInfo;
-    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governance, governor, verifier;
+    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governance, governor, verifier;
     let commitBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
         zkLink = deployedInfo.zkLink;
-        periphery = deployedInfo.periphery;
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
@@ -214,16 +213,16 @@ describe('Block commit unit tests', function () {
         it('invalid pubdata length should be failed', async () => {
             const block = Object.assign({}, commitBlockTemplate);
             block.publicData = "0x01"; // 1 bytes
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP4");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h0");
 
             block.publicData = "0x01010101010101010101010101"; // 13 bytes
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP4");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h0");
         });
 
         async function collectOnchainOps(block, expected) {
-            const actual = await periphery.testCollectOnchainOps(block);
+            const actual = await zkLink.testCollectOnchainOps(block);
             expect(actual.processableOperationsHash).eq(keccak256(expected.processableOperations));
             expect(actual.priorityOperationsProcessed).eq(expected.priorityOperationsProcessed);
             expect(actual.offsetsCommitment).eq(expected.offsetsCommitment);
@@ -249,22 +248,22 @@ describe('Block commit unit tests', function () {
                 ethWitness:"0x",
                 publicDataOffset:arrayify(block.publicData).length
             }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP5");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h1");
 
             block.onchainOperations = [{
                 ethWitness:"0x",
                 publicDataOffset:1
             }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP6");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h2");
 
             block.onchainOperations = [{
                 ethWitness:"0x",
                 publicDataOffset:CHUNK_BYTES-1
             }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP6");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h2");
         });
 
         it('invalid op type should be failed', async () => {
@@ -274,8 +273,8 @@ describe('Block commit unit tests', function () {
                 ethWitness:"0x",
                 publicDataOffset:0
             }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP26");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h4");
         });
 
         it('invalid chain id should be failed', async () => {
@@ -286,13 +285,13 @@ describe('Block commit unit tests', function () {
                 ethWitness:"0x",
                 publicDataOffset:0
             }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP27");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("i1");
 
             depositData = getDepositPubdata({chainId:MAX_CHAIN_ID+1,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
             block.publicData = paddingChunk(depositData);
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP27");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("i1");
         });
 
         it('duplicate pubdata offset should be failed', async () => {
@@ -309,8 +308,8 @@ describe('Block commit unit tests', function () {
                     ethWitness:"0x",
                     publicDataOffset:0
                 }];
-            await expect(periphery.testCollectOnchainOps(block))
-                .to.be.revertedWith("ZP7");
+            await expect(zkLink.testCollectOnchainOps(block))
+                .to.be.revertedWith("h3");
         });
 
         it('pubdata of all chains should be success', async () => {
@@ -348,7 +347,7 @@ describe('Block commit unit tests', function () {
         it('invalid block number should be failed', async () => {
             commitBlock.blockNumber = 12;
             await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("ZP1");
+                .to.be.revertedWith("g0");
         });
 
         it('invalid block timestamp should be failed', async () => {
@@ -357,17 +356,17 @@ describe('Block commit unit tests', function () {
             preBlock.timestamp = l1Block.timestamp;
             commitBlock.timestamp = preBlock.timestamp - 1;
             await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("ZP2");
+                .to.be.revertedWith("g2");
 
             commitBlock.timestamp = l1Block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER - 1;
             preBlock.timestamp = commitBlock.timestamp - 1;
             await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("ZP3");
+                .to.be.revertedWith("g3");
 
             commitBlock.timestamp = l1Block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA + 1;
             preBlock.timestamp = commitBlock.timestamp - 1;
             await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("ZP3");
+                .to.be.revertedWith("g3");
         });
 
         it('commit compressed block should return a result same as full block', async () => {

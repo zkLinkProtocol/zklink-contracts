@@ -1,7 +1,7 @@
-const hardhat = require('hardhat');
+const { ethers } = require('hardhat');
 const { expect } = require('chai');
-const { deploy } = require('./utils');
-const {parseEther} = require("ethers/lib/utils");
+const { deploy, calAcceptHash } = require('./utils');
+const {parseEther, keccak256, solidityPack} = require("ethers/lib/utils");
 
 describe('Accept unit tests', function () {
     let deployedInfo;
@@ -28,34 +28,29 @@ describe('Accept unit tests', function () {
         expect(await periphery.connect(alice).brokerAllowance(token2Id, alice.address, bob.address)).to.eq(100);
     });
 
-    it('only zkLink can set accept hash from external', async () => {
-        const hash = await periphery.calAcceptHash(bob.address, ethId, 100, 100, 1);
-        await expect(periphery.connect(alice).setAccepter(fwAId, hash, alice.address)).to.be.revertedWith("ZP0");
-        await zkLink.setAccepter(fwAId, hash, alice.address);
-        expect(await periphery.getAccepter(fwAId, hash)).to.be.eq(alice.address);
-    });
 
     it('invalid state or params should failed when accept', async () => {
-        await expect(periphery.connect(alice).acceptETH(hardhat.ethers.constants.AddressZero, fwAId, bob.address, 100, 20, 1))
-            .to.be.revertedWith("ZP17");
-        await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, hardhat.ethers.constants.AddressZero, 100, 20, 1))
-            .to.be.revertedWith("ZP18");
+        await expect(periphery.connect(alice).acceptETH(ethers.constants.AddressZero, fwAId, bob.address, 100, 20, 1))
+            .to.be.revertedWith("H0");
+        await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, ethers.constants.AddressZero, 100, 20, 1))
+            .to.be.revertedWith("H1");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, alice.address, 100, 20, 1))
-            .to.be.revertedWith("ZP19");
+            .to.be.revertedWith("H2");
         await expect(periphery.connect(alice).acceptERC20(alice.address, fwAId, bob.address, 10000, 100, 20, 1, 100))
-            .to.be.revertedWith("ZP20");
+            .to.be.revertedWith("H3");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 10000, 1))
-            .to.be.revertedWith("ZP21");
+            .to.be.revertedWith("H4");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 0))
-            .to.be.revertedWith("ZP22");
+            .to.be.revertedWith("H5");
 
-        // this accept hash was set by previous unit test
+        const hash = calAcceptHash(bob.address, ethId, 100, 100, 1);
+        await periphery.setAccepter(fwAId, hash, alice.address);
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 1))
-            .to.be.revertedWith("ZP23");
+            .to.be.revertedWith("H6");
 
         await zkLink.setExodus(true);
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 10000, 100, 1))
-            .to.be.revertedWith("ZP24");
+            .to.be.revertedWith("0");
         await zkLink.setExodus(false);
     });
 
@@ -67,7 +62,7 @@ describe('Accept unit tests', function () {
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, amount, feeRate, nonce, {value: amountReceive}))
             .to.be.emit(periphery, "Accept")
             .withArgs(alice.address, fwAId, bob.address, ethId, amountReceive, amountReceive);
-        let hash = await periphery.calAcceptHash(bob.address, ethId, amount, feeRate, nonce);
+        let hash = calAcceptHash(bob.address, ethId, amount, feeRate, nonce);
         expect(await periphery.getAccepter(fwAId, hash)).to.be.eq(alice.address);
 
         // send value not enough
@@ -106,7 +101,7 @@ describe('Accept unit tests', function () {
         await expect(periphery.connect(bob).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, nonce, amountReceive))
             .to.be.emit(periphery, "Accept")
             .withArgs(bob.address, fwAId, alice.address, token2Id, amountReceive, amountReceive);
-        let hash = await periphery.calAcceptHash(alice.address, token2Id, amount, feeRate, nonce);
+        let hash = calAcceptHash(alice.address, token2Id, amount, feeRate, nonce);
         expect(await periphery.getAccepter(fwAId, hash)).to.be.eq(bob.address);
         expect(await token2.balanceOf(alice.address)).to.be.eq(amountReceive);
 
@@ -128,7 +123,7 @@ describe('Accept unit tests', function () {
         // broker allowance not enough
         nonce = 4;
         await expect(periphery.connect(defaultSender).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, nonce, amountReceive))
-            .to.be.revertedWith("ZP13");
+            .to.be.revertedWith("F1");
     });
 
     it('accept non standard erc20 should success', async () => {

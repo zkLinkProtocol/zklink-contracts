@@ -4,29 +4,33 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./zksync/Verifier.sol";
-import "./ZkLinkPeriphery.sol";
-import "./IZkLink.sol";
+import "./zksync/Operations.sol";
+import "./Governance.sol";
+import "./zksync/SafeMath.sol";
+import "./zksync/SafeMathUInt128.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
-contract Storage is Config, IZkLink {
+contract Storage is Config {
+    using SafeMath for uint256;
+    using SafeMathUInt128 for uint128;
+
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
-    Verifier public verifier;
+    address public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
 
     /// @notice First open priority request id
-    uint64 public override firstPriorityRequestId;
+    uint64 public firstPriorityRequestId;
 
     // governance(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
 
     /// @notice Governance contract. Contains the governor (the owner) of whole system, validators list, possible tokens list
-    Governance public override governance;
+    Governance public governance;
 
     /// @notice Total number of committed blocks i.e. blocks[totalBlocksCommitted] points at the latest committed block
     uint32 public totalBlocksCommitted;
@@ -37,18 +41,25 @@ contract Storage is Config, IZkLink {
     // periphery(20 bytes) + totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) stored in the same slot
 
     /// @notice Periphery contract. Contains some auxiliary features
-    ZkLinkPeriphery public periphery;
+    address public periphery;
 
     /// @notice Total blocks proven.
     uint32 public totalBlocksProven;
 
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
-    uint64 public override totalCommittedPriorityRequests;
+    uint64 public totalCommittedPriorityRequests;
+
+    // self(20 bytes) + totalBlocksSynchronized(4 bytes) + exodusMode(1 bytes) stored in the same slot
+    /// @dev Used to safely call `delegatecall`
+    address internal immutable self = address(this);
+
+    /// @dev Latest synchronized block height
+    uint32 public totalBlocksSynchronized;
 
     /// @notice Flag indicates that exodus (mass exit) mode is triggered
     /// @notice Once it was raised, it can not be cleared again, and all users must exit
-    bool public override exodusMode;
+    bool public exodusMode;
 
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => uint128) internal pendingBalances;
@@ -71,30 +82,98 @@ contract Storage is Config, IZkLink {
     /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
-    /// @dev Latest synchronized block height
-    uint32 public totalBlocksSynchronized;
-
     /// @dev if `synchronizedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
     // the key is the `syncHash` of `StoredBlockInfo`
     // the value is the `synchronizedChains` of `syncHash` collected from all other chains
     mapping(bytes32 => uint256) internal synchronizedChains;
 
-    event ReceiveSynchronizationProgress(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress);
+    /// @dev Accept infos of fast withdraw of account
+    /// uint32 is the account id
+    /// byte32 is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce))
+    /// address is the accepter
+    mapping(uint32 => mapping(bytes32 => address)) public accepts;
 
-    function getPriorityRequest(uint64 idx) external view override returns(Operations.PriorityOperation memory) {
-        return priorityRequests[idx];
+    /// @dev Broker allowance used in accept
+    mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
+
+    /// @notice block stored data
+    /// @dev `blockNumber`,`timestamp`,`stateHash`,`commitment` are the same on all chains
+    /// `priorityOperations`,`pendingOnchainOperationsHash` is different for each chain
+    struct StoredBlockInfo {
+        uint32 blockNumber; // Rollup block number
+        uint64 priorityOperations; // Number of priority operations processed
+        bytes32 pendingOnchainOperationsHash; // Hash of all operations that must be processed after verify
+        uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
+        bytes32 stateHash; // Root hash of the rollup state
+        bytes32 commitment; // Verified input for the ZkLink circuit
+        bytes32 syncHash; // Used for cross chain block verify
     }
 
-    function getAuthFact(address owner, uint32 nonce) external view override returns (bytes32) {
-        return authFacts[owner][nonce];
+    /// @notice Checks that current state not is exodus mode
+    modifier active() {
+        require(!exodusMode, "0");
+        _;
     }
 
-    /// @notice Combine the `progress` of the other chains of a `syncHash` with self
-    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external {
-        address bridge = msg.sender;
-        require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
+    /// @notice Checks that current state is exodus mode
+    modifier notActive() {
+        require(exodusMode, "1");
+        _;
+    }
 
-        synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
-        emit ReceiveSynchronizationProgress(bridge, srcChainId, nonce, syncHash, progress);
+    /// @notice Set logic contract must be called through proxy
+    modifier onlyDelegateCall() {
+        require(address(this) != self, "2");
+        _;
+    }
+
+    /// @notice Check if msg sender is a validator
+    modifier onlyValidator() {
+        governance.requireActiveValidator(msg.sender);
+        _;
+    }
+
+    /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
+    function hashStoredBlockInfo(StoredBlockInfo memory _storedBlockInfo) internal pure returns (bytes32) {
+        return keccak256(abi.encode(_storedBlockInfo));
+    }
+
+    function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
+        uint128 balance = pendingBalances[_packedBalanceKey];
+        pendingBalances[_packedBalanceKey] = balance.add(_amount);
+    }
+
+    /// @notice Packs address and token id into single word to use as a key in balances mapping
+    function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
+        return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
+    }
+
+    /// @notice Performs a delegatecall to the contract implementation
+    /// @dev Fallback function allowing to perform a delegatecall to the given implementation
+    /// This function will return whatever the implementation call returns
+    function _fallback(address _target) internal {
+        require(_target != address(0), "3");
+        assembly {
+        // The pointer to the free memory slot
+            let ptr := mload(0x40)
+        // Copy function signature and arguments from calldata at zero position into memory at pointer position
+            calldatacopy(ptr, 0x0, calldatasize())
+        // Delegatecall method of the implementation contract, returns 0 on error
+            let result := delegatecall(gas(), _target, ptr, calldatasize(), 0x0, 0)
+        // Get the size of the last return data
+            let size := returndatasize()
+        // Copy the size length of bytes from return data at zero position to pointer position
+            returndatacopy(ptr, 0x0, size)
+        // Depending on result value
+            switch result
+            case 0 {
+            // End execution and revert state changes
+                revert(ptr, size)
+            }
+            default {
+            // Return data with length of size at pointers position
+                return(ptr, size)
+            }
+        }
     }
 }
