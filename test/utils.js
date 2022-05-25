@@ -17,6 +17,15 @@ const COMMIT_TIMESTAMP_NOT_OLDER = 86400; // 24 hours
 const COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 900; // 15 minutes
 const EMPTY_STRING_KECCAK = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
 const GENESIS_ROOT = "0x209d742ecb062db488d20e7f8968a40673d718b24900ede8035e05a78351d956";
+const GENESIS_BLOCK = {
+    blockNumber:0,
+    priorityOperations:0,
+    pendingOnchainOperationsHash:EMPTY_STRING_KECCAK,
+    timestamp:0,
+    stateHash:GENESIS_ROOT,
+    commitment:"0x0000000000000000000000000000000000000000000000000000000000000000",
+    syncHash:EMPTY_STRING_KECCAK
+}
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
@@ -198,5 +207,6 @@ module.exports = {
     COMMIT_TIMESTAMP_NOT_OLDER,
     COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
     EMPTY_STRING_KECCAK,
-    GENESIS_ROOT
+    GENESIS_ROOT,
+    GENESIS_BLOCK
 };

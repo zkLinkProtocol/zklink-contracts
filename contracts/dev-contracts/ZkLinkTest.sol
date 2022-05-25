@@ -12,16 +12,8 @@ contract ZkLinkTest is ZkLink {
         exodusMode = _exodusMode;
     }
 
-    function setPriorityExpirationBlock(uint64 index, uint64 eb) external {
-        priorityRequests[index].expirationBlock = eb;
-    }
-
     function getPriorityHash(uint64 index) external view returns (bytes20) {
         return priorityRequests[index].hashedPubData;
-    }
-
-    function getStoredBlockHashes(uint32 height) external view returns (bytes32) {
-        return storedBlockHashes[height];
     }
 
     function mockExecBlock(StoredBlockInfo memory storedBlockInfo) external {

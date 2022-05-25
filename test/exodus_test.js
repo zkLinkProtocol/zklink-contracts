@@ -57,7 +57,7 @@ describe('ZkLink exodus unit tests', function () {
         const subAccountId = 0;
         const amount = parseEther("1");
         await zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount});
-        await zkLink.connect(defaultSender).setPriorityExpirationBlock(0, 1);
+        // expire block is zero in UnitTest environment
         await expect(periphery.connect(defaultSender).activateExodusMode()).to.be.emit(zkLink, "ExodusMode");
         await expect(periphery.connect(defaultSender).activateExodusMode()).to.be.revertedWith("0");
     });
