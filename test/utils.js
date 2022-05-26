@@ -4,11 +4,13 @@ const ethers = hardhat.ethers;
 
 const OP_NOOP = 0;
 const OP_DEPOSIT = 1;
+const OP_TRANSFER_TO_NEW = 2;
 const OP_WITHDRAW = 3;
 const OP_TRANSFER = 4;
 const OP_FULL_EXIT = 5;
 const OP_CHANGE_PUBKEY = 6;
 const OP_FORCE_EXIT = 7;
+const OP_ORDER_MATCHING = 11;
 const CHUNK_BYTES = 14;
 const MIN_CHAIN_ID = 1;
 const MAX_CHAIN_ID = 4;
@@ -62,9 +64,24 @@ function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, 
         [OP_CHANGE_PUBKEY,chainId,accountId,pubKeyHash,owner,nonce,tokenId,fee]);
 }
 
-function mockTransferPubdata({from, to, token, amount}) {
-    return ethers.utils.solidityPack(["uint8","address","address","uint16","uint128"],
-        [OP_TRANSFER,from,to,token,amount]);
+function getTransferPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, fee}) {
+    return ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","uint16"],
+        [OP_TRANSFER,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,fee]);
+}
+
+function getTransferToNewPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, to, fee}) {
+    return ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","address","uint16"],
+        [OP_TRANSFER_TO_NEW,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,to,fee]);
+}
+
+function getOrderMatchingPubdata({submitterAccountId, taker, maker, feeTokenId, fee, baseAmount, quoteAmount}) {
+    // subAccountId of taker and maker must be the same
+    const takerBytes = ethers.utils.solidityPack(["uint32","uint8","uint16","uint40","uint8"],
+        [taker.accountId,taker.slotId,taker.tokenId,taker.amount,taker.feeRatio]);
+    const makerBytes = ethers.utils.solidityPack(["uint32","uint8","uint8","uint16","uint40","uint8"],
+        [maker.accountId,maker.subAccountId,maker.slotId,maker.tokenId,maker.amount,maker.feeRatio]);
+    return ethers.utils.solidityPack(["uint8","uint32","bytes","bytes","uint16","uint16","uint128","uint128"],
+        [OP_ORDER_MATCHING,submitterAccountId,takerBytes,makerBytes,feeTokenId,fee,baseAmount,quoteAmount]);
 }
 
 function mockNoopPubdata() {
@@ -187,7 +204,9 @@ module.exports = {
     writeFullExitPubdata,
     getForcedExitPubdata,
     getChangePubkeyPubdata,
-    mockTransferPubdata,
+    getTransferPubdata,
+    getTransferToNewPubdata,
+    getOrderMatchingPubdata,
     mockNoopPubdata,
     paddingChunk,
     calFee,

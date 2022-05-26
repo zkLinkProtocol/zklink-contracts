@@ -8,7 +8,7 @@ const { deploy,
     getFullExitPubdata,
     writeFullExitPubdata,
     getForcedExitPubdata,
-    mockTransferPubdata,
+    getTransferPubdata,
     mockNoopPubdata,
     createEthWitnessOfECRECOVER,
     OP_DEPOSIT,
@@ -18,7 +18,8 @@ const { deploy,
     MAX_CHAIN_ID,
     CHAIN_ID,
     COMMIT_TIMESTAMP_NOT_OLDER,
-    COMMIT_TIMESTAMP_APPROXIMATION_DELTA
+    COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
+    EMPTY_STRING_KECCAK
 } = require('./utils');
 const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("ethers/lib/utils");
 
@@ -64,16 +65,17 @@ describe('Block commit unit tests', function () {
     async function buildTestBlock () {
         const block = Object.assign({}, commitBlockTemplate);
         const pubdatas = [];
+        const pubdatasOfChain1 = [];
         const ops = [];
         const opsOfChain1 = [];
         // no op of chain 2
-        const pubdatasOfChain1 = [];
-        const pubdatasOfChain3 = [];
-        const pubdatasOfChain4 = [];
+        let onchainOpPubdataHash1 = EMPTY_STRING_KECCAK;
+        let onchainOpPubdataHash3 = EMPTY_STRING_KECCAK;
+        let onchainOpPubdataHash4 = EMPTY_STRING_KECCAK;
         let publicDataOffset = 0;
         let publicDataOffsetOfChain1 = 0;
         let priorityOperationsProcessed = 0;
-        let processableOps = [];
+        let processableOpPubdataHash = EMPTY_STRING_KECCAK;
         let offsetsCommitment = [];
 
         // deposit of current chain
@@ -83,6 +85,7 @@ describe('Block commit unit tests', function () {
         let opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
+        onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
         publicDataOffset += arrayify(opPadding).length;
@@ -94,13 +97,13 @@ describe('Block commit unit tests', function () {
         op = getChangePubkeyPubdata({chainId:3,accountId:2,pubKeyHash:'0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',owner:alice.address,nonce:32,tokenId:token2Id,fee:145});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
-        pubdatasOfChain3.push(opPadding);
+        onchainOpPubdataHash3 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash3), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         publicDataOffset += arrayify(opPadding).length;
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // transfer of chain 4
-        op = mockTransferPubdata({from:alice.address,to:alice.address,token:ethId,amount:parseEther("12.45")});
+        op = getTransferPubdata({fromAccountId:1,fromSubAccountId:0,tokenId:ethId,amount:456,toAccountId:4,toSubAccountId:3,fee:34});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         publicDataOffset += arrayify(opPadding).length;
@@ -111,6 +114,7 @@ describe('Block commit unit tests', function () {
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
+        onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
         let ethWitness = await createEthWitnessOfECRECOVER('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',32,2,alice);
         ops.push({ethWitness,publicDataOffset});
         opsOfChain1.push({ethWitness,publicDataOffset:publicDataOffsetOfChain1});
@@ -122,7 +126,7 @@ describe('Block commit unit tests', function () {
         op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token3Id,amount:parseEther("0.345"),owner:bob.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
-        pubdatasOfChain4.push(opPadding);
+        onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         publicDataOffset += arrayify(opPadding).length;
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
@@ -131,7 +135,7 @@ describe('Block commit unit tests', function () {
         op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:bob.address,tokenId:token3Id,amount:parseEther("24.5")});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
-        pubdatasOfChain4.push(opPadding);
+        onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         publicDataOffset += arrayify(opPadding).length;
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
@@ -147,7 +151,7 @@ describe('Block commit unit tests', function () {
         op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
-        pubdatasOfChain3.push(opPadding);
+        onchainOpPubdataHash3 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash3), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         publicDataOffset += arrayify(opPadding).length;
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
@@ -157,7 +161,8 @@ describe('Block commit unit tests', function () {
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
-        processableOps.push(opPadding);
+        onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
         publicDataOffset += arrayify(opPadding).length;
@@ -171,7 +176,8 @@ describe('Block commit unit tests', function () {
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
-        processableOps.push(opPadding);
+        onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
         publicDataOffset += arrayify(opPadding).length;
@@ -184,7 +190,8 @@ describe('Block commit unit tests', function () {
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
-        processableOps.push(opPadding);
+        onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         opsOfChain1.push({ethWitness:"0x",publicDataOffset:publicDataOffsetOfChain1});
         publicDataOffset += arrayify(opPadding).length;
@@ -194,19 +201,25 @@ describe('Block commit unit tests', function () {
         op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,amount:1000,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
-        pubdatasOfChain4.push(opPadding);
+        onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         block.publicData = hexlify(concat(pubdatas));
         block.onchainOperations = ops;
         const expected = {
-            processableOperations:concat(processableOps),
+            processableOpPubdataHash,
             priorityOperationsProcessed,
             offsetsCommitment:hexlify(concat(offsetsCommitment)),
-            onchainOperationPubdatas:["0x",hexlify(concat(pubdatasOfChain1)),"0x",hexlify(concat(pubdatasOfChain3)),hexlify(concat(pubdatasOfChain4))]
+            onchainOperationPubdataHashs:[
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+                onchainOpPubdataHash1,
+                EMPTY_STRING_KECCAK,
+                onchainOpPubdataHash3,
+                onchainOpPubdataHash4]
         }
-        return {block, expected, opsOfChain1};
+        const pubdataOfChain1 = hexlify(concat(pubdatasOfChain1));
+        return {block, expected, pubdataOfChain1, opsOfChain1};
     }
 
     describe('Collect onchain ops', function () {
@@ -223,20 +236,24 @@ describe('Block commit unit tests', function () {
 
         async function collectOnchainOps(block, expected) {
             const actual = await zkLink.testCollectOnchainOps(block);
-            expect(actual.processableOperationsHash).eq(keccak256(expected.processableOperations));
+            expect(actual.processableOperationsHash).eq(expected.processableOpPubdataHash);
             expect(actual.priorityOperationsProcessed).eq(expected.priorityOperationsProcessed);
             expect(actual.offsetsCommitment).eq(expected.offsetsCommitment);
-            expect(actual.onchainOperationPubdatas).eql(expected.onchainOperationPubdatas);
+            expect(actual.onchainOperationPubdataHashs).eql(expected.onchainOperationPubdataHashs);
         }
 
         it('no pubdata should be success', async () => {
             const block = Object.assign({}, commitBlockTemplate);
             block.publicData = "0x";
             const expected = {
-                processableOperations:"0x",
+                processableOpPubdataHash:EMPTY_STRING_KECCAK,
                 priorityOperationsProcessed:0,
                 offsetsCommitment:"0x",
-                onchainOperationPubdatas:["0x","0x","0x","0x","0x"]
+                onchainOperationPubdataHashs:["0x0000000000000000000000000000000000000000000000000000000000000000",
+                    EMPTY_STRING_KECCAK,
+                    EMPTY_STRING_KECCAK,
+                    EMPTY_STRING_KECCAK,
+                    EMPTY_STRING_KECCAK]
             }
             await collectOnchainOps(block, expected);
         });
@@ -377,6 +394,7 @@ describe('Block commit unit tests', function () {
             const testBlockInfo = await buildTestBlock();
             const fullBlock = testBlockInfo.block;
             const expected = testBlockInfo.expected;
+            const pubdataOfChain1 = testBlockInfo.pubdataOfChain1;
             const opsOfChain1 = testBlockInfo.opsOfChain1;
 
             commitBlock.publicData = fullBlock.publicData;
@@ -385,15 +403,12 @@ describe('Block commit unit tests', function () {
             const r0 = await zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock);
 
             const compressedBlock = Object.assign({}, commitBlock);
-            compressedBlock.publicData = expected.onchainOperationPubdatas[CHAIN_ID];
+            compressedBlock.publicData = pubdataOfChain1;
             compressedBlock.onchainOperations = opsOfChain1;
 
             extraBlock.publicDataHash = sha256(arrayify(commitBlock.publicData));
             extraBlock.offsetCommitmentHash = sha256(arrayify(expected.offsetsCommitment));
-            for (let i = 0; i < expected.onchainOperationPubdatas.length; i++) {
-                const hash = keccak256(arrayify(expected.onchainOperationPubdatas[i]));
-                extraBlock.onchainOperationPubdataHashs.push(hash);
-            }
+            extraBlock.onchainOperationPubdataHashs = expected.onchainOperationPubdataHashs;
             const r1 = await zkLink.testCommitOneBlock(preBlock, compressedBlock, true, extraBlock);
 
             expect(r1).to.eql(r0);
