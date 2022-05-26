@@ -260,7 +260,7 @@ describe('Block commit unit tests', function () {
 
             block.onchainOperations = [{
                 ethWitness:"0x",
-                publicDataOffset:CHUNK_BYTES-1
+                publicDataOffset:CHUNK_BYTES-2
             }];
             await expect(zkLink.testCollectOnchainOps(block))
                 .to.be.revertedWith("h2");
@@ -268,13 +268,13 @@ describe('Block commit unit tests', function () {
 
         it('invalid op type should be failed', async () => {
             const block = Object.assign({}, commitBlockTemplate);
-            block.publicData = paddingChunk("0x00"); // Noop
+            block.publicData = paddingChunk("0x0001"); // Noop
             block.onchainOperations = [{
                 ethWitness:"0x",
                 publicDataOffset:0
             }];
             await expect(zkLink.testCollectOnchainOps(block))
-                .to.be.revertedWith("h4");
+                .to.be.revertedWith("k2");
         });
 
         it('invalid chain id should be failed', async () => {

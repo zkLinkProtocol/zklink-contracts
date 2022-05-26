@@ -471,7 +471,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
 
             uint256 pubdataOffset = onchainOpData.publicDataOffset;
-            require(pubdataOffset < pubData.length, "h1");
+            // chainIdOffset = pubdataOffset + 1
+            require(pubdataOffset + 1 < pubData.length, "h1");
             require(pubdataOffset % CHUNK_BYTES == 0, "h2");
 
             {
@@ -480,15 +481,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 offsetsCommitment[chunkId] = bytes1(0x01);
             }
 
-            // check op type firstly and then check chain id
-            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
-            require(opType == Operations.OpType.Deposit
-            || opType == Operations.OpType.ChangePubKey
-            || opType == Operations.OpType.Withdraw
-            || opType == Operations.OpType.ForcedExit
-                || opType == Operations.OpType.FullExit, "h4");
+            // check chain id
+            uint8 chainId = uint8(pubData[pubdataOffset + 1]);
+            checkChainId(chainId);
 
-            uint8 chainId = checkChainId(pubData, pubdataOffset);
+            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
 
             uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
             (uint64 newPriorityProceeded, bytes memory opPubData, bool isProcessable) = checkOnchainOp(
@@ -510,18 +507,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         processableOperationsHash = keccak256(processableOperationData);
     }
 
-    function checkChainId(bytes memory pubData, uint256 pubdataOffset) internal pure returns (uint8) {
-        // the chain id is the next byte after these op type
-        // overflow is impossible
-        uint256 chainIdOffset = pubdataOffset + 1;
-        require(chainIdOffset < pubData.length, "i0");
-        uint8 chainId = uint8(pubData[chainIdOffset]);
+    function checkChainId(uint8 chainId) internal pure {
         require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "i1");
         // revert if invalid chain id exist
         // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
         uint256 chainIndex = 1 << chainId - 1;
         require(chainIndex & ALL_CHAINS == chainIndex, "i2");
-        return chainId;
     }
 
     function checkOnchainOp(Operations.OpType opType,
@@ -531,9 +522,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint64 nextPriorityOpIdx,
         bytes memory ethWitness)
     internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bool isProcessable) {
-        priorityOperationsProcessed = 0;
-        opPubData = new bytes(0);
-        isProcessable = false;
         // ignore check if ops are not part of the current chain
         if (opType == Operations.OpType.Deposit) {
             opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
@@ -559,13 +547,15 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
             } else if (opType == Operations.OpType.ForcedExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
-            } else {
+            } else if (opType == Operations.OpType.FullExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
                 if (chainId == CHAIN_ID) {
                     Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
                     Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
                     priorityOperationsProcessed = 1;
                 }
+            } else {
+                revert("k2");
             }
             if (chainId == CHAIN_ID) {
                 isProcessable = true;
@@ -674,8 +664,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             "m0"
         );
         require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "m1");
-        // block must complete cross chain block synchronization before execute
-        require(_blockExecuteData.storedBlock.blockNumber <= totalBlocksSynchronized, "m2");
 
         bytes memory pendingOnchainOps = new bytes(0);
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
@@ -696,12 +684,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 withdrawOrStore(op.tokenId, op.owner, op.amount);
             } else {
-                revert("m3");
+                revert("m2");
             }
             pendingOnchainOps = Utils.concat(pendingOnchainOps, pubData);
         }
         bytes32 pendingOnchainOpsHash = keccak256(pendingOnchainOps);
-        require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "Z42");
+        require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
     }
 
     /// @dev Execute withdraw operation
