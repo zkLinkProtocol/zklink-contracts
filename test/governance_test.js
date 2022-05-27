@@ -6,11 +6,10 @@ describe('Governance unit tests', function () {
     let alice, bob, jack, lzBridgeInETH;
     before(async () => {
         [alice, bob, jack, lzBridgeInETH] = await hardhat.ethers.getSigners();
-        const contractFactory = await hardhat.ethers.getContractFactory('Governance');
+        const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
         testContract = await contractFactory.connect(alice).deploy();
-        await testContract.initialize(
-            hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [alice.address])
-        );
+        await testContract.setGovernor(alice.address);
+
         expect(await testContract.networkGovernor()).to.equal(alice.address);
     });
 
@@ -18,39 +17,39 @@ describe('Governance unit tests', function () {
         await testContract.connect(alice).changeGovernor(bob.address);
         expect(await testContract.networkGovernor()).to.equal(bob.address);
 
-        await expect(testContract.connect(bob).changeGovernor(hardhat.ethers.constants.AddressZero)).to.be.revertedWith('Governor not set');
+        await expect(testContract.connect(bob).changeGovernor(hardhat.ethers.constants.AddressZero)).to.be.revertedWith('H');
     });
 
     it('Add token should success', async () => {
         const tokenId = 1;
         const tokenAddress = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        await expect(testContract.connect(jack).addToken(tokenId, tokenAddress)).to.be.revertedWith("Caller is not governor");
+        await expect(testContract.connect(jack).addToken(tokenId, tokenAddress)).to.be.revertedWith("3");
 
-        await expect(testContract.connect(bob).addToken(0, tokenAddress)).to.be.revertedWith("Invalid token id");
-        await expect(testContract.connect(bob).addToken(8192, tokenAddress)).to.be.revertedWith("Invalid token id");
-        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero)).to.be.revertedWith("Token address not set");
+        await expect(testContract.connect(bob).addToken(0, tokenAddress)).to.be.revertedWith("I0");
+        await expect(testContract.connect(bob).addToken(8192, tokenAddress)).to.be.revertedWith("I0");
+        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero)).to.be.revertedWith("I1");
 
         await testContract.connect(bob).addToken(tokenId, tokenAddress);
-        const rt = await testContract.getToken(tokenId);
+        const rt = await testContract.tokens(tokenId);
         expect(rt.registered).equal(true);
         expect(rt.paused).equal(false);
         expect(rt.tokenAddress).equal(tokenAddress);
-        expect(await testContract.getTokenId(tokenAddress)).to.eq(tokenId);
+        expect(await testContract.tokenIds(tokenAddress)).to.eq(tokenId);
 
         // duplicate register
-        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress)).to.be.revertedWith('Token registered');
+        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress)).to.be.revertedWith('I2');
         const anotherTokenId = 2;
-        await expect(testContract.connect(bob).addToken(anotherTokenId, tokenAddress)).to.be.revertedWith('Token registered');
+        await expect(testContract.connect(bob).addToken(anotherTokenId, tokenAddress)).to.be.revertedWith('I2');
     });
 
     it('Set token pause should success', async () => {
         const tokenId = 1;
-        await expect(testContract.connect(jack).setTokenPaused(tokenId, true)).to.be.revertedWith("Caller is not governor");
-        await expect(testContract.connect(bob).setTokenPaused(2, true)).to.be.revertedWith("Token not registered");
+        await expect(testContract.connect(jack).setTokenPaused(tokenId, true)).to.be.revertedWith("3");
+        await expect(testContract.connect(bob).setTokenPaused(2, true)).to.be.revertedWith("K");
 
         expect(await testContract.connect(bob).setTokenPaused(tokenId, true))
             .to.be.emit(testContract.address, 'TokenPausedUpdate');
-        const rt = await testContract.getToken(tokenId);
+        const rt = await testContract.tokens(tokenId);
         expect(rt.paused).equal(true);
     });
 
@@ -66,19 +65,19 @@ describe('Governance unit tests', function () {
 
     it('only network governor can add bridge', async () => {
         await expect(testContract.connect(alice).addBridge(lzBridgeInETH.address))
-            .to.be.revertedWith('Caller is not governor');
+            .to.be.revertedWith('3');
 
         await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
             .to.be.emit(testContract, "AddBridge")
             .withArgs(lzBridgeInETH.address);
         // duplicate add bridge should failed
         await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
-            .to.be.revertedWith("Bridge exist");
+            .to.be.revertedWith("L1");
     });
 
     it('only network governor can disable bridge', async () => {
         await expect(testContract.connect(alice).updateBridge(1, false, false))
-            .to.be.revertedWith('Caller is not governor');
+            .to.be.revertedWith('3');
 
         await expect(testContract.connect(bob).updateBridge(0, false, false))
             .to.be.emit(testContract, "UpdateBridge")

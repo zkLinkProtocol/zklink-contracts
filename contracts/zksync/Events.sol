@@ -46,6 +46,24 @@ interface Events {
 
     /// @notice Event emitted when set broker allowance
     event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
+
+    /// @notice Token added to ZkLink net
+    event NewToken(uint16 indexed tokenId, address indexed token);
+
+    /// @notice Governor changed
+    event NewGovernor(address newGovernor);
+
+    /// @notice Validator's status changed
+    event ValidatorStatusUpdate(address indexed validatorAddress, bool isActive);
+
+    /// @notice Token pause status update
+    event TokenPausedUpdate(uint16 indexed token, bool paused);
+
+    /// @notice New bridge added
+    event AddBridge(address indexed bridge);
+
+    /// @notice Bridge update
+    event UpdateBridge(uint256 indexed bridgeIndex, bool enableBridgeTo, bool enableBridgeFrom);
 }
 
 /// @title Upgrade events

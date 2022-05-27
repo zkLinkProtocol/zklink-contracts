@@ -13,8 +13,8 @@ contract LayerZeroStorage {
 
     enum APP {ZKL, ZKLINK}
 
-    /// @notice ZkLink governance contract
-    IGovernance public governance;
+    /// @notice ZkLink network governor
+    address public networkGovernor;
     /// @notice LayerZero endpoint that used to send and receive message
     address public endpoint;
     /// @notice bridge contract address on other chains
@@ -35,17 +35,4 @@ contract LayerZeroStorage {
         require(msg.sender == endpoint, "Require endpoint");
         _;
     }
-}
-
-interface IGovernance {
-    /// @notice Return the network governor address
-    function networkGovernor() external view returns (address);
-
-    /// @notice Check if bridge to enabled
-    /// @param bridge the bridge contract
-    function isBridgeToEnabled(address bridge) external view returns (bool);
-
-    /// @notice Check if bridge from enabled
-    /// @param bridge the bridge contract
-    function isBridgeFromEnabled(address bridge) external view returns (bool);
 }

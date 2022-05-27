@@ -10,9 +10,11 @@ describe('ZKL unit tests', function () {
     before(async () => {
         [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
 
-        const bmFactory = await ethers.getContractFactory('Governance');
+        const bmFactory = await ethers.getContractFactory('ZkLinkPeripheryTest');
         govInETH = await bmFactory.deploy();
+        await govInETH.setGovernor(networkGovernor.address);
         govInBSC = await bmFactory.deploy();
+        await govInBSC.setGovernor(networkGovernor.address);
 
         const zklFactory = await ethers.getContractFactory('ZKL');
         zklInETH = await zklFactory.deploy(govInETH.address);
@@ -25,14 +27,11 @@ describe('ZKL unit tests', function () {
         await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [govInETH.address, lzInETH.address], {kind: "uups"});
-        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [govInBSC.address, lzInBSC.address], {kind: "uups"});
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
+        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInBSC.address], {kind: "uups"});
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
-
-        await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
-        await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
 
         govInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
         govInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);

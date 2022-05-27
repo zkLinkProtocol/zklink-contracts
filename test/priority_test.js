@@ -5,7 +5,7 @@ const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
     let deployedInfo;
-    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, governance, governor;
+    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, governor;
     let tpn = 0;
     before(async () => {
         deployedInfo = await deploy();
@@ -17,7 +17,6 @@ describe('ZkLink priority queue ops unit tests', function () {
         token3 = deployedInfo.token3.contract;
         token3Id = deployedInfo.token3.tokenId;
         defaultSender = deployedInfo.defaultSender;
-        governance = deployedInfo.governance;
         governor = deployedInfo.governor;
     });
 
@@ -46,9 +45,9 @@ describe('ZkLink priority queue ops unit tests', function () {
         await expect(zkLink.connect(defaultSender).depositERC20(tokenNotRegistered.address, 30, to, 0)).to.be.revertedWith("e3");
 
         // token deposit paused
-        await governance.connect(governor).setTokenPaused(token2Id, true);
+        await periphery.connect(governor).setTokenPaused(token2Id, true);
         await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to.be.revertedWith("e4");
-        await governance.connect(governor).setTokenPaused(token2Id, false);
+        await periphery.connect(governor).setTokenPaused(token2Id, false);
 
         // zero amount
         await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: 0})).to.be.revertedWith("e0");

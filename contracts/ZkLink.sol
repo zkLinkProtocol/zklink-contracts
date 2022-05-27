@@ -73,19 +73,19 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @notice ZkLink contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
-    /// @dev _governanceAddress The address of Governance contract
     /// @dev _verifierAddress The address of Verifier contract
     /// @dev _peripheryAddress The address of ZkLinkPeriphery contract
+    /// @dev _networkGovernor The address of system controller
     /// @dev _genesisStateHash Genesis blocks (first block) state tree root hash
     function initialize(bytes calldata initializationParameters) external onlyDelegateCall {
         initializeReentrancyGuard();
 
-        (address _governanceAddress, address _verifierAddress, address _peripheryAddress, bytes32 _genesisStateHash) =
+        (address _verifierAddress, address _peripheryAddress, address _networkGovernor, bytes32 _genesisStateHash) =
             abi.decode(initializationParameters, (address, address, address, bytes32));
 
-        governance = Governance(_governanceAddress);
-        verifier = _verifierAddress;
+        verifier = Verifier(_verifierAddress);
         periphery = _peripheryAddress;
+        networkGovernor = _networkGovernor;
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
@@ -96,11 +96,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
-    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {
-        (address _verifier, address _periphery) = abi.decode(upgradeParameters, (address, address));
-        verifier = _verifier;
-        periphery = _periphery;
-    }
+    // solhint-disable-next-line no-empty-blocks
+    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {}
 
     // =================Delegate call=================
 
@@ -151,7 +148,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_accountId <= MAX_ACCOUNT_ID, "a0");
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "a1");
         // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
+        RegisteredToken memory rt = tokens[_tokenId];
         require(rt.registered, "a2");
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "a3");
@@ -180,7 +177,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant {
         // ===Checks===
         // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
+        RegisteredToken memory rt = tokens[_tokenId];
         require(rt.registered, "b0");
 
         // Set the available amount to withdraw
@@ -259,6 +256,42 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         _commitBlocks(_lastCommittedBlockData, _newBlocksData, true, _newBlocksExtraData);
     }
 
+    /// @notice Recursive proof input data (individual commitments are constructed onchain)
+    struct ProofInput {
+        uint256[] recursiveInput;
+        uint256[] proof;
+        uint256[] commitments;
+        uint8[] vkIndexes;
+        uint256[16] subproofsLimbs;
+    }
+
+    /// @notice Blocks commitment verification.
+    /// @dev Only verifies block commitments without any other processing
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+        // ===Checks===
+        uint32 currentTotalBlocksProven = totalBlocksProven;
+        for (uint256 i = 0; i < _committedBlocks.length; ++i) {
+            require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven + 1], "x0");
+            ++currentTotalBlocksProven;
+
+            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+        }
+
+        // ===Effects===
+        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
+        totalBlocksProven = currentTotalBlocksProven;
+
+        // ===Interactions===
+        bool success = verifier.verifyAggregatedBlockProof(
+            _proof.recursiveInput,
+            _proof.proof,
+            _proof.vkIndexes,
+            _proof.commitments,
+            _proof.subproofsLimbs
+        );
+        require(success, "x3");
+    }
+
     /// @notice Reverts unExecuted blocks
     function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
         uint32 blocksCommitted = totalBlocksCommitted;
@@ -324,8 +357,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // subAccountId MUST be valid
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "e2");
         // token MUST be registered to ZkLink and deposit MUST be enabled
-        uint16 tokenId = governance.getTokenId(_tokenAddress);
-        Governance.RegisteredToken memory rt = governance.getToken(tokenId);
+        uint16 tokenId = tokenIds[_tokenAddress];
+        RegisteredToken memory rt = tokens[tokenId];
         require(rt.registered, "e3");
         require(!rt.paused, "e4");
         // to prevent ddos
@@ -731,7 +764,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         if (_amount == 0) {
             return;
         }
-        Governance.RegisteredToken memory rt = governance.getToken(_tokenId);
+        RegisteredToken memory rt = tokens[_tokenId];
         if (!rt.registered) {
             increasePendingBalance(_tokenId, _recipient, _amount);
             return;

@@ -5,9 +5,10 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./zksync/Operations.sol";
-import "./Governance.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
+import "./zksync/Config.sol";
+import "./zksync/Verifier.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
@@ -19,7 +20,7 @@ contract Storage is Config {
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
-    address public verifier;
+    Verifier public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
@@ -27,10 +28,10 @@ contract Storage is Config {
     /// @notice First open priority request id
     uint64 public firstPriorityRequestId;
 
-    // governance(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
+    // networkGovernor(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
 
-    /// @notice Governance contract. Contains the governor (the owner) of whole system, validators list, possible tokens list
-    Governance public governance;
+    /// @notice The the owner of whole system
+    address public networkGovernor;
 
     /// @notice Total number of committed blocks i.e. blocks[totalBlocksCommitted] points at the latest committed block
     uint32 public totalBlocksCommitted;
@@ -96,6 +97,33 @@ contract Storage is Config {
     /// @dev Broker allowance used in accept
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
 
+    /// @notice List of permitted validators
+    mapping(address => bool) public validators;
+
+    struct RegisteredToken {
+        bool registered; // whether token registered to ZkLink or not, default is false
+        bool paused; // whether token can deposit to ZkLink or not, default is false
+        address tokenAddress; // the token address
+    }
+
+    /// @notice A map of registered token infos
+    mapping(uint16 => RegisteredToken) public tokens;
+
+    /// @notice A map of token address to id, 0 is invalid token id
+    mapping(address => uint16) public tokenIds;
+
+    /// @dev We can set `enableBridgeTo` and `enableBridgeTo` to false to disable bridge when `bridge` is compromised
+    struct BridgeInfo {
+        address bridge;
+        bool enableBridgeTo;
+        bool enableBridgeFrom;
+    }
+
+    /// @notice bridges
+    BridgeInfo[] public bridges;
+    // 0 is reversed for non-exist bridge, existing bridges are indexed from 1
+    mapping(address => uint256) public bridgeIndex;
+
     /// @notice block stored data
     /// @dev `blockNumber`,`timestamp`,`stateHash`,`commitment` are the same on all chains
     /// `priorityOperations`,`pendingOnchainOperationsHash` is different for each chain
@@ -127,9 +155,14 @@ contract Storage is Config {
         _;
     }
 
+    modifier onlyGovernor {
+        require(msg.sender == networkGovernor, "3");
+        _;
+    }
+
     /// @notice Check if msg sender is a validator
     modifier onlyValidator() {
-        governance.requireActiveValidator(msg.sender);
+        require(validators[msg.sender], "4");
         _;
     }
 
@@ -152,7 +185,7 @@ contract Storage is Config {
     /// @dev Fallback function allowing to perform a delegatecall to the given implementation
     /// This function will return whatever the implementation call returns
     function _fallback(address _target) internal {
-        require(_target != address(0), "3");
+        require(_target != address(0), "5");
         assembly {
         // The pointer to the free memory slot
             let ptr := mload(0x40)

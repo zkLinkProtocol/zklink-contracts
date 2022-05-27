@@ -17,18 +17,6 @@ import "./zksync/SafeCast.sol";
 contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     using SafeMath for uint256;
 
-    // =================Delegate call=================
-
-    /// @notice Will run when no functions matches call data
-    fallback() external payable {
-        _fallback(verifier);
-    }
-
-    /// @notice Same as fallback but called when calldata is empty
-    receive() external payable {
-        _fallback(verifier);
-    }
-
     // =================User interface=================
 
     /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
@@ -42,6 +30,39 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             exodusMode = true;
             emit ExodusMode();
         }
+    }
+
+    /// @notice Withdraws token from ZkLink to root chain in case of exodus mode. User must provide proof that he owns funds
+    /// @param _storedBlockInfo Last verified block
+    /// @param _owner Owner of the account
+    /// @param _accountId Id of the account in the tree
+    /// @param _subAccountId Id of the subAccount in the tree
+    /// @param _proof Proof
+    /// @param _tokenId The token want to withdraw
+    /// @param _amount Amount for owner (must be total amount, not part of it)
+    function performExodus(
+        StoredBlockInfo calldata _storedBlockInfo,
+        address _owner,
+        uint32 _accountId,
+        uint8 _subAccountId,
+        uint16 _tokenId,
+        uint128 _amount,
+        uint256[] calldata _proof
+    ) external notActive {
+        // ===Checks===
+        // performed exodus MUST not be already exited
+        require(!performedExodus[_accountId][_subAccountId][_tokenId], "y0");
+        // incorrect stored block info
+        require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "y1");
+        // exit proof MUST be correct
+        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _tokenId, _amount, _proof);
+        require(proofCorrect, "y2");
+
+        // ===Effects===
+        performedExodus[_accountId][_subAccountId][_tokenId] = true;
+        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
+        increaseBalanceToWithdraw(packedBalanceKey, _amount);
+        emit WithdrawalPending(_tokenId, _owner, _amount);
     }
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
@@ -104,12 +125,124 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     function getPendingBalance(address _address, uint16 _tokenId) external view returns (uint128) {
         return pendingBalances[packAddressAndTokenId(_address, _tokenId)];
     }
+
+    // =======================Governance interface======================
+
+    /// @notice Change current governor
+    /// @param _newGovernor Address of the new governor
+    function changeGovernor(address _newGovernor) external onlyGovernor {
+        require(_newGovernor != address(0), "H");
+        if (networkGovernor != _newGovernor) {
+            networkGovernor = _newGovernor;
+            emit NewGovernor(_newGovernor);
+        }
+    }
+
+    /// @notice Add token to the list of networks tokens
+    /// @param _tokenId Token id
+    /// @param _tokenAddress Token address
+    function addToken(uint16 _tokenId, address _tokenAddress) public onlyGovernor {
+        // token id MUST be in a valid range
+        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
+        // token MUST be not zero address
+        require(_tokenAddress != address(0), "I1");
+        // revert duplicate register
+        RegisteredToken memory rt = tokens[_tokenId];
+        require(!rt.registered, "I2");
+        require(tokenIds[_tokenAddress] == 0, "I2");
+
+        rt.registered = true;
+        rt.tokenAddress = _tokenAddress;
+        tokens[_tokenId] = rt;
+        tokenIds[_tokenAddress] = _tokenId;
+        emit NewToken(_tokenId, _tokenAddress);
+    }
+
+    /// @notice Add tokens to the list of networks tokens
+    /// @param _tokenIdList Token id list
+    /// @param _tokenAddressList Token address list
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList) external {
+        require(_tokenIdList.length == _tokenAddressList.length, "J");
+        for (uint i; i < _tokenIdList.length; i++) {
+            addToken(_tokenIdList[i], _tokenAddressList[i]);
+        }
+    }
+
+    /// @notice Pause token deposits for the given token
+    /// @param _tokenId Token id
+    /// @param _tokenPaused Token paused status
+    function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external onlyGovernor {
+        RegisteredToken memory rt = tokens[_tokenId];
+        require(rt.registered, "K");
+
+        if (rt.paused != _tokenPaused) {
+            rt.paused = _tokenPaused;
+            tokens[_tokenId] = rt;
+            emit TokenPausedUpdate(_tokenId, _tokenPaused);
+        }
+    }
+
+    /// @notice Change validator status (active or not active)
+    /// @param _validator Validator address
+    /// @param _active Active flag
+    function setValidator(address _validator, bool _active) external onlyGovernor {
+        if (validators[_validator] != _active) {
+            validators[_validator] = _active;
+            emit ValidatorStatusUpdate(_validator, _active);
+        }
+    }
+
+    /// @notice Add a new bridge
+    /// @param bridge the bridge contract
+    function addBridge(address bridge) external onlyGovernor {
+        require(bridge != address(0), "L0");
+        // the index of non-exist bridge is zero
+        require(bridgeIndex[bridge] == 0, "L1");
+
+        BridgeInfo memory info = BridgeInfo({
+            bridge: bridge,
+            enableBridgeTo: true,
+            enableBridgeFrom: true
+        });
+        bridges.push(info);
+        bridgeIndex[bridge] = bridges.length;
+        emit AddBridge(bridge);
+    }
+
+    /// @notice Update bridge info
+    /// @dev If we want to remove a bridge(not compromised), we should firstly set `enableBridgeTo` to false
+    /// and wait all messages received from this bridge and then set `enableBridgeFrom` to false.
+    /// But when a bridge is compromised, we must set both `enableBridgeTo` and `enableBridgeFrom` to false immediately
+    /// @param index the bridge info index
+    /// @param enableBridgeTo if set to false, bridge to will be disabled
+    /// @param enableBridgeFrom if set to false, bridge from will be disabled
+    function updateBridge(uint256 index, bool enableBridgeTo, bool enableBridgeFrom) external onlyGovernor {
+        require(index < bridges.length, "M");
+        BridgeInfo memory info = bridges[index];
+        info.enableBridgeTo = enableBridgeTo;
+        info.enableBridgeFrom = enableBridgeFrom;
+        bridges[index] = info;
+        emit UpdateBridge(index, enableBridgeTo, enableBridgeFrom);
+    }
+
+    function isBridgeToEnabled(address bridge) external view returns (bool) {
+        uint256 index = bridgeIndex[bridge] - 1;
+        BridgeInfo memory info = bridges[index];
+        return info.bridge == bridge && info.enableBridgeTo;
+    }
+
+    function isBridgeFromEnabled(address bridge) public view returns (bool) {
+        uint256 index = bridgeIndex[bridge] - 1;
+        BridgeInfo memory info = bridges[index];
+        return info.bridge == bridge && info.enableBridgeFrom;
+    }
+
     // =======================Cross chain block synchronization======================
 
     /// @notice Combine the `progress` of the other chains of a `syncHash` with self
     function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external {
         address bridge = msg.sender;
-        require(governance.isBridgeFromEnabled(bridge), "C");
+        require(isBridgeFromEnabled(bridge), "C");
 
         synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
         emit ReceiveSynchronizationProgress(bridge, srcChainId, nonce, syncHash, progress);
@@ -152,7 +285,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         uint16 withdrawFeeRate,
         uint32 nonce) external payable nonReentrant {
         // ===Checks===
-        uint16 tokenId = governance.getTokenId(ETH_ADDRESS);
+        uint16 tokenId = tokenIds[ETH_ADDRESS];
         (uint128 amountReceive, bytes32 hash, ) =
         _checkAccept(accepter, accountId, receiver, tokenId, amount, withdrawFeeRate, nonce);
 
@@ -247,7 +380,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(receiver != address(0), "H1");
         require(receiver != accepter, "H2");
         // token MUST be registered to ZkLink
-        Governance.RegisteredToken memory rt = governance.getToken(tokenId);
+        RegisteredToken memory rt = tokens[tokenId];
         require(rt.registered, "H3");
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid

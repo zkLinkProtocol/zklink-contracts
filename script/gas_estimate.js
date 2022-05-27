@@ -115,7 +115,7 @@ class TestSetUp {
         for (let i = 0; i < 16; i++) {
             proofInput.subproofsLimbs.push(constants.MaxUint256);
         }
-        const tx = await this.verifier.proveBlocks(committedBlocks, proofInput);
+        const tx = await this.zkLink.proveBlocks(committedBlocks, proofInput);
         let txr = await this.zkLink.provider.getTransactionReceipt(tx.hash);
         this.totalProven += nBlocks;
         return txr.gasUsed;
@@ -290,7 +290,7 @@ async function main() {
 
     const proveCostPerBlock = (nBaseCost.proveCost.sub(baseCost.proveCost)).div(BigNumber.from(nBlocks - 1));
     console.log("ProveCostPerBlock: " + proveCostPerBlock);
-    // ProveBaseCost is not accurate when use `VerifierMock` instead of `ZkLinkVerifier`
+    // ProveBaseCost is not accurate when use `VerifierMock` instead of `Verifier`
 
     const executeCostPerBlock = (nBaseCost.executeCost.sub(baseCost.executeCost)).div(BigNumber.from(nBlocks - 1));
     const executeBaseCost = baseCost.executeCost.sub(executeCostPerBlock);

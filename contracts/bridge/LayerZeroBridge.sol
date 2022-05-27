@@ -28,21 +28,21 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     }
 
     modifier onlyGovernor {
-        require(msg.sender == governance.networkGovernor(), "Caller is not governor");
+        require(msg.sender == networkGovernor, "Caller is not governor");
         _;
     }
 
     /// @dev Put `initializer` modifier here to prevent anyone call this function from proxy after we initialized
     /// No delegatecall exist in this contract, so it's ok to expose this function in logic
     /// @param _endpoint The LayerZero endpoint
-    function initialize(address _governance, address _endpoint) public initializer {
-        require(_governance != address(0), "Governance not set");
+    function initialize(address _governor, address _endpoint) public initializer {
+        require(_governor != address(0), "Governor not set");
         require(_endpoint != address(0), "Endpoint not set");
 
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
-        governance = IGovernance(_governance);
+        networkGovernor = _governor;
         endpoint = _endpoint;
     }
 

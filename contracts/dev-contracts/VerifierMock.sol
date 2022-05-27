@@ -2,11 +2,11 @@
 
 pragma solidity ^0.7.0;
 
+import "../zksync/Verifier.sol";
+
 pragma experimental ABIEncoderV2;
 
-import "../ZkLinkVerifier.sol";
-
-contract VerifierMock is ZkLinkVerifier {
+contract VerifierMock is Verifier{
 
     bool public verifyResult;
 
@@ -20,7 +20,7 @@ contract VerifierMock is ZkLinkVerifier {
         uint8[] memory,
         uint256[] memory,
         uint256[16] memory
-    ) internal view override returns (bool) {
+    ) external view override returns (bool) {
         return verifyResult;
     }
 
@@ -33,7 +33,7 @@ contract VerifierMock is ZkLinkVerifier {
         uint16,
         uint128,
         uint256[] calldata
-    ) internal view override returns (bool) {
+    ) external view override returns (bool) {
         return verifyResult;
     }
 }

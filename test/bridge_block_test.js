@@ -6,21 +6,15 @@ describe('Bridge ZkLink block unit tests', function () {
     let deployer,networkGovernor,alice,bob,tom;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
-    let govInETH, govInBSC, zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
+    let zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
     before(async () => {
         [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
 
-        const govFactory = await ethers.getContractFactory('Governance');
-        govInETH = await govFactory.deploy();
-        govInBSC = await govFactory.deploy();
-        await govInETH.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
-        await govInBSC.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
-
         const zklinkFactory = await ethers.getContractFactory('ZkLinkPeripheryTest');
         zklinkInETH = await zklinkFactory.deploy();
-        await zklinkInETH.setGov(govInETH.address);
+        await zklinkInETH.setGovernor(networkGovernor.address);
         zklinkInBSC = await zklinkFactory.deploy();
-        await zklinkInBSC.setGov(govInBSC.address);
+        await zklinkInBSC.setGovernor(networkGovernor.address);
 
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
@@ -29,20 +23,20 @@ describe('Bridge ZkLink block unit tests', function () {
         await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [govInETH.address, lzInETH.address], {kind: "uups"});
-        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [govInBSC.address, lzInBSC.address], {kind: "uups"});
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
+        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInBSC.address], {kind: "uups"});
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
 
-        govInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
-        govInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
+        zklinkInETH.connect(networkGovernor).addBridge(lzBridgeInETH.address);
+        zklinkInBSC.connect(networkGovernor).addBridge(lzBridgeInBSC.address);
 
         lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
         lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
 
         lzBridgeInETH.connect(networkGovernor).setApp(1, zklinkInETH.address);
-        lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address)
+        lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address);
     });
 
     it('only bridge can call receiveSynchronizationProgress', async () => {

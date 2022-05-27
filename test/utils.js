@@ -106,9 +106,6 @@ async function calFee(tx) {
 
 async function deploy() {
     const [defaultSender,governor,validator,feeAccount,alice,bob] = await hardhat.ethers.getSigners();
-    // governance
-    const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
-    const governance = await governanceFactory.deploy();
     // verifier
     const verifierFactory = await hardhat.ethers.getContractFactory('VerifierMock');
     const verifier = await verifierFactory.deploy();
@@ -124,9 +121,8 @@ async function deploy() {
     // deployer
     const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
     const deployer = await deployerFactory.deploy(
-        governance.address,
-        zkLink.address,
         verifier.address,
+        zkLink.address,
         periphery.address,
         genesisRoot,
         validator.address,
@@ -135,31 +131,28 @@ async function deploy() {
     );
     const txr = await deployer.deployTransaction.wait();
     const log = deployer.interface.parseLog(txr.logs[2]);
-    const governanceProxy = governanceFactory.attach(log.args.governance);
+    const verifyProxy = verifierFactory.attach(log.args.verifier);
     const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
+    const peripheryProxy = peripheryFactory.attach(log.args.zkLink);
     const upgradeGatekeeper = log.args.upgradeGatekeeper;
-
-    // add validator
-    await governanceProxy.connect(governor).setValidator(validator.address, true);
 
     // add some tokens
     const ethId = 1;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-    await governanceProxy.connect(governor).addToken(ethId, ethAddress);
+    await peripheryProxy.connect(governor).addToken(ethId, ethAddress);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
-    await governanceProxy.connect(governor).addToken(2, token2.address);
+    await peripheryProxy.connect(governor).addToken(2, token2.address);
 
     const nstFactory = await hardhat.ethers.getContractFactory('NonStandardToken');
     const token3 = await nstFactory.deploy("Token3", "T3");
-    await governanceProxy.connect(governor).addToken(3, token3.address);
+    await peripheryProxy.connect(governor).addToken(3, token3.address);
 
     return {
-        governance: governanceProxy,
         zkLink: zkLinkProxy,
-        periphery: peripheryFactory.attach(zkLinkProxy.address),
-        verifier: verifierFactory.attach(zkLinkProxy.address),
+        periphery: peripheryProxy,
+        verifier: verifyProxy,
         upgradeGatekeeper: upgradeGatekeeper,
         governor: governor,
         validator: validator,

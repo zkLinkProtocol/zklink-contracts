@@ -6,7 +6,7 @@ describe('LayerZero bridge unit tests', function () {
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
     let deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH;
-    let lzInETH, gov, lzBridgeInETH;
+    let lzInETH, lzBridgeInETH;
     before(async () => {
         [deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH] = await ethers.getSigners();
 
@@ -14,12 +14,8 @@ describe('LayerZero bridge unit tests', function () {
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
         await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
 
-        const govFactory = await ethers.getContractFactory('Governance');
-        gov = await govFactory.deploy();
-        await gov.initialize(ethers.utils.defaultAbiCoder.encode(['address'], [networkGovernor.address]));
-
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [gov.address, lzInETH.address], {kind: "uups"});
+        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
     });
 
     it('only network governor can set destination', async () => {

@@ -4,12 +4,13 @@ const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink exodus unit tests', function () {
     let deployedInfo;
-    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governance, governor, verifier;
+    let zkLink, periphery, verifier, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governance, governor;
     let storedBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
         zkLink = deployedInfo.zkLink;
         periphery = deployedInfo.periphery;
+        verifier = deployedInfo.verifier;
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
@@ -39,7 +40,7 @@ describe('ZkLink exodus unit tests', function () {
         const tokenId = 58;
         const amount = parseEther("1.56");
         const proof = [3,0,9,5];
-        await expect(verifier.connect(defaultSender).performExodus(storedBlockTemplate,
+        await expect(periphery.connect(defaultSender).performExodus(storedBlockTemplate,
             owner,
             accountId,
             subAccountId,
@@ -77,7 +78,7 @@ describe('ZkLink exodus unit tests', function () {
         const proof = [3,0,9,5];
 
         // not the last executed block
-        await expect(verifier.connect(defaultSender).performExodus(block5,
+        await expect(periphery.connect(defaultSender).performExodus(block5,
             owner,
             accountId,
             subAccountId,
@@ -88,7 +89,7 @@ describe('ZkLink exodus unit tests', function () {
 
         // verify failed
         await verifier.setVerifyResult(false);
-        await expect(verifier.connect(defaultSender).performExodus(block6,
+        await expect(periphery.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
@@ -99,7 +100,7 @@ describe('ZkLink exodus unit tests', function () {
 
         // pending balance should increase if success
         await verifier.setVerifyResult(true);
-        await expect(verifier.connect(defaultSender).performExodus(block6,
+        await expect(periphery.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
@@ -111,7 +112,7 @@ describe('ZkLink exodus unit tests', function () {
         expect(await periphery.getPendingBalance(owner, tokenId)).to.be.eq(amount);
 
         // duplicate perform should be failed
-        await expect(verifier.connect(defaultSender).performExodus(block6,
+        await expect(periphery.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId,
@@ -123,7 +124,7 @@ describe('ZkLink exodus unit tests', function () {
         // diff subAccount should success
         const subAccountId1 = 3;
         const amount1 = parseEther("0.5");
-        await expect(verifier.connect(defaultSender).performExodus(block6,
+        await expect(periphery.connect(defaultSender).performExodus(block6,
             owner,
             accountId,
             subAccountId1,
