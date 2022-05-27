@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
-const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER } = require('./utils');
+const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2 } = require('./utils');
 
 describe('ZkLink change pubkey unit tests', function () {
     let zkLink, periphery, alice;
@@ -96,9 +96,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const creatorAddress = "0x52bc44d5378309EE2abF1539BF71dE1b7d7bE3b5";
         const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
         const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";
-        const ethWitness = ethers.utils.solidityPack(["bytes1","address","bytes32","bytes32"],[1, creatorAddress, saltArg, codeHash]);
-        const salt = ethers.utils.keccak256(ethers.utils.arrayify(ethers.utils.solidityPack(["bytes32","bytes20"],[saltArg, pubKeyHash])));
-        const owner = ethers.utils.getCreate2Address(creatorAddress, ethers.utils.arrayify(salt), ethers.utils.arrayify(codeHash));
+        const {ethWitness, owner} = createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash);
         const pubdata = getChangePubkeyPubdata({chainId:1, accountId, pubKeyHash, owner, nonce:0, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
 

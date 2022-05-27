@@ -17,6 +17,7 @@ const MAX_CHAIN_ID = 4;
 const CHAIN_ID = 1; // chain id of UnitTest env
 const COMMIT_TIMESTAMP_NOT_OLDER = 86400; // 24 hours
 const COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 900; // 15 minutes
+const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const EMPTY_STRING_KECCAK = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
 const GENESIS_ROOT = "0x209d742ecb062db488d20e7f8968a40673d718b24900ede8035e05a78351d956";
 const GENESIS_BLOCK = {
@@ -25,7 +26,7 @@ const GENESIS_BLOCK = {
     pendingOnchainOperationsHash:EMPTY_STRING_KECCAK,
     timestamp:0,
     stateHash:GENESIS_ROOT,
-    commitment:"0x0000000000000000000000000000000000000000000000000000000000000000",
+    commitment:ZERO_BYTES32,
     syncHash:EMPTY_STRING_KECCAK
 }
 
@@ -187,13 +188,24 @@ function hashBytesToBytes20(pubData) {
 async function createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,owner) {
     const sigMsg = ethers.utils.solidityPack(
         ["bytes20","uint32","uint32","bytes32"],
-        [pubKeyHash,nonce,accountId,'0x0000000000000000000000000000000000000000000000000000000000000000']);
+        [pubKeyHash,nonce,accountId,ZERO_BYTES32]);
     const signature = await owner.signMessage(ethers.utils.arrayify(sigMsg));
     return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
 }
 
+function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash) {
+    const ethWitness = ethers.utils.solidityPack(["bytes1","address","bytes32","bytes32"],[1, creatorAddress, saltArg, codeHash]);
+    const salt = ethers.utils.keccak256(ethers.utils.arrayify(ethers.utils.solidityPack(["bytes32","bytes20"],[saltArg, pubKeyHash])));
+    const owner = ethers.utils.getCreate2Address(creatorAddress, ethers.utils.arrayify(salt), ethers.utils.arrayify(codeHash));
+    return {ethWitness, owner};
+}
+
 function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce) {
     return  keccak256(solidityPack(["address","uint16","uint128","uint16","uint32"], [receiver, tokenId, amount, withdrawFeeRate, nonce]));
+}
+
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
 }
 
 module.exports = {
@@ -213,18 +225,24 @@ module.exports = {
     deploy,
     hashBytesToBytes20,
     createEthWitnessOfECRECOVER,
+    createEthWitnessOfCREATE2,
     calAcceptHash,
+    getRandomInt,
     OP_DEPOSIT,
     OP_WITHDRAW,
     OP_FULL_EXIT,
     OP_FORCE_EXIT,
     OP_CHANGE_PUBKEY,
+    OP_TRANSFER,
+    OP_TRANSFER_TO_NEW,
+    OP_ORDER_MATCHING,
     CHUNK_BYTES,
     MIN_CHAIN_ID,
     MAX_CHAIN_ID,
     CHAIN_ID,
     COMMIT_TIMESTAMP_NOT_OLDER,
     COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
+    ZERO_BYTES32,
     EMPTY_STRING_KECCAK,
     GENESIS_ROOT,
     GENESIS_BLOCK
