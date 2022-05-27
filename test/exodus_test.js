@@ -4,7 +4,7 @@ const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink exodus unit tests', function () {
     let deployedInfo;
-    let zkLink, periphery, verifier, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governance, governor;
+    let zkLink, periphery, verifier, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, governor;
     let storedBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
@@ -18,7 +18,6 @@ describe('ZkLink exodus unit tests', function () {
         token3Id = deployedInfo.token3.tokenId;
         defaultSender = deployedInfo.defaultSender;
         alice = deployedInfo.alice;
-        governance = deployedInfo.governance;
         governor = deployedInfo.governor;
         verifier = deployedInfo.verifier;
 

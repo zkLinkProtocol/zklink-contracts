@@ -4,7 +4,7 @@ const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
-    const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
+    const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
     const governance = governanceFactory.attach(governanceAddr);
     const tx = await governance.connect(governor).addToken(tokenId, tokenAddr);
     console.log('tx hash: ', tx.hash);
@@ -12,12 +12,12 @@ async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, to
     if (receipt.status) {
         console.log('tx success');
     } else {
-        throw new Error(`failed add token to the governance`);
+        throw new Error(`failed add token to the zkLink`);
     }
 }
 
 async function governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList) {
-    const governanceFactory = await hardhat.ethers.getContractFactory('Governance');
+    const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
     const governance = governanceFactory.attach(governanceAddr);
     const tx = await governance.connect(governor).addTokens(tokenIdList, tokenAddrList);
     console.log('tx hash: ', tx.hash);
@@ -25,28 +25,28 @@ async function governanceAddTokens(hardhat, governor, governanceAddr, tokenIdLis
     if (receipt.status) {
         console.log('tx success');
     } else {
-        throw new Error(`failed add tokens to the governance`);
+        throw new Error(`failed add tokens to the zkLink`);
     }
 }
 
 task("addToken", "Adds a new token with a given address for testnet")
-    .addParam("governance", "The governance contract address, default get from deploy log", undefined, types.string, true)
+    .addParam("zkLink", "The zkLink contract address, default get from deploy log", undefined, types.string, true)
     .addParam("tokenId", "The token id")
     .addParam("tokenAddress", "The token address")
     .setAction(async (taskArgs, hardhat) => {
         const key = readDeployerKey();
         const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
-        let governanceAddr = taskArgs.governance;
+        let governanceAddr = taskArgs.zkLink;
         const tokenId = taskArgs.tokenId;
         const tokenAddr = taskArgs.tokenAddress;
         if (governanceAddr === undefined) {
             const deployLogPath = `log/deploy_${process.env.NET}.log`;
             const data = fs.readFileSync(deployLogPath, 'utf8');
             const deployLog = JSON.parse(data);
-            governanceAddr = deployLog.governanceProxy;
+            governanceAddr = deployLog.zkLinkProxy;
         }
         console.log('governor', governor.address);
-        console.log('governance', governanceAddr);
+        console.log('zkLink', governanceAddr);
         console.log('token id', tokenId);
         console.log('token address', tokenAddr);
 
@@ -63,9 +63,9 @@ task("addMultipleToken", "Adds multiple tokens for testnet")
         const deployLogPath = `log/deploy_${process.env.NET}.log`;
         const data = fs.readFileSync(deployLogPath, 'utf8');
         const deployLog = JSON.parse(data);
-        const governanceAddr = deployLog.governanceProxy;
+        const governanceAddr = deployLog.zkLinkProxy;
         console.log('governor', governor.address);
-        console.log('governance', governanceAddr);
+        console.log('zkLink', governanceAddr);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));

@@ -2,18 +2,18 @@ const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
 
 task("deployZKL", "Deploy ZKL token")
-    .addParam("gov", "The governance contract address", undefined, types.string, true)
+    .addParam("zkLink", "The zkLink contract address", undefined, types.string, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const key = readDeployerKey();
         const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
-        let govAddr = taskArgs.gov;
+        let govAddr = taskArgs.zkLink;
         let skipVerify = taskArgs.skipVerify;
         if (skipVerify === undefined) {
             skipVerify = false;
         }
         console.log('deployer', deployer.address);
-        console.log('gov', govAddr);
+        console.log('zkLink', govAddr);
         console.log('skip verify contracts?', skipVerify);
 
         const balance = await deployer.getBalance();
@@ -26,7 +26,7 @@ task("deployZKL", "Deploy ZKL token")
             return;
         }
 
-        const govFactory = await hardhat.ethers.getContractFactory('Governance');
+        const govFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
         const govContract = govFactory.attach(govAddr);
 
         // deploy zkl

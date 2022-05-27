@@ -96,8 +96,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param upgradeParameters Encoded representation of upgrade parameters
-    // solhint-disable-next-line no-empty-blocks
-    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {}
+    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {
+        (address _peripheryAddress) = abi.decode(upgradeParameters, (address));
+        periphery = _peripheryAddress;
+    }
 
     // =================Delegate call=================
 

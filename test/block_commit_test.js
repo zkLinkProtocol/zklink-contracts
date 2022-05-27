@@ -25,7 +25,7 @@ const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("eth
 
 describe('Block commit unit tests', function () {
     let deployedInfo;
-    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governance, governor, verifier;
+    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governor, verifier;
     let commitBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
@@ -38,7 +38,6 @@ describe('Block commit unit tests', function () {
         defaultSender = deployedInfo.defaultSender;
         alice = deployedInfo.alice;
         bob = deployedInfo.bob;
-        governance = deployedInfo.governance;
         governor = deployedInfo.governor;
         verifier = deployedInfo.verifier;
 

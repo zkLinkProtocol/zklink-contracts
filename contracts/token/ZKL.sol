@@ -18,7 +18,7 @@ contract ZKL is ERC20Capped, ERC20Permit, IZKL {
     event BridgeTo(address indexed bridge, uint16 chainId, uint64 nonce, address sender, bytes receiver, uint amount);
     event BridgeFrom(address indexed bridge, uint16 chainId, uint64 nonce, address receiver, uint amount);
 
-    /// @notice ZkLink governance contract
+    /// @notice ZkLink contract
     IGovernance public governance;
 
     constructor(IGovernance _governance) ERC20("ZKLINK", "ZKL") ERC20Capped(CAP) ERC20Permit("ZKLINK") {
