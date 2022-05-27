@@ -251,7 +251,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(rt.registered, "H3");
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid
-        amountReceive = amount * (MAX_WITHDRAW_FEE_RATE - withdrawFeeRate) / MAX_WITHDRAW_FEE_RATE;
+        amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
         require(amountReceive > 0 && amountReceive <= amount, "H4");
         // nonce MUST not be zero
         require(nonce > 0, "H5");
