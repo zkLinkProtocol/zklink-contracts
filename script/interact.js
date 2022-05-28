@@ -2,11 +2,11 @@ const fs = require('fs');
 const { readDeployerKey } = require('./utils');
 const { layerZero } = require('./layerzero');
 
-async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr) {
+async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, standard) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
     const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
     const governance = governanceFactory.attach(governanceAddr);
-    const tx = await governance.connect(governor).addToken(tokenId, tokenAddr);
+    const tx = await governance.connect(governor).addToken(tokenId, tokenAddr, standard);
     console.log('tx hash: ', tx.hash);
     const receipt = await tx.wait();
     if (receipt.status) {
@@ -16,10 +16,10 @@ async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, to
     }
 }
 
-async function governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList) {
+async function governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList, tokenStandardList) {
     const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
     const governance = governanceFactory.attach(governanceAddr);
-    const tx = await governance.connect(governor).addTokens(tokenIdList, tokenAddrList);
+    const tx = await governance.connect(governor).addTokens(tokenIdList, tokenAddrList, tokenStandardList);
     console.log('tx hash: ', tx.hash);
     const receipt = await tx.wait();
     if (receipt.status) {
@@ -33,12 +33,14 @@ task("addToken", "Adds a new token with a given address for testnet")
     .addParam("zkLink", "The zkLink contract address, default get from deploy log", undefined, types.string, true)
     .addParam("tokenId", "The token id")
     .addParam("tokenAddress", "The token address")
+    .addParam("standard", "If the token is a standard erc20")
     .setAction(async (taskArgs, hardhat) => {
         const key = readDeployerKey();
         const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
         let governanceAddr = taskArgs.zkLink;
         const tokenId = taskArgs.tokenId;
         const tokenAddr = taskArgs.tokenAddress;
+        const standard = taskArgs.standard;
         if (governanceAddr === undefined) {
             const deployLogPath = `log/deploy_${process.env.NET}.log`;
             const data = fs.readFileSync(deployLogPath, 'utf8');
@@ -49,11 +51,12 @@ task("addToken", "Adds a new token with a given address for testnet")
         console.log('zkLink', governanceAddr);
         console.log('token id', tokenId);
         console.log('token address', tokenAddr);
+        console.log('standard', standard);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr);
+        await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, standard);
     });
 
 task("addMultipleToken", "Adds multiple tokens for testnet")
@@ -73,12 +76,14 @@ task("addMultipleToken", "Adds multiple tokens for testnet")
         const tokens = JSON.parse(fs.readFileSync(`etc/tokens/${process.env.NET}.json`, 'utf8'));
         const tokenIdList = [];
         const tokenAddrList = [];
+        const tokenStandardList = [];
         for (const token of tokens) {
             tokenIdList.push(token.id);
             tokenAddrList.push(token.address);
+            tokenStandardList.push(token.standard);
         }
         console.log('token num: ', tokenIdList.length);
-        await governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList);
+        await governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList, tokenStandardList);
     });
 
 task("depositERC20", "Deposit erc20 token to zkLink on testnet")

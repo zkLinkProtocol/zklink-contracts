@@ -139,15 +139,15 @@ async function deploy() {
     // add some tokens
     const ethId = 1;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-    await peripheryProxy.connect(governor).addToken(ethId, ethAddress);
+    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, true);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
-    await peripheryProxy.connect(governor).addToken(2, token2.address);
+    await peripheryProxy.connect(governor).addToken(2, token2.address, true);
 
     const nstFactory = await hardhat.ethers.getContractFactory('NonStandardToken');
     const token3 = await nstFactory.deploy("Token3", "T3");
-    await peripheryProxy.connect(governor).addToken(3, token3.address);
+    await peripheryProxy.connect(governor).addToken(3, token3.address, false);
 
     return {
         zkLink: zkLinkProxy,

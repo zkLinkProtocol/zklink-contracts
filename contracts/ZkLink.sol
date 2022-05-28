@@ -201,7 +201,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             // We will allow withdrawals of `value` such that:
             // `value` <= user pending balance
             // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
-            uint128 amount1 = this.transferERC20(IERC20(tokenAddress), _owner, amount, balance);
+            uint128 amount1 = this.transferERC20(IERC20(tokenAddress), _owner, amount, balance, rt.standard);
             if (amount1 != amount) {
                 pendingBalances[packedBalanceKey] = balance - amount1; // amount1 <= balance
                 amount = amount1;
@@ -217,24 +217,32 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _to Address of recipient
     /// @param _amount Amount of tokens to transfer
     /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
+    /// @param _isStandard If token is a standard erc20
     /// @return withdrawnAmount The really amount than will be debited from user
     function transferERC20(
         IERC20 _token,
         address _to,
         uint128 _amount,
-        uint128 _maxAmount
+        uint128 _maxAmount,
+        bool _isStandard
     ) external returns (uint128 withdrawnAmount) {
         require(msg.sender == address(this), "n0"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
 
-        uint256 balanceBefore = _token.balanceOf(address(this));
-        _token.transfer(_to, _amount);
-        uint256 balanceAfter = _token.balanceOf(address(this));
-        uint256 balanceDiff = balanceBefore.sub(balanceAfter);
-        require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
-        require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
+        // most tokens are standard, fewer query token balance can save gas
+        if (_isStandard) {
+            _token.transfer(_to, _amount);
+            return _amount;
+        } else {
+            uint256 balanceBefore = _token.balanceOf(address(this));
+            _token.transfer(_to, _amount);
+            uint256 balanceAfter = _token.balanceOf(address(this));
+            uint256 balanceDiff = balanceBefore.sub(balanceAfter);
+            require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
+            require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
 
-        // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
-        return uint128(balanceDiff);
+            // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
+            return uint128(balanceDiff);
+        }
     }
 
     // =================Validator interface=================
@@ -780,7 +788,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`
             // and fail if token subtracted from zkLink balance more then `_amount` that was requested.
             // This can happen if token subtracts fee from sender while transferring `_amount` that was requested to transfer.
-            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(tokenAddress), _recipient, _amount, _amount) {
+            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(tokenAddress), _recipient, _amount, _amount, rt.standard) {
                 sent = true;
             } catch {
                 sent = false;

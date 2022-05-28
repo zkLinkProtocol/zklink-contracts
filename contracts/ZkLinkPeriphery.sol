@@ -141,7 +141,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Add token to the list of networks tokens
     /// @param _tokenId Token id
     /// @param _tokenAddress Token address
-    function addToken(uint16 _tokenId, address _tokenAddress) public onlyGovernor {
+    /// @param _standard If token is a standard erc20
+    function addToken(uint16 _tokenId, address _tokenAddress, bool _standard) public onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
@@ -153,6 +154,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
+        rt.standard = _standard;
         tokens[_tokenId] = rt;
         tokenIds[_tokenAddress] = _tokenId;
         emit NewToken(_tokenId, _tokenAddress);
@@ -161,10 +163,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Add tokens to the list of networks tokens
     /// @param _tokenIdList Token id list
     /// @param _tokenAddressList Token address list
-    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList) external {
-        require(_tokenIdList.length == _tokenAddressList.length, "J");
+    /// @param _standardList Token standard list
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, bool[] calldata _standardList) external {
         for (uint i; i < _tokenIdList.length; i++) {
-            addToken(_tokenIdList[i], _tokenAddressList[i]);
+            addToken(_tokenIdList[i], _tokenAddressList[i], _standardList[i]);
         }
     }
 

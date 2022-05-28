@@ -104,6 +104,7 @@ contract Storage is Config {
         bool registered; // whether token registered to ZkLink or not, default is false
         bool paused; // whether token can deposit to ZkLink or not, default is false
         address tokenAddress; // the token address
+        bool standard; // if a standard token
     }
 
     /// @notice A map of registered token infos
