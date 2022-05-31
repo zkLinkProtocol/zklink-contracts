@@ -1,44 +1,51 @@
-const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
-const { layerZero } = require('./layerzero');
+const fs = require("fs");
+const { verifyWithErrorHandle, createOrGetDeployLog, readDeployContract} = require('./utils');
 
 task("deployZKL", "Deploy ZKL token")
-    .addParam("zkLink", "The zkLink contract address", undefined, types.string, true)
+    .addParam("zkLink", "The zkLink contract address, default get from deploy log", undefined, types.string, true)
+    .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
-        const key = readDeployerKey();
-        const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
-        let govAddr = taskArgs.zkLink;
+        const [deployer] = await hardhat.ethers.getSigners();
+        let force = taskArgs.force;
+        if (force === undefined) {
+            force = false;
+        }
         let skipVerify = taskArgs.skipVerify;
         if (skipVerify === undefined) {
             skipVerify = false;
         }
+        let govAddr = taskArgs.zkLink;
+        if (govAddr === undefined) {
+            govAddr = readDeployContract('deploy', 'zkLinkProxy');
+        }
         console.log('deployer', deployer.address);
         console.log('zkLink', govAddr);
+        console.log('force redeploy all contracts?', force);
         console.log('skip verify contracts?', skipVerify);
 
         const balance = await deployer.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
-        // layerzero must exist
-        const lzInfo = layerZero[process.env.NET];
-        if (lzInfo === undefined) {
-            console.log('LayerZero config not exist')
-            return;
-        }
-
-        const govFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-        const govContract = govFactory.attach(govAddr);
+        const {deployLogPath,deployLog} = createOrGetDeployLog('deploy_zkl');
 
         // deploy zkl
-        console.log('deploy zkl...');
-        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = await zklFactory.connect(deployer).deploy(govAddr);
-        await zklContract.deployed();
-        const zklContractAddr = zklContract.address;
+        let zklContractAddr;
+        if (!('zkl' in deployLog) || force) {
+            console.log('deploy zkl...');
+            const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
+            const zklContract = await zklFactory.connect(deployer).deploy(govAddr);
+            await zklContract.deployed();
+            zklContractAddr = zklContract.address;
+            deployLog.zkl = zklContractAddr;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        } else {
+            zklContractAddr = deployLog.zkl;
+        }
         console.log('zkl', zklContractAddr);
 
         // verify zkl
-        if (!skipVerify) {
+        if ((!('zklVerified' in deployLog) || force) && !skipVerify) {
             console.log('verify zkl...');
             await verifyWithErrorHandle(async () => {
                 await hardhat.run("verify:verify", {
@@ -46,37 +53,8 @@ task("deployZKL", "Deploy ZKL token")
                     constructorArguments: [govAddr]
                 });
             }, () => {
-            })
-        }
-
-        // deploy lz bridge
-        console.log('deploy layerzero bridge...');
-        const lzBridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge', deployer);
-        const lzBridgeContract = await hardhat.upgrades.deployProxy(lzBridgeFactory, [govAddr, lzInfo.address], {kind: "uups"});
-        await lzBridgeContract.deployed();
-        const lzBridgeAddr = lzBridgeContract.address;
-        console.log('lzBridge', lzBridgeAddr);
-        const lzBridgeImplAddr = await hardhat.upgrades.erc1967.getImplementationAddress(lzBridgeAddr);
-        console.log('lzBridge implAddr', lzBridgeImplAddr);
-
-        // verify lz bridge impl
-        if (!skipVerify) {
-            console.log('verify lz bridge impl...');
-            await verifyWithErrorHandle(async () => {
-                await hardhat.run("verify:verify", {
-                    address: lzBridgeImplAddr,
-                    constructorArguments: []
-                });
-            }, () => {
-            })
-        }
-
-        // connect zkl and bridge
-        const governor = await govContract.networkGovernor();
-        if (deployer.address === governor) {
-            console.log('connect zkl and bridge...');
-            await govContract.connect(deployer).addBridge(lzBridgeAddr);
-            await lzBridgeContract.connect(deployer).setApp(0, zklContractAddr);
-            console.log('connect finish');
+                deployLog.zklVerified = true;
+            });
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 });

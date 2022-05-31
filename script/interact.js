@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { readDeployerKey } = require('./utils');
+const { readDeployContract} = require('./utils');
 const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, standard) {
@@ -35,18 +35,14 @@ task("addToken", "Adds a new token with a given address for testnet")
     .addParam("tokenAddress", "The token address")
     .addParam("standard", "If the token is a standard erc20")
     .setAction(async (taskArgs, hardhat) => {
-        const key = readDeployerKey();
-        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        const [governor] = await hardhat.ethers.getSigners();
         let governanceAddr = taskArgs.zkLink;
+        if (governanceAddr === undefined) {
+            governanceAddr = readDeployContract('deploy', 'zkLinkProxy');
+        }
         const tokenId = taskArgs.tokenId;
         const tokenAddr = taskArgs.tokenAddress;
         const standard = taskArgs.standard;
-        if (governanceAddr === undefined) {
-            const deployLogPath = `log/deploy_${process.env.NET}.log`;
-            const data = fs.readFileSync(deployLogPath, 'utf8');
-            const deployLog = JSON.parse(data);
-            governanceAddr = deployLog.zkLinkProxy;
-        }
         console.log('governor', governor.address);
         console.log('zkLink', governanceAddr);
         console.log('token id', tokenId);
@@ -61,12 +57,8 @@ task("addToken", "Adds a new token with a given address for testnet")
 
 task("addMultipleToken", "Adds multiple tokens for testnet")
     .setAction(async (taskArgs, hardhat) => {
-        const key = readDeployerKey();
-        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
-        const deployLogPath = `log/deploy_${process.env.NET}.log`;
-        const data = fs.readFileSync(deployLogPath, 'utf8');
-        const deployLog = JSON.parse(data);
-        const governanceAddr = deployLog.zkLinkProxy;
+        const [governor] = await hardhat.ethers.getSigners();
+        const governanceAddr = readDeployContract('deploy', 'zkLinkProxy');
         console.log('governor', governor.address);
         console.log('zkLink', governanceAddr);
 
@@ -92,8 +84,7 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
     .addParam("decimals", "The token decimals", undefined, types.number, true)
     .addParam("amount", "The deposit amount in ether")
     .setAction(async (taskArgs, hardhat) => {
-            const key = readDeployerKey();
-            const sender = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+            const [sender] = await hardhat.ethers.getSigners();
             const zkLinkProxy = taskArgs.zklink;
             const token = taskArgs.token;
             const decimals = taskArgs.decimals === undefined ? 18 : taskArgs.decimals;
@@ -123,21 +114,84 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             console.log('tx', tx.hash);
     });
 
+task("setDestinations", "Set layerzero bridge destinations on testnet")
+    .setAction(async (taskArgs, hardhat) => {
+        const [governor] = await hardhat.ethers.getSigners();
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
+
+        const dstChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
+        for (let i = 0; i < dstChains.length; i++) {
+            const dstChain = dstChains[i];
+            if (process.env.NET === dstChain) {
+                continue;
+            }
+            console.log('Set destination %s...', dstChain);
+            const lzInfo = layerZero[dstChain];
+            try {
+                const dstBridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy', dstChain);
+                const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
+                console.log('tx', tx.hash);
+            } catch (error) {
+                console.log('Set bridge destination failed: ' + error);
+            }
+        }
+    });
+
+task("setApp", "Set layerzero supported app on testnet")
+    .setAction(async (taskArgs, hardhat) => {
+        const [governor] = await hardhat.ethers.getSigners();
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
+
+        try {
+            const zklAddr = readDeployContract('deploy_zkl', 'zkl');
+            console.log('Set zkl %s...', zklAddr);
+            const tx = await bridgeContract.connect(governor).setApp(0, zklAddr);
+            console.log('tx', tx.hash);
+        } catch (error) {
+            console.log('Set zkl failed: ' + error);
+        }
+
+        try {
+            const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
+            console.log('Set zkLink %s...', zkLinkProxyAddr);
+            const tx = await bridgeContract.connect(governor).setApp(1, zkLinkProxyAddr);
+            console.log('tx', tx.hash);
+        } catch (error) {
+            console.log('Set zkLink failed: ' + error);
+        }
+    });
+
 task("mintZKL", "Mint zkl for POLYGONTEST")
-    .addParam("zkl", "The zkl contract address on POLYGONTEST")
+    .addParam("zkl", "The zkl contract address on POLYGONTEST, default get from deploy log", undefined, types.string, true)
     .addParam("account", "The account address")
     .addParam("amount", "The mint amount")
     .setAction(async (taskArgs, hardhat) => {
-        const zklAddr = taskArgs.zkl;
-        const accountAddr = taskArgs.account;
-        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
         if (process.env.NET !== 'POLYGONTEST') {
             console.log('only POLYGONTEST can mint zkl');
             return;
         }
+        let zklAddr = taskArgs.zkl;
+        if (zklAddr === undefined) {
+            zklAddr = readDeployContract('deploy_zkl', 'zkl');
+        }
+        const accountAddr = taskArgs.account;
+        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
 
-        const key = readDeployerKey();
-        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        const [governor] = await hardhat.ethers.getSigners();
         console.log('governor', governor.address);
 
         const balance = await governor.getBalance();
@@ -151,46 +205,22 @@ task("mintZKL", "Mint zkl for POLYGONTEST")
         console.log('tx', tx.hash);
     });
 
-task("setDestination", "Set layerzero bridge destination for testnet")
-    .addParam("bridge", "The src lz bridge contract address")
-    .addParam("dstName", "The destination chain name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
-    .addParam("dstBridge", "The destination lz bridge contract address")
+task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
+    .addParam("bridge", "The src lz bridge contract address, default get from deploy log", undefined, types.string, true)
+    .addParam("dst", "The target destination network name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
+    .addParam("amount", "Amount to send")
     .setAction(async (taskArgs, hardhat) => {
-        const bridgeAddr = taskArgs.bridge;
-        const dstChain = taskArgs.dstName;
-        const dstBridgeAddr = taskArgs.dstBridge;
-        const curChain = process.env.NET;
-        if (curChain === dstChain) {
-            console.log('invalid dst');
-            return;
+        let bridgeAddr = taskArgs.bridge;
+        if (bridgeAddr === undefined) {
+            bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         }
+        const dstChain = taskArgs.dst;
+        // layerzero must support dst chain
         const lzInfo = layerZero[dstChain];
         if (lzInfo === undefined) {
             console.log('%s layerzero not support', dstChain);
             return;
         }
-        const key = readDeployerKey();
-        const governor = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
-        console.log('governor', governor.address);
-
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
-
-        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
-        console.log('Set destination...')
-        const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
-        console.log('tx', tx.hash);
-    });
-
-task("bridge", "Send zkl of deployer to another chain for testnet")
-    .addParam("bridge", "The src lz bridge contract address")
-    .addParam("dst", "The target destination network name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
-    .addParam("amount", "Amount to send")
-    .setAction(async (taskArgs, hardhat) => {
-        const bridgeAddr = taskArgs.bridge;
-        const dstChain = taskArgs.dst;
         const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
 
         const curChain = process.env.NET;
@@ -199,8 +229,7 @@ task("bridge", "Send zkl of deployer to another chain for testnet")
             return;
         }
 
-        const key = readDeployerKey();
-        const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        const [deployer] = await hardhat.ethers.getSigners();
         console.log('deployer', deployer.address);
 
         const balance = await deployer.getBalance();
@@ -208,13 +237,6 @@ task("bridge", "Send zkl of deployer to another chain for testnet")
 
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
-        // layerzero must support dst chain
-        const lzInfo = layerZero[dstChain];
-        if (lzInfo === undefined) {
-            console.log('%s layerzero not support', dstChain);
-            return;
-        }
 
         const feeInfo = await bridgeContract.connect(deployer)
             .estimateZKLBridgeFees(lzInfo.chainId, deployer.address, amount, false, "0x");

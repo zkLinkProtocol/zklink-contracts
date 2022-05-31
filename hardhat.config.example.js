@@ -6,6 +6,8 @@ require("hardhat-gas-reporter");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
 require("./script/deploy_zkl");
+require("./script/deploy_lz_bridge");
+require("./script/upgrade_lz_bridge");
 require("./script/interact");
 
 // main net
@@ -124,6 +126,7 @@ const allConfig = {
 }
 
 const config = process.env.NET === undefined ? allConfig["ETH"] : allConfig[process.env.NET];
+const deployerKey = "YOUR_DEPLOYER_KEY";
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -155,7 +158,8 @@ module.exports = {
     hardhat: {
     },
     custom: {
-      url: config.url
+      url: config.url,
+      accounts: [deployerKey]
     }
   },
   solpp:{

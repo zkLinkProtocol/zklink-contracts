@@ -1,3 +1,6 @@
+// lz chain info
+// https://layerzero.gitbook.io/docs/technical-reference/mainnet/supported-chain-ids
+// https://layerzero.gitbook.io/docs/technical-reference/testnet/testnet-addresses
 const layerZero = {
     ETH: {
         chainId: 1,

@@ -1,13 +1,12 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
+const { verifyWithErrorHandle,getDeployLog } = require('./utils');
 
 task("upgradeZkLink", "Upgrade zkLink on testnet")
     .addParam("upgradeVerifier", "Upgrade verifier, default is false", undefined, types.boolean, true)
     .addParam("upgradeZkLink", "Upgrade zkLink, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
-        const key = readDeployerKey();
-        const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        const [deployer] = await hardhat.ethers.getSigners();
         let upgradeVerifier = taskArgs.upgradeVerifier === undefined ? false : taskArgs.upgradeVerifier;
         let upgradeZkLink = taskArgs.upgradeZkLink === undefined ? false : taskArgs.upgradeZkLink;
         let skipVerify = taskArgs.skipVerify === undefined ? false : taskArgs.skipVerify;
@@ -21,14 +20,7 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         }
 
         // deploy log must exist
-        const deployLogPath = `log/deploy_${process.env.NET}.log`;
-        console.log('deploy log path', deployLogPath);
-        if (!fs.existsSync(deployLogPath)) {
-            console.log('deploy log not exist')
-            return;
-        }
-        const data = fs.readFileSync(deployLogPath, 'utf8');
-        let deployLog = JSON.parse(data);
+        const {deployLogPath,deployLog} = getDeployLog('deploy');
 
         // check if upgrade at testnet
         let zkLinkProxyAddr = deployLog.zkLinkProxy;

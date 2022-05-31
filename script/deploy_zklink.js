@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, readDeployerKey } = require('./utils');
+const { verifyWithErrorHandle, createOrGetDeployLog } = require('./utils');
 
 task("deployZkLink", "Deploy zklink contracts")
     .addParam("governor", "The governor address, default is same as deployer", undefined, types.string, true)
@@ -9,8 +9,7 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
     .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
-        const key = readDeployerKey();
-        const deployer = new hardhat.ethers.Wallet(key, hardhat.ethers.provider);
+        const [deployer] = await hardhat.ethers.getSigners();
         let governor = taskArgs.governor;
         if (governor === undefined) {
             governor = deployer.address;
@@ -43,17 +42,7 @@ task("deployZkLink", "Deploy zklink contracts")
         const balance = await deployer.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
-        const deployLogPath = `log/deploy_${process.env.NET}.log`;
-        console.log('deploy log path', deployLogPath);
-        if (!fs.existsSync('log')) {
-            fs.mkdirSync('log', true);
-        }
-
-        let deployLog = {};
-        if (fs.existsSync(deployLogPath)) {
-            const data = fs.readFileSync(deployLogPath, 'utf8');
-            deployLog = JSON.parse(data);
-        }
+        const {deployLogPath,deployLog} = createOrGetDeployLog('deploy');
 
         // verifier
         let verifierTarget;
@@ -196,7 +185,7 @@ task("deployZkLink", "Deploy zklink contracts")
                     constructorArguments:[
                         zkLinkTarget,
                         hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','bytes32'],
-                            [verifierProxyAddr, peripheryTarget, governor, genesisRoot])
+                            [verifierProxyAddr, peripheryTarget, deployFactoryAddr, genesisRoot])
                     ]
                 });
             }, () => {

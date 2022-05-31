@@ -4,7 +4,7 @@ const verifyWithErrorHandle = async (verify, successCallBack) => {
         await verify();
         successCallBack();
     } catch (e) {
-        if (e.message.includes('Already Verified')) {
+        if (e.message.includes('Already Verified') || e.message.includes('Contract source code already verified')) {
             console.log('Already Verified');
             successCallBack();
         } else {
@@ -13,23 +13,49 @@ const verifyWithErrorHandle = async (verify, successCallBack) => {
     }
 }
 
-function readDeployerKey() {
-    return fs.readFileSync('script/.KEY', 'utf8').trim();
+function createOrGetDeployLog(name) {
+    const deployLogPath = `log/${name}_${process.env.NET}.log`;
+    console.log('deploy log path', deployLogPath);
+    if (!fs.existsSync('log')) {
+        fs.mkdirSync('log', true);
+    }
+
+    let deployLog = {};
+    if (fs.existsSync(deployLogPath)) {
+        const data = fs.readFileSync(deployLogPath, 'utf8');
+        deployLog = JSON.parse(data);
+    }
+    return {deployLogPath, deployLog};
 }
 
-function readDeployContract(net, contractName) {
-    const deployLogPath = `log/deploy_${net}.log`;
+function getDeployLog(name) {
+    const deployLogPath = `log/${name}_${process.env.NET}.log`;
+    console.log('deploy log path', deployLogPath);
     if (!fs.existsSync(deployLogPath)) {
-        console.log('%s deploy log not exist', net);
-        return;
+        throw 'deploy log not exist';
+    }
+    const data = fs.readFileSync(deployLogPath, 'utf8');
+    let deployLog = JSON.parse(data);
+    return {deployLogPath, deployLog};
+}
+
+function readDeployContract(logName, contractName, env = process.env.NET) {
+    const deployLogPath = `log/${logName}_${env}.log`;
+    if (!fs.existsSync(deployLogPath)) {
+        throw 'deploy log not exist';
     }
     const data = fs.readFileSync(deployLogPath, 'utf8');
     const deployLog = JSON.parse(data);
-    return deployLog[contractName];
+    const contractAddr = deployLog[contractName];
+    if (contractAddr === undefined) {
+        throw 'contract address not exit';
+    }
+    return contractAddr;
 }
 
 module.exports = {
     verifyWithErrorHandle,
-    readDeployerKey,
+    createOrGetDeployLog,
+    getDeployLog,
     readDeployContract
 };
