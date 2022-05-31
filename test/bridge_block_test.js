@@ -1,14 +1,15 @@
 const { ethers, upgrades } = require("hardhat");
 const { expect } = require('chai');
 const {parseEther} = require("ethers/lib/utils");
+const {CHAIN_ID_INDEX,ALL_CHAINS} = require("./utils");
 
 describe('Bridge ZkLink block unit tests', function () {
-    let deployer,networkGovernor,alice,bob,tom;
+    let deployer,networkGovernor,alice,bob,evilBridge;
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
     let zklinkInETH, zklinkInBSC, lzInETH, lzInBSC, lzBridgeInETH, lzBridgeInBSC;
     before(async () => {
-        [deployer,networkGovernor,alice,bob,tom] = await ethers.getSigners();
+        [deployer,networkGovernor,alice,bob,evilBridge] = await ethers.getSigners();
 
         const zklinkFactory = await ethers.getContractFactory('ZkLinkPeripheryTest');
         zklinkInETH = await zklinkFactory.deploy();
@@ -74,6 +75,25 @@ describe('Bridge ZkLink block unit tests', function () {
             lzParams, {value: fees.nativeFee}))
             .to.be.emit(zklinkInBSC, "ReceiveSynchronizationProgress")
             .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, syncHash, 1);
+    });
+
+    it('evil bridge should has no impact to local progress', async () => {
+        const syncHash = '0x00000000000000000000000000000000000000000000000000000000000000bb';
+        const storedBlock = {
+            "blockNumber":12,
+            "priorityOperations":7,
+            "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
+            "timestamp":1652422395,
+            "stateHash":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "commitment":"0xff04d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "syncHash":syncHash,
+        };
+
+        await zklinkInETH.connect(networkGovernor).addBridge(evilBridge.address);
+        // mock evil bridge deliver fake progress
+        await zklinkInETH.connect(evilBridge).receiveSynchronizationProgress(1,1,syncHash,ALL_CHAINS);
+        const progress = ALL_CHAINS & ~CHAIN_ID_INDEX;
+        expect(await zklinkInETH.getSynchronizedProgress(storedBlock)).to.be.eq(progress);
     });
 
     it('test lz receive gas cost', async () => {

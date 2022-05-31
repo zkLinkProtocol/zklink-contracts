@@ -256,7 +256,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // combine the current chain if it has proven this block
         if (_block.blockNumber <= totalBlocksProven &&
             hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
-            progress |= CHAIN_ID;
+            progress |= CHAIN_INDEX;
+        } else {
+            // to prevent bridge from delivering a wrong progress
+            progress &= ~CHAIN_INDEX;
         }
     }
 
