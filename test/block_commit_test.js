@@ -19,6 +19,7 @@ const { deploy,
     CHAIN_ID,
     COMMIT_TIMESTAMP_NOT_OLDER,
     COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
+    ZERO_BYTES32,
     EMPTY_STRING_KECCAK
 } = require('./utils');
 const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("ethers/lib/utils");
@@ -211,7 +212,7 @@ describe('Block commit unit tests', function () {
             priorityOperationsProcessed,
             offsetsCommitment:hexlify(concat(offsetsCommitment)),
             onchainOperationPubdataHashs:[
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
+                ZERO_BYTES32,
                 onchainOpPubdataHash1,
                 EMPTY_STRING_KECCAK,
                 onchainOpPubdataHash3,
@@ -248,7 +249,8 @@ describe('Block commit unit tests', function () {
                 processableOpPubdataHash:EMPTY_STRING_KECCAK,
                 priorityOperationsProcessed:0,
                 offsetsCommitment:"0x",
-                onchainOperationPubdataHashs:["0x0000000000000000000000000000000000000000000000000000000000000000",
+                onchainOperationPubdataHashs:[
+                    ZERO_BYTES32,
                     EMPTY_STRING_KECCAK,
                     EMPTY_STRING_KECCAK,
                     EMPTY_STRING_KECCAK,
@@ -355,8 +357,8 @@ describe('Block commit unit tests', function () {
             feeAccount:0
         };
         const extraBlock = {
-            publicDataHash:"0x0000000000000000000000000000000000000000000000000000000000000000",
-            offsetCommitmentHash:"0x0000000000000000000000000000000000000000000000000000000000000000",
+            publicDataHash:ZERO_BYTES32,
+            offsetCommitmentHash:ZERO_BYTES32,
             onchainOperationPubdataHashs:[]
         }
 

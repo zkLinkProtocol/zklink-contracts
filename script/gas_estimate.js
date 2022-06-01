@@ -31,6 +31,7 @@ const { deploy,
 } = require('../test/utils');
 const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
 const {BigNumber, constants} = require("ethers");
+const hardhat = require("hardhat");
 
 class TestSetUp {
 
@@ -262,6 +263,18 @@ async function estimateOpFee(testSetUp, samples, params, commitBaseCost, execute
     return {commitCost, executeCost};
 }
 
+async function printContractSize() {
+    // verifier
+    const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+    console.log("Verifier deploy size: " + arrayify(verifierFactory.bytecode).length);
+    // periphery
+    const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+    console.log("ZkLinkPeriphery deploy size: " + arrayify(peripheryFactory.bytecode).length);
+    // zkLink
+    const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+    console.log("ZkLink deploy size: " + arrayify(zkLinkFactory.bytecode).length);
+}
+
 async function main() {
     // Hardhat always runs the compile task when running scripts with its command
     // line interface.
@@ -269,6 +282,9 @@ async function main() {
     // If this script is run directly using `node` you may want to call compile
     // manually to make sure everything is compiled
     // await hre.run('compile');
+
+    // print contracts deploy byte size
+    await printContractSize();
 
     const testSetUp = new TestSetUp();
     await testSetUp.init();
