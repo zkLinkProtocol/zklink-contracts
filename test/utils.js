@@ -202,11 +202,7 @@ async function createEthWitnessOfECRECOVER(zkLinkAddr,pubKeyHash,nonce,accountId
         nonce: nonce,
         accountId: accountId
     };
-    console.log('domain: ', domain);
-    console.log('value: ', value);
-    console.log('owner private key: ', owner);
     const signature = await owner._signTypedData(domain, types, value);
-    console.log('signature: ', signature);
     return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
 }
 
