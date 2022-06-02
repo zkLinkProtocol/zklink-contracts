@@ -115,7 +115,7 @@ describe('Block commit unit tests', function () {
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
         onchainOpPubdataHash1 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash1), opPadding])));
-        let ethWitness = await createEthWitnessOfECRECOVER('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',32,2,alice);
+        let ethWitness = await createEthWitnessOfECRECOVER(zkLink.address,'0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',32,2,alice);
         ops.push({ethWitness,publicDataOffset});
         opsOfChain1.push({ethWitness,publicDataOffset:publicDataOffsetOfChain1});
         publicDataOffset += arrayify(opPadding).length;

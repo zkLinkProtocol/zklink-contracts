@@ -657,7 +657,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that change operation is correct
-    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
+    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool)
     {
         ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
         if (changePkType == ChangePubkeyType.ECRECOVER) {
@@ -670,18 +670,16 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
+    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool)
     {
         (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n60", // message len(60) = _pubKeyHash.len(20) + _nonce.len(4) + _accountId.len(4) + 32
-                _changePk.pubKeyHash,
-                _changePk.nonce,
-                _changePk.accountId,
-                bytes32(0)
-            )
-        );
+        uint cid;
+        assembly {
+            cid := chainid()
+        }
+        bytes32 domainSeparator = keccak256(abi.encode(CHANGE_PUBKEY_DOMAIN_SEPARATOR, CHANGE_PUBKEY_HASHED_NAME, CHANGE_PUBKEY_HASHED_VERSION, cid, address(this)));
+        bytes32 structHash = keccak256(abi.encode(CHANGE_PUBKEY_TYPE_HASH, _changePk.pubKeyHash, _changePk.nonce, _changePk.accountId));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
         address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
         return recoveredAddress == _changePk.owner;
     }

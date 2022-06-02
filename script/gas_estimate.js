@@ -171,7 +171,7 @@ class TestSetUp {
             const changePubkeyType = params.changePubkeyType;
             let owner = this.alice.address;
             if (changePubkeyType === 0) {
-                ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,this.alice);
+                ethWitness = createEthWitnessOfECRECOVER(this.zkLink.address,pubKeyHash,nonce,accountId,this.alice);
             } else if (changePubkeyType === 1) {
                 const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
                 const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";

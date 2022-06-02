@@ -71,7 +71,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const accountId = 15;
         const pubdata = getChangePubkeyPubdata({chainId:1, accountId, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
-        const ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,alice);
+        const ethWitness = createEthWitnessOfECRECOVER(zkLink.address,pubKeyHash,nonce,accountId,alice);
         const onchainOperations = [{
             "ethWitness":ethWitness,
             "publicDataOffset":0

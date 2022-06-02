@@ -105,4 +105,10 @@ contract Config {
 
     /// @dev When set fee = 100, it means 1%
     uint16 internal constant MAX_ACCEPT_FEE_RATE = 10000;
+
+    /// @dev see EIP-712
+    bytes32 internal constant CHANGE_PUBKEY_DOMAIN_SEPARATOR = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 internal constant CHANGE_PUBKEY_HASHED_NAME =  keccak256("ZkLink");
+    bytes32 internal constant CHANGE_PUBKEY_HASHED_VERSION = keccak256("1");
+    bytes32 internal constant CHANGE_PUBKEY_TYPE_HASH = keccak256("ChangePubKey(bytes20 pubKeyHash,uint32 nonce,uint32 accountId)");
 }
