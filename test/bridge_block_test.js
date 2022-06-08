@@ -47,7 +47,9 @@ describe('Bridge ZkLink block unit tests', function () {
     });
 
     it('estimateZkLinkBlockBridgeFees should success', async () => {
-        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, false, "0x");
+        const syncHash = "0x2caa921b22452d6ee16dbcc1a6987ee40f5dcf467ed45de3be9094ff482a31ad";
+        const progress = 2;
+        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, syncHash, progress, false, "0x");
         expect(fees.nativeFee > 0);
     });
 
@@ -64,7 +66,7 @@ describe('Bridge ZkLink block unit tests', function () {
         };
         await zklinkInETH.mockProveBlock(storedBlock);
 
-        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, false, "0x");
+        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, syncHash, 1, false, "0x");
         const lzParams = {
             "dstChainId": lzChainIdInBSC,
             "refundAddress": alice.address,

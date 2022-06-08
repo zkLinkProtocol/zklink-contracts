@@ -94,14 +94,18 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
     /// @notice Estimate bridge ZkLink Block fees
     /// @param lzChainId the destination chainId
+    /// @param syncHash the sync hash of stored block
+    /// @param progress the sync progress
     /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
     /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
     function estimateZkLinkBlockBridgeFees(
         uint16 lzChainId,
+        bytes32 syncHash,
+        uint256 progress,
         bool useZro,
         bytes calldata adapterParams
     ) external view returns (uint nativeFee, uint zroFee) {
-        bytes memory payload = buildZkLinkBlockBridgePayload(bytes32(0), uint256(0));
+        bytes memory payload = buildZkLinkBlockBridgePayload(syncHash, progress);
         return ILayerZeroEndpoint(endpoint).estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
     }
 
