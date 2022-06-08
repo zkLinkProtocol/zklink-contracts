@@ -91,14 +91,24 @@ OPTIONS:
 deployLZBridge: Deploy LayerZeroBridge
 ```
 
-## Config LayerZero Bridge
+## Config
 
-After completing the deployment of zkLink and lzBridge on all chains,  we also need to config lzBridge of each chain:
+After completing the deployment of zkLink and lzBridge on all chains,  we also need to config zkLink and lzBridge of each chain.
 
-* set bridge destinations
-* set bridge app supported
+### Config ZkLink
 
-### Set Bridge Destinations
+```bash
+$ npx hardhat help addBridge
+Hardhat version 2.9.3
+
+Usage: hardhat [GLOBAL OPTIONS] addBridge
+
+addBridge: Add bridge to zkLink on testnet
+```
+
+### Config LayerZero Bridge
+
+#### Set Bridge Destinations
 
 ```bash
 $ npx hardhat help setDestinations
@@ -109,7 +119,7 @@ Usage: hardhat [GLOBAL OPTIONS] setDestinations
 setDestinations: Set layerzero bridge destinations on testnet
 ```
 
-### Set supported app
+#### Set supported app
 
 ```bash
 $ npx hardhat help setDestinations
@@ -119,4 +129,3 @@ Usage: hardhat [GLOBAL OPTIONS] setApp
 
 setApp: Set layerzero supported app on testnet
 ```
-

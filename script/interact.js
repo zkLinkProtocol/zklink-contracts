@@ -175,6 +175,23 @@ task("setApp", "Set layerzero supported app on testnet")
         }
     });
 
+task("addBridge", "Add bridge to zkLink on testnet")
+    .setAction(async (taskArgs, hardhat) => {
+        const [governor] = await hardhat.ethers.getSigners();
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+        const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
+        const peripheryContract = peripheryFactory.attach(zkLinkProxyAddr);
+        console.log('add bridge %s to zkLink...', bridgeAddr);
+        const tx = await peripheryContract.connect(governor).addBridge(bridgeAddr);
+        console.log('tx', tx.hash);
+    });
+
 task("mintZKL", "Mint zkl for POLYGONTEST")
     .addParam("zkl", "The zkl contract address on POLYGONTEST, default get from deploy log", undefined, types.string, true)
     .addParam("account", "The account address")
