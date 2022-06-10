@@ -2,19 +2,13 @@ const fs = require("fs");
 const { verifyWithErrorHandle, createOrGetDeployLog, readDeployContract} = require('./utils');
 
 task("deployZKL", "Deploy ZKL token")
-    .addParam("zkLink", "The zkLink contract address, default get from deploy log", undefined, types.string, true)
-    .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
-    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
         let force = taskArgs.force;
-        if (force === undefined) {
-            force = false;
-        }
         let skipVerify = taskArgs.skipVerify;
-        if (skipVerify === undefined) {
-            skipVerify = false;
-        }
         let govAddr = taskArgs.zkLink;
         if (govAddr === undefined) {
             govAddr = readDeployContract('deploy', 'zkLinkProxy');

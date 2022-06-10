@@ -2,12 +2,12 @@ const fs = require('fs');
 const { verifyWithErrorHandle, createOrGetDeployLog } = require('./utils');
 
 task("deployZkLink", "Deploy zklink contracts")
-    .addParam("governor", "The governor address, default is same as deployer", undefined, types.string, true)
-    .addParam("validator", "The validator address, default is same as deployer", undefined, types.string, true)
-    .addParam("feeAccount", "The feeAccount address, default is same as deployer", undefined, types.string, true)
+    .addParam("governor", "The governor address (default is same as deployer)", undefined, types.string, true)
+    .addParam("validator", "The validator address (default is same as deployer)", undefined, types.string, true)
+    .addParam("feeAccount", "The feeAccount address (default is same as deployer)", undefined, types.string, true)
     .addParam("genesisRoot", "The genesis root hash")
-    .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
-    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
         let governor = taskArgs.governor;
@@ -23,13 +23,7 @@ task("deployZkLink", "Deploy zklink contracts")
             feeAccount = deployer.address;
         }
         let force = taskArgs.force;
-        if (force === undefined) {
-            force = false;
-        }
         let skipVerify = taskArgs.skipVerify;
-        if (skipVerify === undefined) {
-            skipVerify = false;
-        }
         const genesisRoot = taskArgs.genesisRoot;
         console.log('deployer', deployer.address);
         console.log('governor', governor);

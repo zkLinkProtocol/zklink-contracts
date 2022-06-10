@@ -119,7 +119,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
     function depositETH(address _zkLinkAddress, uint8 _subAccountId) external payable nonReentrant {
-        deposit(ETH_ADDRESS, SafeCast.toUint128(msg.value), _zkLinkAddress, _subAccountId);
+        deposit(ETH_ADDRESS, SafeCast.toUint128(msg.value), _zkLinkAddress, _subAccountId, false);
     }
 
     /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
@@ -129,7 +129,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _amount Token amount
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
-    function depositERC20(IERC20 _token, uint104 _amount, address _zkLinkAddress, uint8 _subAccountId) external nonReentrant {
+    /// @param _mapping If true and token has a mapping token, user will receive mapping token at l2
+    function depositERC20(IERC20 _token, uint104 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
         // support non-standard tokens
         uint256 balanceBefore = _token.balanceOf(address(this));
         // NOTE, if the token is not a pure erc20 token, it could do anything within the transferFrom
@@ -137,14 +138,15 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint256 balanceAfter = _token.balanceOf(address(this));
         uint128 depositAmount = SafeCast.toUint128(balanceAfter.sub(balanceBefore));
 
-        deposit(address(_token), depositAmount, _zkLinkAddress, _subAccountId);
+        deposit(address(_token), depositAmount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
     /// @notice Register full exit request - pack pubdata, add priority request
     /// @param _accountId Numerical id of the account
     /// @param _subAccountId The exit sub account
     /// @param _tokenId Token id
-    function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId) external active nonReentrant {
+    /// @param _mapping If true and token has a mapping token, user's mapping token balance will be decreased at l2
+    function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId, bool _mapping) external active nonReentrant {
         // ===Checks===
         // accountId and subAccountId MUST be valid
         require(_accountId <= MAX_ACCOUNT_ID, "a0");
@@ -152,8 +154,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // token MUST be registered to ZkLink
         RegisteredToken memory rt = tokens[_tokenId];
         require(rt.registered, "a2");
+        uint16 srcTokenId = _tokenId;
+        if (_mapping) {
+            require(rt.mappingTokenId > 0, "a3");
+            srcTokenId = rt.mappingTokenId;
+        }
         // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "a3");
+        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "a4");
 
         // ===Effects===
         // Priority Queue request
@@ -164,6 +171,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 subAccountId: _subAccountId,
                 owner: msg.sender, // Only the owner of account can fullExit for them self
                 tokenId: _tokenId,
+                srcTokenId: srcTokenId,
                 amount: 0 // unknown at this point
             });
         bytes memory pubData = Operations.writeFullExitPubdataForPriorityQueue(op);
@@ -359,7 +367,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     // =================Internal functions=================
 
-    function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId) internal active {
+    function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal active {
         // ===Checks===
         // disable deposit to zero address or with zero amount
         require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "e0");
@@ -368,11 +376,16 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "e2");
         // token MUST be registered to ZkLink and deposit MUST be enabled
         uint16 tokenId = tokenIds[_tokenAddress];
+        uint16 targetTokenId = tokenId;
         RegisteredToken memory rt = tokens[tokenId];
         require(rt.registered, "e3");
         require(!rt.paused, "e4");
+        if (_mapping) {
+            require(rt.mappingTokenId > 0, "e5");
+            targetTokenId = rt.mappingTokenId;
+        }
         // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "e5");
+        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "e6");
 
         // ===Effects===
         // Priority Queue request
@@ -383,6 +396,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             subAccountId: _subAccountId,
             owner: _zkLinkAddress,
             tokenId: tokenId,
+            targetTokenId: targetTokenId,
             amount: _amount
         });
         bytes memory pubData = Operations.writeDepositPubdataForPriorityQueue(op);
@@ -442,7 +456,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Process one block commit using previous block StoredBlockInfo,
     /// returns new block StoredBlockInfo
     /// NOTE: Does not change storage (except events, so we can't mark it view)
-    /// only ZkLink can call this function to add more security
     function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) internal view returns (StoredBlockInfo memory storedNewBlock)
     {
         require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "g0");

@@ -33,7 +33,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         // increase pending balance
         const depositAmount = parseEther("1.0");
         await zkLink.connect(defaultSender).depositETH(alice.address, 0, {value: depositAmount});
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:ethId, amount:depositAmount, owner:alice.address });
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:ethId, targetTokenId:ethId, amount:depositAmount, owner:alice.address });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
@@ -61,8 +61,8 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         const depositAmount = parseEther("1.0");
         await token2.connect(defaultSender).mint(depositAmount);
         await token2.connect(defaultSender).approve(zkLink.address, depositAmount);
-        await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, alice.address, 0);
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, amount:depositAmount, owner:alice.address });
+        await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, alice.address, 0, false);
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:alice.address });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
@@ -90,9 +90,9 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         const depositAmount = parseEther("1.0");
         await token3.connect(defaultSender).mint(parseEther("2.0"));
         await token3.connect(defaultSender).approve(zkLink.address, depositAmount);
-        await zkLink.connect(defaultSender).depositERC20(token3.address, depositAmount, alice.address, 0);
+        await zkLink.connect(defaultSender).depositERC20(token3.address, depositAmount, alice.address, 0, false);
         const reallyDepositAmount = parseEther("0.8"); // take 20% fee
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token3Id, amount:reallyDepositAmount, owner:alice.address });
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token3Id, targetTokenId:token3Id, amount:reallyDepositAmount, owner:alice.address });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);

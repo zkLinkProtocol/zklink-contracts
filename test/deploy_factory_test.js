@@ -10,7 +10,7 @@ describe('DeployFactory unit tests', function () {
         await token2.connect(defaultSender).mint(100);
         await token2.connect(defaultSender).approve(deployedInfo.zkLink.address, 100);
         const to = "0x72847C8Bdc54b338E787352bceC33ba90cD7aFe0";
-        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0)).to
+        await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0, false)).to
             .emit(deployedInfo.zkLink, 'NewPriorityRequest');
     });
 });

@@ -16,7 +16,7 @@ describe('Operations unit tests', function () {
     it('Correctly Parse Deposit pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId:1, accountId:13, subAccountId:0, tokenId:25, amount:100, owner };
+        const example = { chainId:1, accountId:13, subAccountId:0, tokenId:25, targetTokenId:23, amount:100, owner };
         const pubdata = getDepositPubdata(example);
         await testContract.testDepositPubdata(example, pubdata);
     });
@@ -24,13 +24,13 @@ describe('Operations unit tests', function () {
     it('Correctly Write Deposit pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        await testContract.testWriteDepositPubdata({ chainId:1, accountId:13, subAccountId:0, tokenId:25, amount:100, owner });
+        await testContract.testWriteDepositPubdata({ chainId:1, accountId:13, subAccountId:0, tokenId:25, targetTokenId:23, amount:100, owner });
     });
 
     // Withdraw
     it('Correctly Parse Withdraw pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const example = { chainId:1, accountId:32, subAccountId:4, tokenId:34, amount:32, fee:14, owner, nonce:45, fastWithdrawFeeRate:45 };
+        const example = { chainId:1, accountId:32, subAccountId:4, tokenId:34, srcTokenId:34, amount:32, fee:14, owner, nonce:45, fastWithdrawFeeRate:45 };
         const pubdata = getWithdrawPubdata(example);
         await testContract.testWithdrawPubdata(example, pubdata);
     });
@@ -39,14 +39,14 @@ describe('Operations unit tests', function () {
     it('Correctly Parse FullExit pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, amount:15 };
+        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, srcTokenId:1, amount:15 };
         const pubdata = getFullExitPubdata(example);
         await testContract.testFullExitPubdata(example, pubdata);
     });
 
     it('Correctly Write FullExit pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, amount:15 };
+        const example = { chainId:1, accountId:34, subAccountId:23, owner, tokenId:2, srcTokenId:1, amount:15 };
         await testContract.testWriteFullExitPubdata(example);
     });
 
@@ -54,7 +54,7 @@ describe('Operations unit tests', function () {
     it('Correctly Parse ForcedExit pubdata', async () => {
         const target = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId:1, initiatorAccountId:2, targetAccountId:3, targetSubAccountId:4, tokenId:5, amount:6, fee:7, target };
+        const example = { chainId:1, initiatorAccountId:2, targetAccountId:3, targetSubAccountId:4, tokenId:5, srcTokenId:5, amount:6, fee:7, target };
         const pubdata = getForcedExitPubdata(example);
         await testContract.testForcedExitPubdata(example, pubdata);
     });

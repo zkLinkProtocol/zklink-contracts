@@ -3,13 +3,10 @@ const { verifyWithErrorHandle, getDeployLog } = require('./utils');
 const {layerZero} = require("./layerzero");
 
 task("upgradeLZBridge", "Upgrade LayerZeroBridge on testnet")
-    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
         let skipVerify = taskArgs.skipVerify;
-        if (skipVerify === undefined) {
-            skipVerify = false;
-        }
         console.log('deployer', deployer.address);
         console.log('skip verify contracts?', skipVerify);
 

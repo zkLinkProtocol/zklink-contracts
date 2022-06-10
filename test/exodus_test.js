@@ -146,13 +146,13 @@ describe('ZkLink exodus unit tests', function () {
 
         const amount0 = parseEther("4");
         const amount1 = parseEther("10");
-        await zkLink.connect(defaultSender).depositERC20(token2.address, amount0, defaultSender.address, 0);
-        await zkLink.connect(alice).requestFullExit(14, 2, token3Id);
-        await zkLink.connect(defaultSender).depositERC20(token2.address, amount1, alice.address, 1);
+        await zkLink.connect(defaultSender).depositERC20(token2.address, amount0, defaultSender.address, 0, false);
+        await zkLink.connect(alice).requestFullExit(14, 2, token3Id, false);
+        await zkLink.connect(defaultSender).depositERC20(token2.address, amount1, alice.address, 1, false);
         await zkLink.setExodus(true);
 
-        const pubdata0 = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, amount:amount0, owner:defaultSender.address });
-        const pubdata1 = writeDepositPubdata({ chainId:1, subAccountId:1, tokenId:token2Id, amount:amount1, owner:alice.address });
+        const pubdata0 = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:amount0, owner:defaultSender.address });
+        const pubdata1 = writeDepositPubdata({ chainId:1, subAccountId:1, tokenId:token2Id, targetTokenId:token2Id, amount:amount1, owner:alice.address });
 
         await periphery.cancelOutstandingDepositsForExodusMode(3, [pubdata0, pubdata1]);
         expect(await periphery.getPendingBalance(defaultSender.address, token2Id)).to.be.eq(amount0);

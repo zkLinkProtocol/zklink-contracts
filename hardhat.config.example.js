@@ -156,6 +156,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      allowUnlimitedContractSize: true
     },
     custom: {
       url: config.url,

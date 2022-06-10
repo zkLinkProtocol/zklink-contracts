@@ -142,7 +142,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenId Token id
     /// @param _tokenAddress Token address
     /// @param _standard If token is a standard erc20
-    function addToken(uint16 _tokenId, address _tokenAddress, bool _standard) public onlyGovernor {
+    /// @param _mappingTokenId The mapping token id at l2
+    function addToken(uint16 _tokenId, address _tokenAddress, bool _standard, uint16 _mappingTokenId) public onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
@@ -155,6 +156,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
         rt.standard = _standard;
+        rt.mappingTokenId = _mappingTokenId;
         tokens[_tokenId] = rt;
         tokenIds[_tokenAddress] = _tokenId;
         emit NewToken(_tokenId, _tokenAddress);
@@ -164,9 +166,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenIdList Token id list
     /// @param _tokenAddressList Token address list
     /// @param _standardList Token standard list
-    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, bool[] calldata _standardList) external {
+    /// @param _mappingTokenList Mapping token list
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, bool[] calldata _standardList, uint16[] calldata _mappingTokenList) external {
         for (uint i; i < _tokenIdList.length; i++) {
-            addToken(_tokenIdList[i], _tokenAddressList[i], _standardList[i]);
+            addToken(_tokenIdList[i], _tokenAddressList[i], _standardList[i], _mappingTokenList[i]);
         }
     }
 

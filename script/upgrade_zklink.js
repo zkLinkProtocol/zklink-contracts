@@ -2,14 +2,14 @@ const fs = require('fs');
 const { verifyWithErrorHandle,getDeployLog } = require('./utils');
 
 task("upgradeZkLink", "Upgrade zkLink on testnet")
-    .addParam("upgradeVerifier", "Upgrade verifier, default is false", undefined, types.boolean, true)
-    .addParam("upgradeZkLink", "Upgrade zkLink, default is false", undefined, types.boolean, true)
-    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
+    .addParam("upgradeZkLink", "Upgrade zkLink", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
-        let upgradeVerifier = taskArgs.upgradeVerifier === undefined ? false : taskArgs.upgradeVerifier;
-        let upgradeZkLink = taskArgs.upgradeZkLink === undefined ? false : taskArgs.upgradeZkLink;
-        let skipVerify = taskArgs.skipVerify === undefined ? false : taskArgs.skipVerify;
+        let upgradeVerifier = taskArgs.upgradeVerifier;
+        let upgradeZkLink = taskArgs.upgradeZkLink;
+        let skipVerify = taskArgs.skipVerify;
         console.log('deployer', deployer.address);
         console.log('upgrade verifier?', upgradeVerifier);
         console.log('upgrade zkLink?', upgradeZkLink);

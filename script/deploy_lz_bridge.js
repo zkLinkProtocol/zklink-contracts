@@ -3,9 +3,9 @@ const { verifyWithErrorHandle, createOrGetDeployLog } = require('./utils');
 const {layerZero} = require("./layerzero");
 
 task("deployLZBridge", "Deploy LayerZeroBridge")
-    .addParam("governor", "The governor address, default is same as deployer", undefined, types.string, true)
-    .addParam("force", "Fore redeploy all contracts, default is false", undefined, types.boolean, true)
-    .addParam("skipVerify", "Skip verify, default is false", undefined, types.boolean, true)
+    .addParam("governor", "The governor address (default is same as deployer)", undefined, types.string, true)
+    .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
         let governor = taskArgs.governor;
@@ -13,13 +13,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
             governor = deployer.address;
         }
         let force = taskArgs.force;
-        if (force === undefined) {
-            force = false;
-        }
         let skipVerify = taskArgs.skipVerify;
-        if (skipVerify === undefined) {
-            skipVerify = false;
-        }
         console.log('deployer', deployer.address);
         console.log('governor', governor);
         console.log('force redeploy all contracts?', force);

@@ -13,6 +13,7 @@ contract OperationsTest {
         require(_example.accountId == parsed.accountId, "aok");
         require(_example.subAccountId == parsed.subAccountId, "sok");
         require(_example.tokenId == parsed.tokenId, "tok");
+        require(_example.targetTokenId == parsed.targetTokenId, "t1ok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
     }
@@ -24,6 +25,7 @@ contract OperationsTest {
         require(_example.chainId == parsed.chainId, "cok");
         require(_example.subAccountId == parsed.subAccountId, "sok");
         require(_example.tokenId == parsed.tokenId, "tok");
+        require(_example.targetTokenId == parsed.targetTokenId, "t1ok");
         require(_example.amount == parsed.amount, "amn");
         require(_example.owner == parsed.owner, "own");
     }

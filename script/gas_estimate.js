@@ -149,7 +149,7 @@ class TestSetUp {
         const opType = params.opType;
         let op, opPubdata, ethWitness = "0x", processable = false, isOnchainOp = true;
         if (opType === OP_DEPOSIT) {
-            const opParams = {chainId:chainId,accountId:1,subAccountId:0,tokenId:this.token2Id,amount:parseEther("1"),owner:this.alice.address};
+            const opParams = {chainId:chainId,accountId:1,subAccountId:0,tokenId:this.token2Id,targetTokenId:this.token2Id,amount:parseEther("1"),owner:this.alice.address};
             op = getDepositPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 await this.zkLink.testAddPriorityRequest(opType, writeDepositPubdata(opParams));
@@ -158,7 +158,7 @@ class TestSetUp {
             const amount = params.amount;
             const owner = params.owner;
             const tokenId = params.tokenId;
-            const opParams = {chainId:chainId,accountId:1,subAccountId:0,owner,tokenId,amount};
+            const opParams = {chainId:chainId,accountId:1,subAccountId:0,owner,tokenId,srcTokenId:tokenId,amount};
             op = getFullExitPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 await this.zkLink.testAddPriorityRequest(opType, writeFullExitPubdata(opParams));
@@ -199,7 +199,7 @@ class TestSetUp {
                 const accepter = params.accepter;
                 await this.periphery.setAccepter(accountId,hash,accepter);
             }
-            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,amount,fee:0,owner,nonce,fastWithdrawFeeRate};
+            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner,nonce,fastWithdrawFeeRate};
             op = getWithdrawPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 processable = true;

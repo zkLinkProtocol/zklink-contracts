@@ -32,34 +32,34 @@ const GENESIS_BLOCK = {
     syncHash:EMPTY_STRING_KECCAK
 }
 
-function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
-        [OP_DEPOSIT,chainId,accountId,subAccountId,tokenId,amount,owner]);
+function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
+        [OP_DEPOSIT,chainId,accountId,subAccountId,tokenId,targetTokenId,amount,owner]);
 }
 
-function writeDepositPubdata({ chainId, subAccountId, tokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","address"],
-        [OP_DEPOSIT,chainId,0,subAccountId,tokenId,amount,owner]);
+function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, amount, owner }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
+        [OP_DEPOSIT,chainId,0,subAccountId,tokenId,targetTokenId,amount,owner]);
 }
 
-function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint128","uint16","address","uint32","uint16"],
-        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
+function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","address","uint32","uint16"],
+        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
 }
 
-function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, amount}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint128"],
-        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,amount]);
+function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId, amount}) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint16","uint128"],
+        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,amount]);
 }
 
-function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint128"],
-        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,0]);
+function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId}) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint16","uint128"],
+        [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
-function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, amount, fee, target }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint128","uint16","address"],
-        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,amount,fee,target]);
+function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, fee, target }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint16","uint128","uint16","address"],
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,fee,target]);
 }
 
 function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, tokenId, fee}) {
@@ -141,15 +141,19 @@ async function deploy() {
     // add some tokens
     const ethId = 1;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, true);
+    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, true, 0);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
-    await peripheryProxy.connect(governor).addToken(2, token2.address, true);
+    await peripheryProxy.connect(governor).addToken(2, token2.address, true, 0);
 
     const nstFactory = await hardhat.ethers.getContractFactory('NonStandardToken');
     const token3 = await nstFactory.deploy("Token3", "T3");
-    await peripheryProxy.connect(governor).addToken(3, token3.address, false);
+    await peripheryProxy.connect(governor).addToken(3, token3.address, false, 0);
+
+    const token4 = await stFactory.deploy("Token4", "T4");
+    const token4Mapping = 1000;
+    await peripheryProxy.connect(governor).addToken(4, token4.address, true, token4Mapping);
 
     return {
         zkLink: zkLinkProxy,
@@ -163,15 +167,23 @@ async function deploy() {
         bob: bob,
         eth: {
             tokenId: ethId,
-            tokenAddress: ethAddress
+            tokenAddress: ethAddress,
+            mappingToken: 0
         },
         token2: {
             tokenId: 2,
             contract: token2,
+            mappingToken: 0
         },
         token3: {
             tokenId: 3,
             contract: token3,
+            mappingToken: 0
+        },
+        token4: {
+            tokenId: 4,
+            contract: token4,
+            mappingToken: token4Mapping
         }
     }
 }

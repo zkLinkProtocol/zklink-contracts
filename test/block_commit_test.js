@@ -79,8 +79,8 @@ describe('Block commit unit tests', function () {
         let offsetsCommitment = [];
 
         // deposit of current chain
-        let op = getDepositPubdata({chainId:CHAIN_ID,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
-        let opOfWrite = writeDepositPubdata({chainId:CHAIN_ID,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+        let op = getDepositPubdata({chainId:CHAIN_ID,accountId:1,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address});
+        let opOfWrite = writeDepositPubdata({chainId:CHAIN_ID,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address});
         await zkLink.testAddPriorityRequest(OP_DEPOSIT, opOfWrite);
         let opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
@@ -123,7 +123,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // deposit of chain4
-        op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token3Id,amount:parseEther("0.345"),owner:bob.address});
+        op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token3Id,targetTokenId:token3Id,amount:parseEther("0.345"),owner:bob.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
@@ -132,7 +132,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // full exit of chain4
-        op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:bob.address,tokenId:token3Id,amount:parseEther("24.5")});
+        op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:bob.address,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5")});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
@@ -148,7 +148,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, false));
 
         // force exit of chain3
-        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         onchainOpPubdataHash3 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash3), opPadding])));
@@ -157,7 +157,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // withdraw of current chain
-        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,amount:900,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
+        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
@@ -170,8 +170,8 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // full exit of current chain
-        op = getFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId,amount:parseEther("14")});
-        opOfWrite = writeFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId})
+        op = getFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId,srcTokenId:ethId,amount:parseEther("14")});
+        opOfWrite = writeFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:bob.address,tokenId:ethId,srcTokenId:ethId})
         await zkLink.testAddPriorityRequest(OP_FULL_EXIT, opOfWrite);
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
@@ -186,7 +186,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // force exit of current chain
-        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
@@ -198,7 +198,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // withdraw of chain4
-        op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,amount:1000,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
+        op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,srcTokenId:token2Id,amount:1000,fee:ethId,owner:bob.address,nonce:14,fastWithdrawFeeRate:50});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
@@ -297,7 +297,7 @@ describe('Block commit unit tests', function () {
 
         it('invalid chain id should be failed', async () => {
             const block = Object.assign({}, commitBlockTemplate);
-            let depositData = getDepositPubdata({chainId:MIN_CHAIN_ID-1,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+            let depositData = getDepositPubdata({chainId:MIN_CHAIN_ID-1,accountId:1,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address});
             block.publicData = paddingChunk(depositData);
             block.onchainOperations = [{
                 ethWitness:"0x",
@@ -306,7 +306,7 @@ describe('Block commit unit tests', function () {
             await expect(zkLink.testCollectOnchainOps(block))
                 .to.be.revertedWith("i1");
 
-            depositData = getDepositPubdata({chainId:MAX_CHAIN_ID+1,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address});
+            depositData = getDepositPubdata({chainId:MAX_CHAIN_ID+1,accountId:1,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address});
             block.publicData = paddingChunk(depositData);
             await expect(zkLink.testCollectOnchainOps(block))
                 .to.be.revertedWith("i1");
@@ -314,8 +314,8 @@ describe('Block commit unit tests', function () {
 
         it('duplicate pubdata offset should be failed', async () => {
             const block = Object.assign({}, commitBlockTemplate);
-            const depositData0 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address}));
-            const depositData1 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,amount:parseEther("500"),owner:alice.address}));
+            const depositData0 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address}));
+            const depositData1 = paddingChunk(getDepositPubdata({chainId:2,accountId:1,subAccountId:0,tokenId:ethId,targetTokenId:ethId,amount:parseEther("500"),owner:alice.address}));
             block.publicData = hexlify(concat([depositData0, depositData1]));
             block.onchainOperations = [
                 {
