@@ -15,9 +15,6 @@ contract ZKL is ERC20Capped, ERC20Permit, IZKL {
     bool public constant IS_MINT_CHAIN = $$(CHAIN_ID == 1);
     uint256 public constant CAP = 1000000000 * 1e18;
 
-    event BridgeTo(address indexed bridge, uint16 chainId, uint64 nonce, address sender, bytes receiver, uint amount);
-    event BridgeFrom(address indexed bridge, uint16 chainId, uint64 nonce, address receiver, uint amount);
-
     /// @notice ZkLink contract
     IGovernance public governance;
 
@@ -38,26 +35,22 @@ contract ZKL is ERC20Capped, ERC20Permit, IZKL {
     }
 
     /// @dev only bridge can call this function
-    function bridgeTo(uint16 dstChainId, uint64 nonce, address spender, address from, bytes memory to, uint256 amount) external override {
-        address bridge = msg.sender;
-        require(governance.isBridgeToEnabled(bridge), "Bridge to disabled");
+    function bridgeTo(address spender, address from, uint256 amount) external override {
+        require(governance.isBridgeToEnabled(msg.sender), "Bridge to disabled");
 
         // burn token of `from`
         if (spender != from) {
             _spendAllowance(from, spender, amount);
         }
         _burn(from, amount);
-        emit BridgeTo(bridge, dstChainId, nonce, from, to, amount);
     }
 
     /// @dev only bridge can call this function
-    function bridgeFrom(uint16 srcChainId, uint64 nonce, address receiver, uint256 amount) external override {
-        address bridge = msg.sender;
-        require(governance.isBridgeFromEnabled(bridge), "Bridge from disabled");
+    function bridgeFrom(address receiver, uint256 amount) external override {
+        require(governance.isBridgeFromEnabled(msg.sender), "Bridge from disabled");
 
         // mint token to receiver
         _mint(receiver, amount);
-        emit BridgeFrom(bridge, srcChainId, nonce, receiver, amount);
     }
 
     /**

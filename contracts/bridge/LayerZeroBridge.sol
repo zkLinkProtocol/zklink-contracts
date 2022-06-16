@@ -19,6 +19,11 @@ import "../token/IZKL.sol";
 /// @author zk.link
 contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
 
+    event SendZKL(uint16 dstChainId, uint64 nonce, address sender, bytes receiver, uint amount);
+    event ReceiveZKL(uint16 srcChainId, uint64 nonce, address receiver, uint amount);
+    event SendSynchronizationProgress(uint16 dstChainId, uint64 nonce, bytes32 syncHash, uint progress);
+    event ReceiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint progress);
+
     // to avoid stack too deep
     struct LzBridgeParams {
         uint16 dstChainId; // the destination chainId
@@ -147,7 +152,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
         // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
         uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
-        IZKL(zkl).bridgeTo(_dstChainId, nonce, msg.sender, from, receiver, amount);
+        IZKL(zkl).bridgeTo(msg.sender, from, amount);
+        emit SendZKL(_dstChainId, nonce, from, receiver, amount);
     }
 
     /// @notice Bridge ZkLink block to other chain
@@ -170,8 +176,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         // send LayerZero message
         uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
         bytes memory payload = buildZkLinkBlockBridgePayload(storedBlockInfo.syncHash, progress);
+        uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
         // solhint-disable-next-line check-send-result
         ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
+        emit SendSynchronizationProgress(_dstChainId, nonce, storedBlockInfo.syncHash, progress);
     }
 
     /// @notice Receive the bytes payload from the source chain via LayerZero
@@ -222,12 +230,14 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
                 receiver := mload(add(receiverBytes, EVM_ADDRESS_LENGTH))
             }
             // mint token to receiver
-            IZKL(zkl).bridgeFrom(srcChainId, nonce, receiver, amount);
+            IZKL(zkl).bridgeFrom(receiver, amount);
+            emit ReceiveZKL(srcChainId, nonce, receiver, amount);
         } else if (app == APP.ZKLINK) {
             address zklink = apps[APP.ZKLINK];
 
             (bytes32 syncHash, uint256 progress) = abi.decode(payload[1:], (bytes32, uint256));
-            IZkLink(zklink).receiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
+            IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
+            emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
         } else {
             revert("APP not support");
         }
@@ -262,5 +272,5 @@ interface IZkLink {
 
     function getSynchronizedProgress(StoredBlockInfo memory block) external view returns (uint256 progress);
 
-    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external;
+    function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external;
 }

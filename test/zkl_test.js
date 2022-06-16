@@ -96,8 +96,8 @@ describe('ZKL unit tests', function () {
             alice.address,
             bridgeAmount,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklInETH, "BridgeTo")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, 1, alice.address, alice.address.toLowerCase(), bridgeAmount);
+            .to.be.emit(lzBridgeInETH, "SendZKL")
+            .withArgs(lzChainIdInBSC, 1, alice.address, alice.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(alice.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.sub(bridgeAmount));
@@ -123,8 +123,8 @@ describe('ZKL unit tests', function () {
             bob.address,
             bridgeAmount,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklInBSC, "BridgeTo")
-            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, alice.address, bob.address.toLowerCase(), bridgeAmount);
+            .to.be.emit(lzBridgeInBSC, "SendZKL")
+            .withArgs(lzChainIdInETH, 1, alice.address, bob.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(bob.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
@@ -151,8 +151,8 @@ describe('ZKL unit tests', function () {
             bob.address,
             bridgeAmount,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklInBSC, "BridgeTo")
-            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 2, alice.address, bob.address.toLowerCase(), bridgeAmount);
+            .to.be.emit(lzBridgeInBSC, "SendZKL")
+            .withArgs(lzChainIdInETH, 2, alice.address, bob.address.toLowerCase(), bridgeAmount);
         const b1InETH = await zklInETH.balanceOf(bob.address);
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
@@ -170,7 +170,7 @@ describe('ZKL unit tests', function () {
             lzBridgeInETH.address,
             nonce,
             payloadWithType))
-            .to.be.emit(zklInETH, "BridgeFrom")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, address, amount);
+            .to.be.emit(lzBridgeInETH, "ReceiveZKL")
+            .withArgs(lzChainIdInBSC, nonce, address, amount);
     });
 });

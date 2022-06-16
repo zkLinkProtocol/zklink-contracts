@@ -75,8 +75,8 @@ describe('Bridge ZkLink block unit tests', function () {
         }
         await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(storedBlock,
             lzParams, {value: fees.nativeFee}))
-            .to.be.emit(zklinkInBSC, "ReceiveSynchronizationProgress")
-            .withArgs(lzBridgeInBSC.address, lzChainIdInETH, 1, syncHash, 1);
+            .to.be.emit(lzBridgeInBSC, "ReceiveSynchronizationProgress")
+            .withArgs(lzChainIdInETH, 1, syncHash, 1);
     });
 
     it('evil bridge should has no impact to local progress', async () => {
@@ -93,7 +93,7 @@ describe('Bridge ZkLink block unit tests', function () {
 
         await zklinkInETH.connect(networkGovernor).addBridge(evilBridge.address);
         // mock evil bridge deliver fake progress
-        await zklinkInETH.connect(evilBridge).receiveSynchronizationProgress(1,1,syncHash,ALL_CHAINS);
+        await zklinkInETH.connect(evilBridge).receiveSynchronizationProgress(syncHash,ALL_CHAINS);
         const progress = ALL_CHAINS & ~CHAIN_ID_INDEX;
         expect(await zklinkInETH.getSynchronizedProgress(storedBlock)).to.be.eq(progress);
     });
@@ -110,7 +110,7 @@ describe('Bridge ZkLink block unit tests', function () {
             lzBridgeInETH.address,
             nonce,
             payloadWithType))
-            .to.be.emit(zklinkInETH, "ReceiveSynchronizationProgress")
-            .withArgs(lzBridgeInETH.address, lzChainIdInBSC, nonce, syncHash, syncProgress);
+            .to.be.emit(lzBridgeInETH, "ReceiveSynchronizationProgress")
+            .withArgs(lzChainIdInBSC, nonce, syncHash, syncProgress);
     });
 });

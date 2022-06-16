@@ -14,9 +14,6 @@ interface Events {
     /// @notice Event emitted when a block is executed
     event BlockExecuted(uint32 indexed blockNumber);
 
-    /// @notice Event emmitted when receive cross chain block sync progress from bridge
-    event ReceiveSynchronizationProgress(address indexed bridge, uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress);
-
     /// @notice Event emitted when user funds are withdrawn from the zkLink state and contract
     event Withdrawal(uint16 indexed tokenId, uint128 amount);
 

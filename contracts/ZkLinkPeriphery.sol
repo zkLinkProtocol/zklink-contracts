@@ -245,12 +245,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // =======================Cross chain block synchronization======================
 
     /// @notice Combine the `progress` of the other chains of a `syncHash` with self
-    function receiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint256 progress) external {
-        address bridge = msg.sender;
-        require(isBridgeFromEnabled(bridge), "C");
+    function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external {
+        require(isBridgeFromEnabled(msg.sender), "C");
 
         synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
-        emit ReceiveSynchronizationProgress(bridge, srcChainId, nonce, syncHash, progress);
     }
 
     /// @notice Get synchronized progress of current chain known
