@@ -2,7 +2,6 @@
 
 pragma solidity ^0.7.0;
 
-import "./IERC20.sol";
 import "./Bytes.sol";
 
 library Utils {
@@ -30,7 +29,7 @@ library Utils {
         pure
         returns (address)
     {
-        require(_signature.length == 65, "P"); // incorrect signature length
+        require(_signature.length == 65, "ut0"); // incorrect signature length
 
         bytes32 signR;
         bytes32 signS;

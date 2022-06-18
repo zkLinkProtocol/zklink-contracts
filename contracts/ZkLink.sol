@@ -12,6 +12,7 @@ import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 import "./zksync/SafeCast.sol";
 import "./zksync/Utils.sol";
+import "./zksync/IERC20.sol";
 
 /// @title ZkLink contract
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files

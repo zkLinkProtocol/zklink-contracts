@@ -11,6 +11,7 @@ import "./zksync/Bytes.sol";
 import "./zksync/Utils.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeCast.sol";
+import "./zksync/IERC20.sol";
 
 /// @title ZkLink periphery contract
 /// @author zk.link
@@ -106,6 +107,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "B0"); // PubKeyHash should be 20 bytes.
         if (authFacts[msg.sender][_nonce] == bytes32(0)) {
             authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
+            emit FactAuth(msg.sender, _nonce, _pubkeyHash);
         } else {
             uint256 currentResetTimer = authFactsResetTimer[msg.sender][_nonce];
             if (currentResetTimer == 0) {
@@ -114,6 +116,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "B1"); // too early to reset auth
                 authFactsResetTimer[msg.sender][_nonce] = 0;
                 authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
+                emit FactAuth(msg.sender, _nonce, _pubkeyHash);
             }
         }
     }
