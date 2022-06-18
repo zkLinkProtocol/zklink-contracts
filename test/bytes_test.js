@@ -18,19 +18,19 @@ describe('Bytes unit tests', function () {
     });
 
     it('should fail to read bytes beyond range', async () => {
-        await expect(testContract.read('0x0102030405060708', 8, 2)).to.be.revertedWith('Z');
+        await expect(testContract.read('0x0102030405060708', 8, 2)).to.be.revertedWith('bt8');
     });
 
     it('should fail to read too many bytes', async () => {
-        await expect(testContract.read('0x0102030405060708', 4, 5)).to.be.revertedWith('Z');
+        await expect(testContract.read('0x0102030405060708', 4, 5)).to.be.revertedWith('bt8');
     });
 
     // types
 
     it('should convert uint24', async () => {
-        const x = 0x010203;
+        const x = "0x010203";
         let r = await testContract.testUInt24(x);
-        expect(x).equal(r.r);
+        expect(0x010203).equal(r.r);
         expect(r.offset).equal(3);
     });
 });
