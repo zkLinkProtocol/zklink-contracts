@@ -27,7 +27,7 @@ library SafeMathUInt128 {
      */
     function add(uint128 a, uint128 b) internal pure returns (uint128) {
         uint128 c = a + b;
-        require(c >= a, "12");
+        require(c >= a, "sM0");
 
         return c;
     }
@@ -42,7 +42,7 @@ library SafeMathUInt128 {
      * - Subtraction cannot overflow.
      */
     function sub(uint128 a, uint128 b) internal pure returns (uint128) {
-        return sub(a, b, "aa");
+        return sub(a, b, "sM1");
     }
 
     /**
@@ -85,7 +85,7 @@ library SafeMathUInt128 {
         }
 
         uint128 c = a * b;
-        require(c / a == b, "13");
+        require(c / a == b, "sM2");
 
         return c;
     }
@@ -102,7 +102,7 @@ library SafeMathUInt128 {
      * - The divisor cannot be zero.
      */
     function div(uint128 a, uint128 b) internal pure returns (uint128) {
-        return div(a, b, "ac");
+        return div(a, b, "sM3");
     }
 
     /**
@@ -143,7 +143,7 @@ library SafeMathUInt128 {
      * - The divisor cannot be zero.
      */
     function mod(uint128 a, uint128 b) internal pure returns (uint128) {
-        return mod(a, b, "ad");
+        return mod(a, b, "sM4");
     }
 
     /**
