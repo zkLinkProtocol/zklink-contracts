@@ -9,7 +9,7 @@ import "./UpgradeableMaster.sol";
 /// @title Proxy Contract
 /// @dev NOTICE: Proxy must implement UpgradeableMaster interface to prevent calling some function of it not by master of proxy
 /// @author Matter Labs
-contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
+contract Proxy is Upgradeable, Ownable {
     /// @dev Storage position of "target" (actual implementation address: keccak256('eip1967.proxy.implementation') - 1)
     bytes32 private constant TARGET_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
@@ -101,24 +101,5 @@ contract Proxy is Upgradeable, UpgradeableMaster, Ownable {
     /// @notice Same as fallback but called when calldata is empty
     receive() external payable {
         _fallback();
-    }
-
-    /// UpgradeableMaster functions
-
-    /// @notice Notice period before activation preparation status of upgrade mode
-    function getNoticePeriod() external override returns (uint256) {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = getTarget().delegatecall(abi.encodeWithSignature("getNoticePeriod()"));
-        require(success, "unp11"); // unp11 - upgradeNoticePeriod delegatecall failed
-        return abi.decode(result, (uint256));
-    }
-
-    /// @notice Checks that contract is ready for upgrade
-    /// @return bool flag indicating that contract is ready for upgrade
-    function isReadyForUpgrade() external override returns (bool) {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = getTarget().delegatecall(abi.encodeWithSignature("isReadyForUpgrade()"));
-        require(success, "rfu11"); // rfu11 - readyForUpgrade delegatecall failed
-        return abi.decode(result, (bool));
     }
 }

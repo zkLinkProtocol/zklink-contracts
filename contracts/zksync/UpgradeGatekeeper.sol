@@ -39,8 +39,8 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
     /// @notice Contract constructor
     /// @param _mainContract Contract which defines notice period duration and allows finish upgrade during preparation of it
     /// @dev Calls Ownable contract constructor
-    constructor(UpgradeableMaster _mainContract) Ownable(msg.sender) {
-        mainContract = _mainContract;
+    constructor(address _mainContract) Ownable(msg.sender) {
+        mainContract = UpgradeableMaster(_mainContract);
         versionId = 0;
     }
 

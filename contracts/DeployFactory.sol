@@ -60,7 +60,7 @@ contract DeployFactory {
         Proxy zkLink =
             new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), _periphery, address(this), _genesisRoot));
 
-        UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(zkLink);
+        UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(address(zkLink));
 
         verifier.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(verifier));
