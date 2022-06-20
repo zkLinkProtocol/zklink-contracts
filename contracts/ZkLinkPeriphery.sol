@@ -40,6 +40,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _subAccountId Id of the subAccount in the tree
     /// @param _proof Proof
     /// @param _tokenId The token want to withdraw
+    /// @param _srcTokenId The token deducted at l2
     /// @param _amount Amount for owner (must be total amount, not part of it)
     function performExodus(
         StoredBlockInfo calldata _storedBlockInfo,
@@ -47,20 +48,21 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         uint32 _accountId,
         uint8 _subAccountId,
         uint16 _tokenId,
+        uint16 _srcTokenId,
         uint128 _amount,
         uint256[] calldata _proof
     ) external notActive {
         // ===Checks===
         // performed exodus MUST not be already exited
-        require(!performedExodus[_accountId][_subAccountId][_tokenId], "y0");
+        require(!performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId], "y0");
         // incorrect stored block info
         require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "y1");
         // exit proof MUST be correct
-        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _tokenId, _amount, _proof);
+        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _tokenId, _srcTokenId, _amount, _proof);
         require(proofCorrect, "y2");
 
         // ===Effects===
-        performedExodus[_accountId][_subAccountId][_tokenId] = true;
+        performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId] = true;
         bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
         increaseBalanceToWithdraw(packedBalanceKey, _amount);
         emit WithdrawalPending(_tokenId, _owner, _amount);

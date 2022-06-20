@@ -31,6 +31,7 @@ contract VerifierMock is Verifier{
         uint8,
         address,
         uint16,
+        uint16,
         uint128,
         uint256[] calldata
     ) external view override returns (bool) {

@@ -65,8 +65,8 @@ contract Storage is Config {
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => uint128) internal pendingBalances;
 
-    /// @notice Flag indicates that a user has exited in the exodus mode certain token balance (accountId => subAccountId => tokenId)
-    mapping(uint32 => mapping(uint8 => mapping(uint16 => bool))) public performedExodus;
+    /// @notice Flag indicates that a user has exited in the exodus mode certain token balance (accountId => subAccountId => tokenId => srcTokenId)
+    mapping(uint32 => mapping(uint8 => mapping(uint16 => mapping(uint16 => bool)))) public performedExodus;
 
     /// @dev Priority Requests mapping (request id - operation)
     /// Contains op type, pubdata and expiration block of unsatisfied requests.
@@ -189,24 +189,24 @@ contract Storage is Config {
     function _fallback(address _target) internal {
         require(_target != address(0), "5");
         assembly {
-        // The pointer to the free memory slot
+            // The pointer to the free memory slot
             let ptr := mload(0x40)
-        // Copy function signature and arguments from calldata at zero position into memory at pointer position
+            // Copy function signature and arguments from calldata at zero position into memory at pointer position
             calldatacopy(ptr, 0x0, calldatasize())
-        // Delegatecall method of the implementation contract, returns 0 on error
+            // Delegatecall method of the implementation contract, returns 0 on error
             let result := delegatecall(gas(), _target, ptr, calldatasize(), 0x0, 0)
-        // Get the size of the last return data
+            // Get the size of the last return data
             let size := returndatasize()
-        // Copy the size length of bytes from return data at zero position to pointer position
+            // Copy the size length of bytes from return data at zero position to pointer position
             returndatacopy(ptr, 0x0, size)
-        // Depending on result value
+            // Depending on result value
             switch result
             case 0 {
-            // End execution and revert state changes
+                // End execution and revert state changes
                 revert(ptr, size)
             }
             default {
-            // Return data with length of size at pointers position
+                // Return data with length of size at pointers position
                 return(ptr, size)
             }
         }

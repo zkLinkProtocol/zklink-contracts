@@ -13,7 +13,7 @@ contract Config {
     /// @dev Bytes in one chunk
     uint8 internal constant CHUNK_BYTES = 14;
 
-    /// @dev Bytes of L2 Pubkey hash
+    /// @dev Bytes of L2 PubKey hash
     uint8 internal constant PUBKEY_HASH_BYTES = 20;
 
     /// @dev Max amount of tokens registered in the network

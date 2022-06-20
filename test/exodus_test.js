@@ -44,6 +44,7 @@ describe('ZkLink exodus unit tests', function () {
             accountId,
             subAccountId,
             tokenId,
+            tokenId,
             amount,
             proof))
             .to.be.revertedWith("1");
@@ -82,6 +83,7 @@ describe('ZkLink exodus unit tests', function () {
             accountId,
             subAccountId,
             tokenId,
+            tokenId,
             amount,
             proof))
             .to.be.revertedWith("y1");
@@ -93,6 +95,7 @@ describe('ZkLink exodus unit tests', function () {
             accountId,
             subAccountId,
             tokenId,
+            tokenId,
             amount,
             proof))
             .to.be.revertedWith("y2");
@@ -103,6 +106,7 @@ describe('ZkLink exodus unit tests', function () {
             owner,
             accountId,
             subAccountId,
+            tokenId,
             tokenId,
             amount,
             proof))
@@ -116,6 +120,7 @@ describe('ZkLink exodus unit tests', function () {
             accountId,
             subAccountId,
             tokenId,
+            tokenId,
             amount,
             proof))
             .to.be.revertedWith("y0");
@@ -127,6 +132,7 @@ describe('ZkLink exodus unit tests', function () {
             owner,
             accountId,
             subAccountId1,
+            tokenId,
             tokenId,
             amount1,
             proof))
