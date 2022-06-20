@@ -102,7 +102,7 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
         require(targetsUpgradeParameters.length == managedContracts.length, "fpu12"); // fpu12 - number of new targets upgrade parameters must be equal to the number of managed contracts
         require(mainContract.isReadyForUpgrade(), "fpu13"); // fpu13 - main contract is not ready for upgrade
 
-        for (uint64 i = 0; i < managedContracts.length; i++) {
+        for (uint64 i = 0; i < managedContracts.length; ++i) {
             address newTarget = nextTargets[i];
             if (newTarget != address(0)) {
                 managedContracts[i].upgradeTarget(newTarget, targetsUpgradeParameters[i]);
