@@ -84,6 +84,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         (address _verifierAddress, address _peripheryAddress, address _networkGovernor, bytes32 _genesisStateHash) =
             abi.decode(initializationParameters, (address, address, address, bytes32));
+        require(_verifierAddress != address(0), "i0");
+        require(_peripheryAddress != address(0), "i1");
+        require(_networkGovernor != address(0), "i2");
 
         verifier = Verifier(_verifierAddress);
         periphery = _peripheryAddress;
@@ -100,6 +103,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param upgradeParameters Encoded representation of upgrade parameters
     function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {
         (address _peripheryAddress) = abi.decode(upgradeParameters, (address));
+        require(_peripheryAddress != address(0), "u0");
         periphery = _peripheryAddress;
     }
 

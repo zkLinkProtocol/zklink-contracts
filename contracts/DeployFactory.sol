@@ -62,6 +62,8 @@ contract DeployFactory {
 
         UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(address(zkLink));
 
+        emit Addresses(address(verifier), address(zkLink), address(upgradeGatekeeper));
+
         verifier.transferMastership(address(upgradeGatekeeper));
         upgradeGatekeeper.addUpgradeable(address(verifier));
 
@@ -69,8 +71,6 @@ contract DeployFactory {
         upgradeGatekeeper.addUpgradeable(address(zkLink));
 
         upgradeGatekeeper.transferMastership(_governor);
-
-        emit Addresses(address(verifier), address(zkLink), address(upgradeGatekeeper));
 
         ZkLinkPeriphery(address(zkLink)).setValidator(_validator, true);
         ZkLinkPeriphery(address(zkLink)).changeGovernor(_governor);

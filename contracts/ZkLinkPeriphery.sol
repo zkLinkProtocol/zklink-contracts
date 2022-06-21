@@ -314,7 +314,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         if (amountReturn > 0) {
             // it's safe to use call to msg.sender and can send all gas left to it
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = msg.sender.call{value: amountReturn}("");
+            (success, ) = msg.sender.call{value: amountReturn}("");
             require(success, "E1");
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountReceive, amountReceive);

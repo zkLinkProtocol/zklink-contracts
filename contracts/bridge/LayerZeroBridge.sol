@@ -142,6 +142,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
         // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
 
+        // ===Effects===
+        uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
+        emit SendZKL(_dstChainId, nonce + 1, from, receiver, amount);
+
         // ===Interactions===
         // send LayerZero message
         {
@@ -151,9 +155,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         }
 
         // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
-        uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
         IZKL(zkl).bridgeTo(msg.sender, from, amount);
-        emit SendZKL(_dstChainId, nonce, from, receiver, amount);
     }
 
     /// @notice Bridge ZkLink block to other chain
@@ -172,14 +174,16 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
         // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
 
+        // ===Effects===
+        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
+        uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
+        emit SendSynchronizationProgress(_dstChainId, nonce + 1, storedBlockInfo.syncHash, progress);
+
         // ===Interactions===
         // send LayerZero message
-        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
         bytes memory payload = buildZkLinkBlockBridgePayload(storedBlockInfo.syncHash, progress);
-        uint64 nonce = ILayerZeroEndpoint(endpoint).getOutboundNonce(_dstChainId, address(this));
         // solhint-disable-next-line check-send-result
         ILayerZeroEndpoint(endpoint).send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
-        emit SendSynchronizationProgress(_dstChainId, nonce, storedBlockInfo.syncHash, progress);
     }
 
     /// @notice Receive the bytes payload from the source chain via LayerZero
@@ -207,7 +211,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     }
 
     /// @notice Retry the failed message, payload hash must be exist
-    function retryMessage(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external payable virtual {
+    function retryMessage(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external payable virtual nonReentrant {
         // assert there is message to retry
         bytes32 payloadHash = failedMessages[srcChainId][srcAddress][nonce];
         require(payloadHash != bytes32(0), "No stored message");
@@ -229,15 +233,15 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
             assembly {
                 receiver := mload(add(receiverBytes, EVM_ADDRESS_LENGTH))
             }
+            emit ReceiveZKL(srcChainId, nonce, receiver, amount);
             // mint token to receiver
             IZKL(zkl).bridgeFrom(receiver, amount);
-            emit ReceiveZKL(srcChainId, nonce, receiver, amount);
         } else if (app == APP.ZKLINK) {
             address zklink = apps[APP.ZKLINK];
 
             (bytes32 syncHash, uint256 progress) = abi.decode(payload[1:], (bytes32, uint256));
-            IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
             emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
+            IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
         } else {
             revert("APP not support");
         }

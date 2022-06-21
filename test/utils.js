@@ -133,7 +133,7 @@ async function deploy() {
         feeAccount.address
     );
     const txr = await deployer.deployTransaction.wait();
-    const log = deployer.interface.parseLog(txr.logs[2]);
+    const log = deployer.interface.parseLog(txr.logs[0]);
     const verifyProxy = verifierFactory.attach(log.args.verifier);
     const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
     const peripheryProxy = peripheryFactory.attach(log.args.zkLink);
