@@ -19,17 +19,17 @@ import "../token/IZKL.sol";
 /// @author zk.link
 contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
 
-    event SendZKL(uint16 dstChainId, uint64 nonce, address sender, bytes receiver, uint amount);
-    event ReceiveZKL(uint16 srcChainId, uint64 nonce, address receiver, uint amount);
-    event SendSynchronizationProgress(uint16 dstChainId, uint64 nonce, bytes32 syncHash, uint progress);
-    event ReceiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint progress);
-
     // to avoid stack too deep
     struct LzBridgeParams {
         uint16 dstChainId; // the destination chainId
         address payable refundAddress; // native fees(collected by oracle and relayer) refund address if msg.value is too large
         address zroPaymentAddress; // if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
         bytes adapterParams; // see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
+    }
+
+    modifier onlyEndpoint {
+        require(msg.sender == endpoint, "Require endpoint");
+        _;
     }
 
     modifier onlyGovernor {
@@ -187,7 +187,7 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     function lzReceive(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external override onlyEndpoint nonReentrant {
         // reject invalid src contract address
         bytes memory trustedRemote = destinations[srcChainId];
-        require(srcAddress.length == trustedRemote.length && keccak256(trustedRemote) == keccak256(srcAddress), "Invalid src");
+        require(trustedRemote.length > 0 && srcAddress.length == trustedRemote.length && keccak256(trustedRemote) == keccak256(srcAddress), "Invalid src");
 
         // try-catch all errors/exceptions
         // solhint-disable-next-line no-empty-blocks
@@ -244,7 +244,6 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     }
 
     function checkDstChainId(uint16 dstChainId) internal view returns (bytes memory trustedRemote) {
-        require(dstChainId != ILayerZeroEndpoint(endpoint).getChainId(), "Invalid dstChainId");
         trustedRemote = destinations[dstChainId];
         require(trustedRemote.length > 0, "Trust remote not exist");
     }

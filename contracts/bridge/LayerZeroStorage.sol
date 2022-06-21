@@ -30,9 +30,8 @@ contract LayerZeroStorage {
     event UpdateDestinationAddressLength(uint16 lzChainId, uint8 addressLength);
     event UpdateAPP(APP app, address contractAddress);
     event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
-
-    modifier onlyEndpoint {
-        require(msg.sender == endpoint, "Require endpoint");
-        _;
-    }
+    event SendZKL(uint16 dstChainId, uint64 nonce, address sender, bytes receiver, uint amount);
+    event ReceiveZKL(uint16 srcChainId, uint64 nonce, address receiver, uint amount);
+    event SendSynchronizationProgress(uint16 dstChainId, uint64 nonce, bytes32 syncHash, uint progress);
+    event ReceiveSynchronizationProgress(uint16 srcChainId, uint64 nonce, bytes32 syncHash, uint progress);
 }
