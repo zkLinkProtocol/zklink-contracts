@@ -16,7 +16,8 @@ import "./zksync/IERC20.sol";
 
 /// @title ZkLink contract
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files
-/// https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct
+/// see https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct
+/// @dev add `nonReentrant` to all user external interfaces to avoid a closed loop reentrant attack
 /// @author zk.link
 contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     using SafeMath for uint256;
@@ -134,7 +135,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function depositERC20(IERC20 _token, uint104 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
         // support non-standard tokens
         uint256 balanceBefore = _token.balanceOf(address(this));
-        // NOTE, if the token is not a pure erc20 token, it could do anything within the transferFrom
+        // NOTE, the balance of this contract will be increased
+        // if the token is not a pure erc20 token, it could do anything within the transferFrom
+        // we MUST NOT use `token.balanceOf(address(this))` in any control structures
         _token.transferFrom(msg.sender, address(this), _amount);
         uint256 balanceAfter = _token.balanceOf(address(this));
         uint128 depositAmount = SafeCast.toUint128(balanceAfter.sub(balanceBefore));
@@ -183,8 +186,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _owner Address of the tokens owner
     /// @param _tokenId Token id
     /// @param _amount Amount to withdraw to request.
-    ///         NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
-    ///         balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
+    /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
+    /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
     function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant {
         // ===Checks===
         // token MUST be registered to ZkLink
@@ -507,7 +510,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// Priority operations must be committed in the same order as they are in the priority queue.
     /// NOTE: does not change storage! (only emits events)
     /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
-    /// priorityOperationsProcessed - number of priority operations processed in this block (Deposits, FullExits)
+    /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
     /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
     /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
     function collectOnchainOps(CommitBlockInfo memory _newBlockData)
@@ -571,9 +574,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     function initOnchainOperationPubdataHashs() internal pure returns (bytes32[] memory onchainOperationPubdataHashs) {
-        onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID + 1);
+        onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID + 1); // overflow is impossible
         for(uint i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-            uint256 chainIndex = 1 << i - 1;
+            uint256 chainIndex = 1 << i - 1; // overflow is impossible
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
             }
@@ -584,7 +587,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "i1");
         // revert if invalid chain id exist
         // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
-        uint256 chainIndex = 1 << chainId - 1;
+        uint256 chainIndex = 1 << chainId - 1; // overflow is impossible
         require(chainIndex & ALL_CHAINS == chainIndex, "i2");
     }
 
@@ -595,6 +598,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint64 nextPriorityOpIdx,
         bytes memory ethWitness)
     internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
+        priorityOperationsProcessed = 0;
+        processablePubData = new bytes(0);
         // ignore check if ops are not part of the current chain
         if (opType == Operations.OpType.Deposit) {
             opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
@@ -641,7 +646,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     internal pure returns (bytes32 syncHash) {
         syncHash = commitment;
         for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-            uint256 chainIndex = 1 << i - 1;
+            uint256 chainIndex = 1 << i - 1; // overflow is impossible
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 syncHash = Utils.concatTwoHash(syncHash, onchainOperationPubdataHashs[i]);
             }

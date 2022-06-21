@@ -23,7 +23,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
     /// @dev Exodus mode must be entered in case of current ethereum block number is higher than the oldest
     /// of existed priority requests expiration block number.
-    function activateExodusMode() external active {
+    function activateExodusMode() external active nonReentrant {
         bool trigger = block.number >= priorityRequests[firstPriorityRequestId].expirationBlock &&
         priorityRequests[firstPriorityRequestId].expirationBlock != 0;
 
@@ -51,7 +51,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         uint16 _srcTokenId,
         uint128 _amount,
         uint256[] calldata _proof
-    ) external notActive {
+    ) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
         require(!performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId], "y0");
@@ -73,7 +73,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// Canceling may take several separate transactions to be completed
     /// @param _n number of requests to process
     /// @param _depositsPubdata deposit details
-    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external notActive {
+    function cancelOutstandingDepositsForExodusMode(uint64 _n, bytes[] calldata _depositsPubdata) external notActive nonReentrant {
         // ===Checks===
         uint64 toProcess = Utils.minU64(totalOpenPriorityRequests, _n);
         require(toProcess > 0, "A0");
@@ -105,7 +105,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     ///         2) After `AUTH_FACT_RESET_TIMELOCK` time is passed second `setAuthPubkeyHash` transaction will reset pubkey hash for `_nonce`.
     /// @param _pubkeyHash New pubkey hash
     /// @param _nonce Nonce of the change pubkey L2 transaction
-    function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external active {
+    function setAuthPubkeyHash(bytes calldata _pubkeyHash, uint32 _nonce) external active nonReentrant {
         require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "B0"); // PubKeyHash should be 20 bytes.
         if (authFacts[msg.sender][_nonce] == bytes32(0)) {
             authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
@@ -236,13 +236,13 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     function isBridgeToEnabled(address bridge) external view returns (bool) {
-        uint256 index = bridgeIndex[bridge] - 1;
+        uint256 index = bridgeIndex[bridge].sub(1);
         BridgeInfo memory info = bridges[index];
         return info.bridge == bridge && info.enableBridgeTo;
     }
 
     function isBridgeFromEnabled(address bridge) public view returns (bool) {
-        uint256 index = bridgeIndex[bridge] - 1;
+        uint256 index = bridgeIndex[bridge].sub(1);
         BridgeInfo memory info = bridges[index];
         return info.bridge == bridge && info.enableBridgeFrom;
     }
@@ -306,14 +306,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Interactions===
         // make sure msg value >= amountReceive
         uint256 amountReturn = msg.value.sub(amountReceive);
-        // do not use send or call to make more security
-        receiver.transfer(amountReceive);
+        // add gas limit to prevent gas minting attack
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = receiver.call{value: amountReceive, gas: WITHDRAWAL_GAS_LIMIT}("");
+        require(success, "E0");
         // if send too more eth then return back to msg sender
         if (amountReturn > 0) {
             // it's safe to use call to msg.sender and can send all gas left to it
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = msg.sender.call{value: amountReturn}("");
-            require(success, "E");
+            require(success, "E1");
         }
         emit Accept(accepter, accountId, receiver, tokenId, amountReceive, amountReceive);
     }
@@ -395,8 +397,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(rt.registered, "H3");
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid
+        require(withdrawFeeRate < MAX_ACCEPT_FEE_RATE, "H4");
         amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
-        require(amountReceive > 0 && amountReceive <= amount, "H4");
         // nonce MUST not be zero
         require(nonce > 0, "H5");
 
