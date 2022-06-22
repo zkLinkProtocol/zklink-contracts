@@ -73,9 +73,6 @@ library Operations {
         address owner; // the address that receive deposited token at l2
     }
 
-    uint256 public constant PACKED_DEPOSIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + TOKEN_BYTES * 2 + AMOUNT_BYTES + ADDRESS_BYTES; // 47
-
     /// @dev Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -87,8 +84,6 @@ library Operations {
         (offset, parsed.targetTokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
-
-        require(offset == PACKED_DEPOSIT_PUBDATA_BYTES, "OP: invalid deposit");
     }
 
     /// @dev Serialize deposit pubdata
@@ -122,9 +117,6 @@ library Operations {
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
     }
 
-    uint256 public constant PACKED_FULL_EXIT_PUBDATA_BYTES =
-        OP_TYPE_BYTES + CHAIN_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + ADDRESS_BYTES + TOKEN_BYTES * 2 + AMOUNT_BYTES; // 47
-
     /// @dev Deserialize fullExit pubdata
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -136,8 +128,6 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.srcTokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-
-        require(offset == PACKED_FULL_EXIT_PUBDATA_BYTES, "OP: invalid fullExit");
     }
 
     /// @dev Serialize fullExit pubdata
