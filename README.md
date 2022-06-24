@@ -133,3 +133,7 @@ Usage: hardhat [GLOBAL OPTIONS] setApp
 
 setApp: Set layerzero supported app on testnet
 ```
+
+## Development
+
+For developers, static analysis need to be done before committing code. Read more of [SecurityCheck](docs/SecurityCheck.md).
