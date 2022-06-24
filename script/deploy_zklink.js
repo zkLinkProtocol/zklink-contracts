@@ -5,7 +5,11 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("governor", "The governor address (default is same as deployer)", undefined, types.string, true)
     .addParam("validator", "The validator address (default is same as deployer)", undefined, types.string, true)
     .addParam("feeAccount", "The feeAccount address (default is same as deployer)", undefined, types.string, true)
-    .addParam("genesisRoot", "The genesis root hash")
+    .addParam("blockNumber", "The block number", 0, types.int, true)
+    .addParam("timestamp", "The block timestamp", 0, types.int, true)
+    .addParam("genesisRoot", "The block root hash")
+    .addParam("commitment", "The block commitment", "0x0000000000000000000000000000000000000000000000000000000000000000", types.string, true)
+    .addParam("syncHash", "The block syncHash", "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", types.string, true)
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
@@ -24,12 +28,20 @@ task("deployZkLink", "Deploy zklink contracts")
         }
         let force = taskArgs.force;
         let skipVerify = taskArgs.skipVerify;
+        const blockNumber = taskArgs.blockNumber;
+        const timestamp = taskArgs.timestamp;
         const genesisRoot = taskArgs.genesisRoot;
+        const commitment = taskArgs.commitment;
+        const syncHash = taskArgs.syncHash;
         console.log('deployer', deployer.address);
         console.log('governor', governor);
         console.log('validator', validator);
         console.log('feeAccount', feeAccount);
+        console.log('blockNumber', blockNumber);
+        console.log('timestamp', timestamp);
         console.log('genesisRoot', genesisRoot);
+        console.log('commitment', commitment);
+        console.log('syncHash', syncHash);
         console.log('force redeploy all contracts?', force);
         console.log('skip verify contracts?', skipVerify);
 
@@ -128,7 +140,11 @@ task("deployZkLink", "Deploy zklink contracts")
                 verifierTarget,
                 zkLinkTarget,
                 peripheryTarget,
+                blockNumber,
+                timestamp,
                 hardhat.ethers.utils.arrayify(genesisRoot),
+                hardhat.ethers.utils.arrayify(commitment),
+                hardhat.ethers.utils.arrayify(syncHash),
                 validator,
                 governor,
                 feeAccount

@@ -119,15 +119,17 @@ async function deploy() {
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
     const zkLink = await zkLinkFactory.deploy();
 
-    const genesisRoot = hardhat.ethers.utils.arrayify(GENESIS_ROOT);
-
     // deployer
     const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
     const deployer = await deployerFactory.deploy(
         verifier.address,
         zkLink.address,
         periphery.address,
-        genesisRoot,
+        0, // blockNumber
+        0, // timestamp
+        hardhat.ethers.utils.arrayify(GENESIS_ROOT), // stateHash
+        hardhat.ethers.utils.arrayify(ZERO_BYTES32), // commitment
+        hardhat.ethers.utils.arrayify(EMPTY_STRING_KECCAK), // syncHash
         validator.address,
         governor.address,
         feeAccount.address

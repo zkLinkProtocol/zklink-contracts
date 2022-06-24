@@ -54,16 +54,20 @@ $ npx hardhat help deployZkLink
 
 Hardhat version 2.9.3
 
-Usage: hardhat [GLOBAL OPTIONS] deployZkLink --fee-account <STRING> --force <BOOLEAN> --genesis-root <STRING> --governor <STRING> --skip-verify <BOOLEAN> --validator <STRING>
+Usage: hardhat [GLOBAL OPTIONS] deployZkLink [--block-number <INT>] [--commitment <STRING>] --fee-account <STRING> [--force <BOOLEAN>] --genesis-root <STRING> --governor <STRING> [--skip-verify <BOOLEAN>] [--sync-hash <STRING>] [--timestamp <INT>] --validator <STRING>
 
 OPTIONS:
 
-  --fee-account         The feeAccount address, default is same as deployer 
-  --force               Fore redeploy all contracts, default is false 
-  --genesis-root        The genesis root hash 
-  --governor            The governor address, default is same as deployer 
-  --skip-verify         Skip verify, default is false 
-  --validator           The validator address, default is same as deployer 
+  --block-number        The block number (default: 0)
+  --commitment          The block commitment (default: "0x0000000000000000000000000000000000000000000000000000000000000000")
+  --fee-account         The feeAccount address (default is same as deployer) 
+  --force               Fore redeploy all contracts (default: false)
+  --genesis-root        The block root hash 
+  --governor            The governor address (default is same as deployer) 
+  --skip-verify         Skip verify (default: false)
+  --sync-hash           The block syncHash (default: "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+  --timestamp           The block timestamp (default: 0)
+  --validator           The validator address (default is same as deployer) 
 
 deployZkLink: Deploy zklink contracts
 ```

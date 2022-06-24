@@ -86,13 +86,13 @@ task("addMultipleToken", "Adds multiple tokens for testnet")
 task("depositERC20", "Deposit erc20 token to zkLink on testnet")
     .addParam("zklink", "The zklink proxy address")
     .addParam("token", "The token address")
-    .addParam("decimals", "The token decimals", undefined, types.number, true)
+    .addParam("decimals", "The token decimals", 18, types.int, true)
     .addParam("amount", "The deposit amount in ether")
     .setAction(async (taskArgs, hardhat) => {
             const [sender] = await hardhat.ethers.getSigners();
             const zkLinkProxy = taskArgs.zklink;
             const token = taskArgs.token;
-            const decimals = taskArgs.decimals === undefined ? 18 : taskArgs.decimals;
+            const decimals = taskArgs.decimals;
             const amount = taskArgs.amount;
             console.log('zklink address', zkLinkProxy);
             console.log('token address', token);
@@ -198,7 +198,7 @@ task("addBridge", "Add bridge to zkLink on testnet")
     });
 
 task("mintZKL", "Mint zkl for POLYGONTEST")
-    .addParam("zkl", "The zkl contract address on POLYGONTEST, default get from deploy log", undefined, types.string, true)
+    .addParam("zkl", "The zkl contract address on POLYGONTEST (default get from deploy log)", undefined, types.string, true)
     .addParam("account", "The account address")
     .addParam("amount", "The mint amount")
     .setAction(async (taskArgs, hardhat) => {
@@ -228,7 +228,7 @@ task("mintZKL", "Mint zkl for POLYGONTEST")
     });
 
 task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
-    .addParam("bridge", "The src lz bridge contract address, default get from deploy log", undefined, types.string, true)
+    .addParam("bridge", "The src lz bridge contract address (default get from deploy log)", undefined, types.string, true)
     .addParam("dst", "The target destination network name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
     .addParam("amount", "Amount to send")
     .setAction(async (taskArgs, hardhat) => {

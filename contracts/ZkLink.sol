@@ -78,12 +78,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev _verifierAddress The address of Verifier contract
     /// @dev _peripheryAddress The address of ZkLinkPeriphery contract
     /// @dev _networkGovernor The address of system controller
-    /// @dev _genesisStateHash Genesis blocks (first block) state tree root hash
     function initialize(bytes calldata initializationParameters) external onlyDelegateCall {
         initializeReentrancyGuard();
 
-        (address _verifierAddress, address _peripheryAddress, address _networkGovernor, bytes32 _genesisStateHash) =
-            abi.decode(initializationParameters, (address, address, address, bytes32));
+        (address _verifierAddress, address _peripheryAddress, address _networkGovernor,
+        uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash) =
+            abi.decode(initializationParameters, (address, address, address, uint32, uint256, bytes32, bytes32, bytes32));
         require(_verifierAddress != address(0), "i0");
         require(_peripheryAddress != address(0), "i1");
         require(_networkGovernor != address(0), "i2");
@@ -94,9 +94,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
-            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _genesisStateHash, bytes32(0), EMPTY_STRING_KECCAK);
+            StoredBlockInfo(_blockNumber, 0, EMPTY_STRING_KECCAK, _timestamp, _stateHash, _commitment, _syncHash);
 
-        storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
+        storedBlockHashes[_blockNumber] = hashStoredBlockInfo(storedBlockZero);
+        totalBlocksCommitted = totalBlocksProven = totalBlocksSynchronized = totalBlocksExecuted = _blockNumber;
     }
 
     /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.

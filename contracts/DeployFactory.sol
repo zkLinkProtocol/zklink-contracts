@@ -31,7 +31,11 @@ contract DeployFactory {
         Verifier _verifierTarget,
         ZkLink _zkLinkTarget,
         address _periphery,
-        bytes32 _genesisRoot,
+        uint32 _blockNumber,
+        uint256 _timestamp,
+        bytes32 _stateHash,
+        bytes32 _commitment,
+        bytes32 _syncHash,
         address _firstValidator,
         address _governor,
         address _feeAccountAddress
@@ -41,7 +45,9 @@ contract DeployFactory {
         require(_feeAccountAddress != address(0), "D2");
 
         Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
-        deployProxyContracts(verifier, _zkLinkTarget, _periphery, _genesisRoot, _firstValidator, _governor);
+        deployProxyContracts(verifier, _zkLinkTarget, _periphery,
+            _blockNumber, _timestamp, _stateHash, _commitment, _syncHash,
+            _firstValidator, _governor);
 
         selfdestruct(msg.sender);
     }
@@ -52,13 +58,18 @@ contract DeployFactory {
         Proxy verifier,
         ZkLink _zkLinkTarget,
         address _periphery,
-        bytes32 _genesisRoot,
+        uint32 _blockNumber,
+        uint256 _timestamp,
+        bytes32 _stateHash,
+        bytes32 _commitment,
+        bytes32 _syncHash,
         address _validator,
         address _governor
     ) internal {
         // set this contract as governor
         Proxy zkLink =
-            new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), _periphery, address(this), _genesisRoot));
+            new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), _periphery, address(this),
+                _blockNumber, _timestamp, _stateHash, _commitment, _syncHash));
 
         UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(address(zkLink));
 
