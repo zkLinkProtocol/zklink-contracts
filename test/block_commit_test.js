@@ -148,7 +148,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, false));
 
         // force exit of chain3
-        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,feeTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         onchainOpPubdataHash3 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash3), opPadding])));
@@ -186,7 +186,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // force exit of current chain
-        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
+        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,feeTokenId:token3Id,amount:parseEther("24.5"),fee:13,target:alice.address});
         opPadding = paddingChunk(op);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);

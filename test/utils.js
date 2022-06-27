@@ -57,9 +57,9 @@ function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
-function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, fee, target }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint16","uint128","uint16","address"],
-        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,fee,target]);
+function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, feeTokenId, amount, fee, target }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint16","uint16","uint128","uint16","address"],
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,feeTokenId,amount,fee,target]);
 }
 
 function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, tokenId, fee}) {

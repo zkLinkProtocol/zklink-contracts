@@ -54,7 +54,7 @@ describe('Operations unit tests', function () {
     it('Correctly Parse ForcedExit pubdata', async () => {
         const target = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
 
-        const example = { chainId:1, initiatorAccountId:2, targetAccountId:3, targetSubAccountId:4, tokenId:5, srcTokenId:5, amount:6, fee:7, target };
+        const example = { chainId:1, initiatorAccountId:2, targetAccountId:3, targetSubAccountId:4, tokenId:5, srcTokenId:5, feeTokenId:5, amount:6, fee:7, target };
         const pubdata = getForcedExitPubdata(example);
         await testContract.testForcedExitPubdata(example, pubdata);
     });

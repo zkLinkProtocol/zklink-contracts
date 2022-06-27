@@ -187,10 +187,11 @@ library Operations {
         //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw
         //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
+        //uint16 feeTokenId; -- the token payed by initiator account in l2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
         address target; // the address to receive token
-    } // 53 bytes
+    } // 55 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -198,7 +199,7 @@ library Operations {
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
         offset += ACCOUNT_ID_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
-        offset += TOKEN_BYTES;
+        offset += TOKEN_BYTES * 2;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         offset += FEE_BYTES;
         (offset, parsed.target) = Bytes.readAddress(_data, offset);
