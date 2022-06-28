@@ -86,13 +86,13 @@ contract Config {
     uint8 internal constant CHAIN_ID = $(CHAIN_ID);
 
     /// @dev Min chain id defined by ZkLink
-    uint8 internal constant MIN_CHAIN_ID = 1;
+    uint8 internal constant MIN_CHAIN_ID = $(MIN_CHAIN_ID);
 
     /// @dev Max chain id defined by ZkLink
-    uint8 internal constant MAX_CHAIN_ID = 4;
+    uint8 internal constant MAX_CHAIN_ID = $(MAX_CHAIN_ID);
 
     /// @dev All chain index, for example [1, 2, 3, 4] => 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 = 15
-    uint256 internal constant ALL_CHAINS = 15;
+    uint256 internal constant ALL_CHAINS = $(ALL_CHAINS);
 
     /// @dev Chain index, CHAIN_ID is non-zero value
     uint256 internal constant CHAIN_INDEX = $(1 << CHAIN_ID - 1);

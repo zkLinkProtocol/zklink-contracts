@@ -126,6 +126,10 @@ const allConfig = {
 }
 
 const config = process.env.NET === undefined ? allConfig["ETH"] : allConfig[process.env.NET];
+config.macro.MIN_CHAIN_ID = 1;
+config.macro.MAX_CHAIN_ID = 4;
+config.macro.ALL_CHAINS = 15;
+
 const deployerKey = "YOUR_DEPLOYER_KEY";
 
 /**
