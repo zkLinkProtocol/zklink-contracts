@@ -11,7 +11,7 @@ const OP_FULL_EXIT = 5;
 const OP_CHANGE_PUBKEY = 6;
 const OP_FORCE_EXIT = 7;
 const OP_ORDER_MATCHING = 11;
-const CHUNK_BYTES = 14;
+const CHUNK_BYTES = 19;
 const MIN_CHAIN_ID = 1;
 const MAX_CHAIN_ID = 4;
 const CHAIN_ID = 1; // chain id of UnitTest env
@@ -80,12 +80,15 @@ function getTransferToNewPubdata({fromAccountId, fromSubAccountId, tokenId, amou
 
 function getOrderMatchingPubdata({submitterAccountId, taker, maker, feeTokenId, fee, baseAmount, quoteAmount}) {
     // subAccountId of taker and maker must be the same
-    const takerBytes = ethers.utils.solidityPack(["uint32","uint8","uint16","uint40","uint8"],
-        [taker.accountId,taker.slotId,taker.tokenId,taker.amount,taker.feeRatio]);
-    const makerBytes = ethers.utils.solidityPack(["uint32","uint8","uint8","uint16","uint40","uint8"],
-        [maker.accountId,maker.subAccountId,maker.slotId,maker.tokenId,maker.amount,maker.feeRatio]);
+    // taker bytes length = 17
+    const takerBytes = ethers.utils.solidityPack(["uint32","uint8","uint16","uint32","uint40","uint8"],
+        [taker.accountId,taker.slotId,taker.tokenId,taker.nonce,taker.amount,taker.feeRatio]);
+    // maker bytes length = 18
+    const makerBytes = ethers.utils.solidityPack(["uint32","uint8","uint8","uint16","uint32","uint40","uint8"],
+        [maker.accountId,maker.subAccountId,maker.slotId,maker.tokenId,maker.nonce,maker.amount,maker.feeRatio]);
+    // total length = 1 + 4 + 18 + 17 + 2 + 2 + 16 + 16 = 76
     return ethers.utils.solidityPack(["uint8","uint32","bytes","bytes","uint16","uint16","uint128","uint128"],
-        [OP_ORDER_MATCHING,submitterAccountId,takerBytes,makerBytes,feeTokenId,fee,baseAmount,quoteAmount]);
+        [OP_ORDER_MATCHING,submitterAccountId,makerBytes,takerBytes,feeTokenId,fee,baseAmount,quoteAmount]);
 }
 
 function mockNoopPubdata() {

@@ -11,7 +11,7 @@ contract Config {
     uint256 internal constant WITHDRAWAL_GAS_LIMIT = 100000;
 
     /// @dev Bytes in one chunk
-    uint8 internal constant CHUNK_BYTES = 14;
+    uint8 internal constant CHUNK_BYTES = 19;
 
     /// @dev Bytes of L2 PubKey hash
     uint8 internal constant PUBKEY_HASH_BYTES = 20;
@@ -29,11 +29,11 @@ contract Config {
     uint256 internal constant BLOCK_PERIOD = $(BLOCK_PERIOD);
 
     /// @dev Operation chunks
-    uint256 internal constant DEPOSIT_BYTES = 4 * CHUNK_BYTES;
-    uint256 internal constant FULL_EXIT_BYTES = 4 * CHUNK_BYTES;
-    uint256 internal constant WITHDRAW_BYTES = 4 * CHUNK_BYTES;
-    uint256 internal constant FORCED_EXIT_BYTES = 4 * CHUNK_BYTES;
-    uint256 internal constant CHANGE_PUBKEY_BYTES = 4 * CHUNK_BYTES;
+    uint256 internal constant DEPOSIT_BYTES = 3 * CHUNK_BYTES;
+    uint256 internal constant FULL_EXIT_BYTES = 3 * CHUNK_BYTES;
+    uint256 internal constant WITHDRAW_BYTES = 3 * CHUNK_BYTES;
+    uint256 internal constant FORCED_EXIT_BYTES = 3 * CHUNK_BYTES;
+    uint256 internal constant CHANGE_PUBKEY_BYTES = 3 * CHUNK_BYTES;
 
     /// @dev Expiration delta for priority request to be satisfied (in seconds)
     /// @dev NOTE: Priority expiration should be > (EXPECT_VERIFICATION_IN * BLOCK_PERIOD)

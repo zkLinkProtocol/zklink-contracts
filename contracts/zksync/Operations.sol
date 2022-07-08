@@ -71,7 +71,7 @@ library Operations {
         uint16 targetTokenId; // the token that user increased in l2
         uint128 amount; // the token amount deposited to l2
         address owner; // the address that receive deposited token at l2
-    }
+    } // 47
 
     /// @dev Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
@@ -115,7 +115,7 @@ library Operations {
         uint16 tokenId; // the token that registered to l2
         uint16 srcTokenId; // the token that decreased in l2
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
-    }
+    } // 47
 
     /// @dev Deserialize fullExit pubdata
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {

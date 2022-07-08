@@ -212,9 +212,9 @@ class TestSetUp {
             isOnchainOp = false;
         } else if (opType === OP_ORDER_MATCHING) {
             op = getOrderMatchingPubdata({submitterAccountId:1,taker:{
-                    accountId:1,subAccountId:1,slotId:4,tokenId:this.token2Id,amount:4242,feeRatio:34
+                    accountId:1,subAccountId:1,slotId:4,tokenId:this.token2Id,nonce:14,amount:4242,feeRatio:34
                 },maker:{
-                    accountId:2,subAccountId:1,slotId:2,tokenId:this.token2Id,amount:14242,feeRatio:134
+                    accountId:2,subAccountId:1,slotId:2,tokenId:this.token2Id,nonce:1345,amount:14242,feeRatio:134
                 },feeTokenId:this.token2Id,fee:456,baseAmount:4003,quoteAmount:31231});
             isOnchainOp = false;
         }

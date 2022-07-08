@@ -63,7 +63,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x01000000');
+        expect(result.offsetsCommitment).eq('0x010000');
     });
 
     it('verify ECRECOVER should be success', async () => {
@@ -87,7 +87,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x01000000');
+        expect(result.offsetsCommitment).eq('0x010000');
     });
 
     it('verify CREATE2 should be success', async () => {
@@ -115,6 +115,6 @@ describe('ZkLink change pubkey unit tests', function () {
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x01000000');
+        expect(result.offsetsCommitment).eq('0x010000');
     });
 });
