@@ -52,7 +52,7 @@ Before deploy you should:
 ```shell
 $ npx hardhat help deployZkLink
 
-Hardhat version 2.9.3
+Hardhat version 2.10.1
 
 Usage: hardhat [GLOBAL OPTIONS] deployZkLink [--block-number <INT>] [--commitment <STRING>] --fee-account <STRING> [--force <BOOLEAN>] --genesis-root <STRING> --governor <STRING> [--skip-verify <BOOLEAN>] [--sync-hash <STRING>] [--timestamp <INT>] --validator <STRING>
 
@@ -82,7 +82,7 @@ NET=ETH npx hardhat --network custom deployZkLink --governor GOVERNOR_ADDRESS --
 
 ```bash
 $ npx hardhat help deployLZBridge
-Hardhat version 2.9.3
+Hardhat version 2.10.1
 
 Usage: hardhat [GLOBAL OPTIONS] deployLZBridge --force <BOOLEAN> --governor <STRING> --skip-verify <BOOLEAN>
 
@@ -103,7 +103,7 @@ After completing the deployment of zkLink and lzBridge on all chains,  we also n
 
 ```bash
 $ npx hardhat help addBridge
-Hardhat version 2.9.3
+Hardhat version 2.10.1
 
 Usage: hardhat [GLOBAL OPTIONS] addBridge
 
@@ -116,7 +116,7 @@ addBridge: Add bridge to zkLink on testnet
 
 ```bash
 $ npx hardhat help setDestinations
-Hardhat version 2.9.3
+Hardhat version 2.10.1
 
 Usage: hardhat [GLOBAL OPTIONS] setDestinations
 
@@ -127,7 +127,7 @@ setDestinations: Set layerzero bridge destinations on testnet
 
 ```bash
 $ npx hardhat help setDestinations
-Hardhat version 2.9.3
+Hardhat version 2.10.1
 
 Usage: hardhat [GLOBAL OPTIONS] setApp
 
