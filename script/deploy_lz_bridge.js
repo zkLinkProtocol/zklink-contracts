@@ -1,16 +1,16 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, createOrGetDeployLog } = require('./utils');
+const { verifyWithErrorHandle, createOrGetDeployLog, readDeployLogField } = require('./utils');
 const {layerZero} = require("./layerzero");
 
 task("deployLZBridge", "Deploy LayerZeroBridge")
-    .addParam("governor", "The governor address (default is same as deployer)", undefined, types.string, true)
+    .addParam("governor", "The governor address (default get from zkLink deploy log)", undefined, types.string, true)
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [deployer] = await hardhat.ethers.getSigners();
         let governor = taskArgs.governor;
         if (governor === undefined) {
-            governor = deployer.address;
+            governor = readDeployLogField('deploy', 'governor');
         }
         let force = taskArgs.force;
         let skipVerify = taskArgs.skipVerify;
@@ -30,6 +30,10 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         }
 
         const {deployLogPath,deployLog} = createOrGetDeployLog('deploy_lz_bridge');
+
+        deployLog.deployer = deployer.address;
+        deployLog.governor = governor;
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
         // deploy lz bridge
         let lzBridgeProxy;

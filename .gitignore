@@ -1,10 +1,12 @@
+.idea
 node_modules
 
 contracts/zksync/KeysWithPlonkVerifier.sol
-hardhat.config.js
 log
 etc
-script/.KEY
+hardhat.config.devnet.js
+hardhat.config.testnet.js
+hardhat.config.mainnet.js
 
 #Hardhat files
 cache

@@ -41,9 +41,8 @@ describe('Bridge ZkLink block unit tests', function () {
     });
 
     it('only bridge can call receiveSynchronizationProgress', async () => {
-        // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
         await expect(zklinkInETH.connect(alice).receiveSynchronizationProgress('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
-            .to.be.reverted;
+            .to.be.revertedWith("sm1");
     });
 
     it('estimateZkLinkBlockBridgeFees should success', async () => {

@@ -11,8 +11,10 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("commitment", "The block commitment", "0x0000000000000000000000000000000000000000000000000000000000000000", types.string, true)
     .addParam("syncHash", "The block syncHash", "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", types.string, true)
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
-    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
+    .addParam("dummy", "Deploy dummy contracts for local development", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify, ignored when dummy is true", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
+        // use the first account of accounts in the hardhat network config as the deployer
         const [deployer] = await hardhat.ethers.getSigners();
         let governor = taskArgs.governor;
         if (governor === undefined) {
@@ -26,8 +28,10 @@ task("deployZkLink", "Deploy zklink contracts")
         if (feeAccount === undefined) {
             feeAccount = deployer.address;
         }
-        let force = taskArgs.force;
-        let skipVerify = taskArgs.skipVerify;
+        const force = taskArgs.force;
+        const dummy = taskArgs.dummy;
+        // if dummy is true, skipVerify will always be true
+        const skipVerify = taskArgs.dummy ? true: taskArgs.skipVerify;
         const blockNumber = taskArgs.blockNumber;
         const timestamp = taskArgs.timestamp;
         const genesisRoot = taskArgs.genesisRoot;
@@ -43,6 +47,7 @@ task("deployZkLink", "Deploy zklink contracts")
         console.log('commitment', commitment);
         console.log('syncHash', syncHash);
         console.log('force redeploy all contracts?', force);
+        console.log('deploy dummy contracts?', dummy);
         console.log('skip verify contracts?', skipVerify);
 
         const balance = await deployer.getBalance();
@@ -50,11 +55,16 @@ task("deployZkLink", "Deploy zklink contracts")
 
         const {deployLogPath,deployLog} = createOrGetDeployLog('deploy');
 
+        deployLog.deployer = deployer.address;
+        deployLog.governor = governor;
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+
         // verifier
         let verifierTarget;
         if (!('verifierTarget' in deployLog) || force) {
             console.log('deploy verifier target...');
-            const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+            const verifierFactoryName = dummy ? 'VerifierMock' : 'Verifier';
+            const verifierFactory = await hardhat.ethers.getContractFactory(verifierFactoryName);
             const verifier = await verifierFactory.connect(deployer).deploy();
             await verifier.deployed();
             verifierTarget = verifier.address;

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { readDeployContract} = require('./utils');
+const { readDeployContract, readDeployLogField} = require('./utils');
 const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, standard, mappingTokenId) {
@@ -119,19 +119,23 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             console.log('tx', tx.hash);
     });
 
-task("setDestinations", "Set layerzero bridge destinations on testnet")
+task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
     .setAction(async (taskArgs, hardhat) => {
-        const [governor] = await hardhat.ethers.getSigners();
+        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
+        const governor = await hardhat.ethers.getSigner(governorAddress);
+
+        console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
 
-        const dstChains = ['RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'];
+        // fixme dstChains should not be constant
+        const dstChains = ['RINKEBY','BSCTEST','AVAXTEST','POLYGONTEST'];
         for (let i = 0; i < dstChains.length; i++) {
             const dstChain = dstChains[i];
             if (process.env.NET === dstChain) {
@@ -149,16 +153,19 @@ task("setDestinations", "Set layerzero bridge destinations on testnet")
         }
     });
 
-task("setApp", "Set layerzero supported app on testnet")
+task("setApp", "Set layerzero supported app")
     .setAction(async (taskArgs, hardhat) => {
-        const [governor] = await hardhat.ethers.getSigners();
+        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
+        const governor = await hardhat.ethers.getSigner(governorAddress);
+
+        console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
 
         try {
@@ -180,19 +187,29 @@ task("setApp", "Set layerzero supported app on testnet")
         }
     });
 
-task("addBridge", "Add bridge to zkLink on testnet")
+task("addBridge", "Add bridge to zkLink")
+    .addParam("bridge", "The bridge address (default get from deploy log)", undefined, types.string, true)
     .setAction(async (taskArgs, hardhat) => {
-        const [governor] = await hardhat.ethers.getSigners();
+        let bridgeAddr = taskArgs.bridge;
+        if (bridgeAddr === undefined) {
+            bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        }
+
+        const governorAddress = readDeployLogField('deploy', 'governor');
+        const governor = await hardhat.ethers.getSigner(governorAddress);
+
+        const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
+
+        console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
+        console.log('zkLink', zkLinkProxyAddr);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-        const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
         const peripheryContract = peripheryFactory.attach(zkLinkProxyAddr);
-        console.log('add bridge %s to zkLink...', bridgeAddr);
+        console.log('add bridge to zkLink...');
         const tx = await peripheryContract.connect(governor).addBridge(bridgeAddr);
         console.log('tx', tx.hash);
     });

@@ -40,22 +40,27 @@ function getDeployLog(name) {
 }
 
 function readDeployContract(logName, contractName, env = process.env.NET) {
+    return readDeployLogField(logName, contractName, env);
+}
+
+function readDeployLogField(logName, fieldName, env = process.env.NET) {
     const deployLogPath = `log/${logName}_${env}.log`;
     if (!fs.existsSync(deployLogPath)) {
         throw 'deploy log not exist';
     }
     const data = fs.readFileSync(deployLogPath, 'utf8');
     const deployLog = JSON.parse(data);
-    const contractAddr = deployLog[contractName];
-    if (contractAddr === undefined) {
-        throw 'contract address not exit';
+    const fieldValue = deployLog[fieldName];
+    if (fieldValue === undefined) {
+        throw fieldName + ' not exit';
     }
-    return contractAddr;
+    return fieldValue;
 }
 
 module.exports = {
     verifyWithErrorHandle,
     createOrGetDeployLog,
     getDeployLog,
-    readDeployContract
+    readDeployContract,
+    readDeployLogField
 };

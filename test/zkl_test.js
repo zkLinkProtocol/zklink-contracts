@@ -64,11 +64,10 @@ describe('ZKL unit tests', function () {
     });
 
     it('only bridge can call bridgeTo and bridgeFrom', async () => {
-        // Error: VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
-        await expect(zklInETH.connect(alice).bridgeTo(alice.address, alice.address, 2, "0x", 0, 0))
-            .to.be.reverted;
-        await expect(zklInETH.connect(alice).bridgeFrom(2, alice.address, 0, 0))
-            .to.be.reverted;
+        await expect(zklInETH.connect(alice).bridgeTo(alice.address, alice.address, 2))
+            .to.be.revertedWith("sm1");
+        await expect(zklInETH.connect(alice).bridgeFrom(alice.address, 2))
+            .to.be.revertedWith("sm1");
     });
 
     it('estimateZKLBridgeFees should success', async () => {
