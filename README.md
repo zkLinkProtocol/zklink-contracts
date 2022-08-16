@@ -8,7 +8,11 @@ ZkLink is a cross chain protocol powered by ZK-Rollup. It currently supports evm
 
 ## Prepare for compile
 
-Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to `contracts/zksync` directory.
+Before compile contracts, you should generate `KeysWithPlonkVerifier.sol` and put it to `contracts/zksync` directory. For local development, you could copy and rename the `KeysWithPlonkVerifier.example` at the root path.
+
+```shell
+cp KeysWithPlonkVerifier.example contracts/zksync/KeysWithPlonkVerifier.sol
+```
 
 ## Compile contracts
 
