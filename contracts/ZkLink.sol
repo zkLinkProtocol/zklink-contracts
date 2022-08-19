@@ -840,7 +840,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @return bool flag indicating that transfer is successful
     function sendETHNoRevert(address payable _to, uint256 _amount) internal returns (bool) {
         // solhint-disable-next-line  avoid-low-level-calls
-        (bool callSuccess, ) = _to.call{gas: WITHDRAWAL_GAS_LIMIT, value: _amount}("");
+        bool callSuccess;
+        assembly {
+            callSuccess := call(WITHDRAWAL_GAS_LIMIT, _to, _amount, 0, 0, 0, 0)
+        }
         return callSuccess;
     }
 }

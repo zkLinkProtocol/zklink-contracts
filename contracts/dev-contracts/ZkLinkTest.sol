@@ -42,4 +42,8 @@ contract ZkLinkTest is ZkLink {
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
         executeWithdraw(op);
     }
+
+    function testSendETHNoRevert(address payable _to, uint256 _amount) external returns (bool) {
+        return sendETHNoRevert(_to, _amount);
+    }
 }
