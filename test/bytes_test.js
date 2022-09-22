@@ -18,11 +18,11 @@ describe('Bytes unit tests', function () {
     });
 
     it('should fail to read bytes beyond range', async () => {
-        await expect(testContract.read('0x0102030405060708', 8, 2)).to.be.revertedWith('bt8');
+        await expect(testContract.read('0x0102030405060708', 8, 2)).to.be.revertedWith('Z');
     });
 
     it('should fail to read too many bytes', async () => {
-        await expect(testContract.read('0x0102030405060708', 4, 5)).to.be.revertedWith('bt8');
+        await expect(testContract.read('0x0102030405060708', 4, 5)).to.be.revertedWith('Z');
     });
 
     // types

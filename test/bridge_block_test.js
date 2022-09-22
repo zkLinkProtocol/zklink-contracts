@@ -42,7 +42,7 @@ describe('Bridge ZkLink block unit tests', function () {
 
     it('only bridge can call receiveSynchronizationProgress', async () => {
         await expect(zklinkInETH.connect(alice).receiveSynchronizationProgress('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
-            .to.be.revertedWith("sm1");
+            .to.be.revertedWith("v");
     });
 
     it('estimateZkLinkBlockBridgeFees should success', async () => {

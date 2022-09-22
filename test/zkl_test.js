@@ -65,9 +65,9 @@ describe('ZKL unit tests', function () {
 
     it('only bridge can call bridgeTo and bridgeFrom', async () => {
         await expect(zklInETH.connect(alice).bridgeTo(alice.address, alice.address, 2))
-            .to.be.revertedWith("sm1");
+            .to.be.revertedWith("v");
         await expect(zklInETH.connect(alice).bridgeFrom(alice.address, 2))
-            .to.be.revertedWith("sm1");
+            .to.be.revertedWith("v");
     });
 
     it('estimateZKLBridgeFees should success', async () => {

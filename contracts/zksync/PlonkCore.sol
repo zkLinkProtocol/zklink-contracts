@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
+// solhint-disable
 
 pragma solidity >=0.5.0 <0.8.0;
 pragma experimental ABIEncoderV2;
@@ -104,16 +105,16 @@ library PairingsBn254 {
         // for some reason ethereum expects to have c1*v + c0 form
 
         return
-            G2Point(
-                [
-                    0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2,
-                    0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed
-                ],
-                [
-                    0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b,
-                    0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa
-                ]
-            );
+        G2Point(
+            [
+            0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2,
+            0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed
+            ],
+            [
+            0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b,
+            0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa
+            ]
+        );
     }
 
     function negate(G1Point memory self) internal pure {
@@ -330,7 +331,7 @@ contract Plonk4VerifierWithAccessToDNext {
     uint256 constant NUM_GATE_SELECTORS_OPENED_EXPLICITLY = 1;
 
     uint256 constant RECURSIVE_CIRCUIT_INPUT_COMMITMENT_MASK =
-        0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 constant LIMB_WIDTH = 68;
 
     struct VerificationKey {
@@ -445,9 +446,9 @@ contract Plonk4VerifierWithAccessToDNext {
     }
 
     function evaluate_vanishing(uint256 domain_size, PairingsBn254.Fr memory at)
-        internal
-        view
-        returns (PairingsBn254.Fr memory res)
+    internal
+    view
+    returns (PairingsBn254.Fr memory res)
     {
         res = at.pow(domain_size);
         res.sub_assign(PairingsBn254.new_fr(1));
@@ -938,9 +939,9 @@ contract Plonk4VerifierWithAccessToDNext {
     // the same d(X) polynomial, but shifted
 
     function aggregate_for_verification(Proof memory proof, VerificationKey memory vk)
-        internal
-        view
-        returns (bool valid, PairingsBn254.G1Point[2] memory part)
+    internal
+    view
+    returns (bool valid, PairingsBn254.G1Point[2] memory part)
     {
         PartialVerifierState memory state;
 
@@ -980,14 +981,13 @@ contract Plonk4VerifierWithAccessToDNext {
         uint256[] memory individual_vks_inputs,
         uint256[16] memory subproofs_limbs
     ) internal view returns (bool) {
-        (uint256 recursive_input, PairingsBn254.G1Point[2] memory aggregated_g1s) =
-            reconstruct_recursive_public_input(
-                recursive_vks_root,
-                max_valid_index,
-                recursive_vks_indexes,
-                individual_vks_inputs,
-                subproofs_limbs
-            );
+        (uint256 recursive_input, PairingsBn254.G1Point[2] memory aggregated_g1s) = reconstruct_recursive_public_input(
+            recursive_vks_root,
+            max_valid_index,
+            recursive_vks_indexes,
+            individual_vks_inputs,
+            subproofs_limbs
+        );
 
         assert(recursive_input == proof.input_values[0]);
 
@@ -1006,9 +1006,9 @@ contract Plonk4VerifierWithAccessToDNext {
     }
 
     function combine_inner_and_outer(PairingsBn254.G1Point[2] memory inner, PairingsBn254.G1Point[2] memory outer)
-        internal
-        view
-        returns (PairingsBn254.G1Point[2] memory result)
+    internal
+    view
+    returns (PairingsBn254.G1Point[2] memory result)
     {
         // reuse the transcript primitive
         TranscriptLibrary.Transcript memory transcript = TranscriptLibrary.new_transcript();
@@ -1057,24 +1057,24 @@ contract Plonk4VerifierWithAccessToDNext {
 
         reconstructed_g1s[0] = PairingsBn254.new_g1_checked(
             subproofs_aggregated[0] +
-                (subproofs_aggregated[1] << LIMB_WIDTH) +
-                (subproofs_aggregated[2] << (2 * LIMB_WIDTH)) +
-                (subproofs_aggregated[3] << (3 * LIMB_WIDTH)),
+            (subproofs_aggregated[1] << LIMB_WIDTH) +
+            (subproofs_aggregated[2] << (2 * LIMB_WIDTH)) +
+            (subproofs_aggregated[3] << (3 * LIMB_WIDTH)),
             subproofs_aggregated[4] +
-                (subproofs_aggregated[5] << LIMB_WIDTH) +
-                (subproofs_aggregated[6] << (2 * LIMB_WIDTH)) +
-                (subproofs_aggregated[7] << (3 * LIMB_WIDTH))
+            (subproofs_aggregated[5] << LIMB_WIDTH) +
+            (subproofs_aggregated[6] << (2 * LIMB_WIDTH)) +
+            (subproofs_aggregated[7] << (3 * LIMB_WIDTH))
         );
 
         reconstructed_g1s[1] = PairingsBn254.new_g1_checked(
             subproofs_aggregated[8] +
-                (subproofs_aggregated[9] << LIMB_WIDTH) +
-                (subproofs_aggregated[10] << (2 * LIMB_WIDTH)) +
-                (subproofs_aggregated[11] << (3 * LIMB_WIDTH)),
+            (subproofs_aggregated[9] << LIMB_WIDTH) +
+            (subproofs_aggregated[10] << (2 * LIMB_WIDTH)) +
+            (subproofs_aggregated[11] << (3 * LIMB_WIDTH)),
             subproofs_aggregated[12] +
-                (subproofs_aggregated[13] << LIMB_WIDTH) +
-                (subproofs_aggregated[14] << (2 * LIMB_WIDTH)) +
-                (subproofs_aggregated[15] << (3 * LIMB_WIDTH))
+            (subproofs_aggregated[13] << LIMB_WIDTH) +
+            (subproofs_aggregated[14] << (2 * LIMB_WIDTH)) +
+            (subproofs_aggregated[15] << (3 * LIMB_WIDTH))
         );
 
         return (recursive_input, reconstructed_g1s);
@@ -1085,9 +1085,9 @@ contract VerifierWithDeserialize is Plonk4VerifierWithAccessToDNext {
     uint256 constant SERIALIZED_PROOF_LENGTH = 34;
 
     function deserialize_proof(uint256[] memory public_inputs, uint256[] memory serialized_proof)
-        internal
-        pure
-        returns (Proof memory proof)
+    internal
+    pure
+    returns (Proof memory proof)
     {
         require(serialized_proof.length == SERIALIZED_PROOF_LENGTH);
         proof.input_values = new uint256[](public_inputs.length);
@@ -1187,16 +1187,15 @@ contract VerifierWithDeserialize is Plonk4VerifierWithAccessToDNext {
 
         Proof memory proof = deserialize_proof(public_inputs, serialized_proof);
 
-        bool valid =
-            verify_recursive(
-                proof,
-                vk,
-                recursive_vks_root,
-                max_valid_index,
-                recursive_vks_indexes,
-                individual_vks_inputs,
-                subproofs_limbs
-            );
+        bool valid = verify_recursive(
+            proof,
+            vk,
+            recursive_vks_root,
+            max_valid_index,
+            recursive_vks_indexes,
+            individual_vks_inputs,
+            subproofs_limbs
+        );
 
         return valid;
     }
@@ -1323,9 +1322,9 @@ contract Plonk4VerifierWithAccessToDNextOld {
     }
 
     function evaluate_vanishing_old(uint256 domain_size, PairingsBn254.Fr memory at)
-        internal
-        view
-        returns (PairingsBn254.Fr memory res)
+    internal
+    view
+    returns (PairingsBn254.Fr memory res)
     {
         res = at.pow(domain_size);
         res.sub_assign(PairingsBn254.new_fr(1));
@@ -1679,9 +1678,9 @@ contract VerifierWithDeserializeOld is Plonk4VerifierWithAccessToDNextOld {
     uint256 constant SERIALIZED_PROOF_LENGTH_OLD = 33;
 
     function deserialize_proof_old(uint256[] memory public_inputs, uint256[] memory serialized_proof)
-        internal
-        pure
-        returns (ProofOld memory proof)
+    internal
+    pure
+    returns (ProofOld memory proof)
     {
         require(serialized_proof.length == SERIALIZED_PROOF_LENGTH_OLD);
         proof.input_values = new uint256[](public_inputs.length);

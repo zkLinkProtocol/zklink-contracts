@@ -64,7 +64,7 @@ contract ReentrancyGuard {
         }
 
         // On the first call to nonReentrant, _notEntered will be true
-        require(_status == _NOT_ENTERED, "1C");
+        require(_status == _NOT_ENTERED);
 
         // Any calls to nonReentrant after this point will fail
         assembly {
