@@ -27,19 +27,7 @@ contract DeployFactory {
     // state. By including this address to the list of arguments, we're making ourselves able to restore
     // genesis state, as the very first account in tree is a fee account, and we need its address before
     // we're able to start recovering the data from the Ethereum blockchain.
-    constructor(
-        Verifier _verifierTarget,
-        ZkLink _zkLinkTarget,
-        address _periphery,
-        uint32 _blockNumber,
-        uint256 _timestamp,
-        bytes32 _stateHash,
-        bytes32 _commitment,
-        bytes32 _syncHash,
-        address _firstValidator,
-        address _governor,
-        address _feeAccountAddress
-    ) {
+    constructor(Verifier _verifierTarget, ZkLink _zkLinkTarget, address _periphery, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _firstValidator, address _governor, address _feeAccountAddress) {
         require(_firstValidator != address(0), "D0");
         require(_governor != address(0), "D1");
         require(_feeAccountAddress != address(0), "D2");
@@ -54,18 +42,7 @@ contract DeployFactory {
 
     event Addresses(address verifier, address zkLink, address gatekeeper);
 
-    function deployProxyContracts(
-        Proxy verifier,
-        ZkLink _zkLinkTarget,
-        address _periphery,
-        uint32 _blockNumber,
-        uint256 _timestamp,
-        bytes32 _stateHash,
-        bytes32 _commitment,
-        bytes32 _syncHash,
-        address _validator,
-        address _governor
-    ) internal {
+    function deployProxyContracts(Proxy verifier, ZkLink _zkLinkTarget, address _periphery, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _validator, address _governor) internal {
         // set this contract as governor
         Proxy zkLink =
             new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), _periphery, address(this),

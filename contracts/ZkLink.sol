@@ -236,13 +236,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
     /// @param _isStandard If token is a standard erc20
     /// @return withdrawnAmount The really amount than will be debited from user
-    function transferERC20(
-        IERC20 _token,
-        address _to,
-        uint128 _amount,
-        uint128 _maxAmount,
-        bool _isStandard
-    ) external returns (uint128 withdrawnAmount) {
+    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) external returns (uint128 withdrawnAmount) {
         require(msg.sender == address(this), "n0"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
 
         // most tokens are standard, fewer query token balance can save gas
@@ -276,10 +270,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Commit compressed block
     /// @dev 1. Checks onchain operations of current chain, timestamp.
     /// 2. Store block commitments, sync hash
-    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData,
-        CommitBlockInfo[] memory _newBlocksData,
-        CompressedBlockExtraInfo[] memory _newBlocksExtraData) external
-    {
+    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, CompressedBlockExtraInfo[] memory _newBlocksExtraData) external {
         _commitBlocks(_lastCommittedBlockData, _newBlocksData, true, _newBlocksExtraData);
     }
 
@@ -443,8 +434,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         totalOpenPriorityRequests++;
     }
 
-    function _commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, bool compressed, CompressedBlockExtraInfo[] memory _newBlocksExtraData) internal active onlyValidator nonReentrant
-    {
+    function _commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, bool compressed, CompressedBlockExtraInfo[] memory _newBlocksExtraData) internal active onlyValidator nonReentrant {
         // ===Checks===
         require(_newBlocksData.length > 0, "f0");
         // Check that we commit blocks after last committed block
@@ -470,8 +460,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Process one block commit using previous block StoredBlockInfo,
     /// returns new block StoredBlockInfo
     /// NOTE: Does not change storage (except events, so we can't mark it view)
-    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) internal view returns (StoredBlockInfo memory storedNewBlock)
-    {
+    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) internal view returns (StoredBlockInfo memory storedNewBlock) {
         require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "g0");
         require(!_compressed || ENABLE_COMMIT_COMPRESSED_BLOCK, "g1");
 
@@ -523,16 +512,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
     /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
     /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
-    function collectOnchainOps(CommitBlockInfo memory _newBlockData)
-    internal
-    view
-    returns (
-        bytes32 processableOperationsHash,
-        uint64 priorityOperationsProcessed,
-        bytes memory offsetsCommitment,
-        bytes32[] memory onchainOperationPubdataHashs
-    )
-    {
+    function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, bytes32[] memory onchainOperationPubdataHashs) {
         bytes memory pubData = _newBlockData.publicData;
         // pubdata length must be a multiple of CHUNK_BYTES
         require(pubData.length % CHUNK_BYTES == 0, "h0");
@@ -601,13 +581,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(chainIndex & ALL_CHAINS == chainIndex, "i2");
     }
 
-    function checkOnchainOp(Operations.OpType opType,
-        uint8 chainId,
-        bytes memory pubData,
-        uint256 pubdataOffset,
-        uint64 nextPriorityOpIdx,
-        bytes memory ethWitness)
-    internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
+    function checkOnchainOp(Operations.OpType opType, uint8 chainId, bytes memory pubData, uint256 pubdataOffset, uint64 nextPriorityOpIdx, bytes memory ethWitness) internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
         priorityOperationsProcessed = 0;
         processablePubData = new bytes(0);
         // ignore check if ops are not part of the current chain
@@ -652,8 +626,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(bytes32 commitment, bytes32[] memory onchainOperationPubdataHashs)
-    internal pure returns (bytes32 syncHash) {
+    function createSyncHash(bytes32 commitment, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (bytes32 syncHash) {
         syncHash = commitment;
         for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
             uint256 chainIndex = 1 << i - 1; // overflow is impossible
@@ -665,13 +638,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @dev Creates block commitment from its data
     /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
-    function createBlockCommitment(
-        StoredBlockInfo memory _previousBlock,
-        CommitBlockInfo memory _newBlockData,
-        bool _compressed,
-        CompressedBlockExtraInfo memory _newBlockExtraData,
-        bytes memory offsetsCommitment
-    ) internal pure returns (bytes32 commitment) {
+    function createBlockCommitment(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtraData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
         bytes32 offsetsCommitmentHash = !_compressed ? sha256(offsetsCommitment) : _newBlockExtraData.offsetCommitmentHash;
         bytes32 newBlockPubDataHash = !_compressed ? sha256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
         commitment = sha256(abi.encodePacked(
@@ -686,8 +653,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that change operation is correct
-    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool)
-    {
+    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool) {
         ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
         if (changePkType == ChangePubkeyType.ECRECOVER) {
             return verifyChangePubkeyECRECOVER(_ethWitness, _changePk);
@@ -699,8 +665,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool)
-    {
+    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool) {
         (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
         uint cid;
         assembly {
@@ -714,8 +679,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyCREATE2(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool)
-    {
+    function verifyChangePubkeyCREATE2(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool) {
         address creatorAddress;
         bytes32 saltArg; // salt arg is additional bytes that are encoded in the CREATE2 salt
         bytes32 codeHash;
@@ -847,11 +811,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Increase `_recipient` balance to withdraw
-    function increasePendingBalance(
-        uint16 _tokenId,
-        address _recipient,
-        uint128 _amount
-    ) internal {
+    function increasePendingBalance(uint16 _tokenId, address _recipient, uint128 _amount) internal {
         bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
         increaseBalanceToWithdraw(packedBalanceKey, _amount);
         emit WithdrawalPending(_tokenId, _recipient, _amount);

@@ -42,16 +42,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenId The token want to withdraw
     /// @param _srcTokenId The token deducted at l2
     /// @param _amount Amount for owner (must be total amount, not part of it)
-    function performExodus(
-        StoredBlockInfo calldata _storedBlockInfo,
-        address _owner,
-        uint32 _accountId,
-        uint8 _subAccountId,
-        uint16 _tokenId,
-        uint16 _srcTokenId,
-        uint128 _amount,
-        uint256[] calldata _proof
-    ) external notActive nonReentrant {
+    function performExodus(StoredBlockInfo calldata _storedBlockInfo, address _owner, uint32 _accountId, uint8 _subAccountId, uint16 _tokenId, uint16 _srcTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
         require(!performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId], "y0");
@@ -294,12 +285,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param amount The amount of withdraw operation
     /// @param withdrawFeeRate Fast withdraw fee rate taken by accepter
     /// @param nonce Account nonce, used to produce unique accept info
-    function acceptETH(address accepter,
-        uint32 accountId,
-        address payable receiver,
-        uint128 amount,
-        uint16 withdrawFeeRate,
-        uint32 nonce) external payable nonReentrant {
+    function acceptETH(address accepter, uint32 accountId, address payable receiver, uint128 amount, uint16 withdrawFeeRate, uint32 nonce) external payable nonReentrant {
         // ===Checks===
         uint16 tokenId = tokenIds[ETH_ADDRESS];
         (uint128 amountReceive, bytes32 hash, ) =
@@ -335,14 +321,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param nonce Account nonce, used to produce unique accept info
     /// @param amountTransfer Amount that transfer from accepter to receiver
     /// may be a litter larger than the amount receiver received
-    function acceptERC20(address accepter,
-        uint32 accountId,
-        address receiver,
-        uint16 tokenId,
-        uint128 amount,
-        uint16 withdrawFeeRate,
-        uint32 nonce,
-        uint128 amountTransfer) external nonReentrant {
+    function acceptERC20(address accepter, uint32 accountId, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 nonce, uint128 amountTransfer) external nonReentrant {
         // ===Checks===
         (uint128 amountReceive, bytes32 hash, address tokenAddress) =
         _checkAccept(accepter, accountId, receiver, tokenId, amount, withdrawFeeRate, nonce);
@@ -386,13 +365,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         return true;
     }
 
-    function _checkAccept(address accepter,
-        uint32 accountId,
-        address receiver,
-        uint16 tokenId,
-        uint128 amount,
-        uint16 withdrawFeeRate,
-        uint32 nonce) internal active view returns (uint128 amountReceive, bytes32 hash, address tokenAddress) {
+    function _checkAccept(address accepter, uint32 accountId, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 nonce) internal active view returns (uint128 amountReceive, bytes32 hash, address tokenAddress) {
         // accepter and receiver MUST be set and MUST not be the same
         require(accepter != address(0), "H0");
         require(receiver != address(0), "H1");

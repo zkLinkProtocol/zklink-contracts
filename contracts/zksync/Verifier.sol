@@ -16,13 +16,7 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
     // solhint-disable-next-line no-empty-blocks
     function upgrade(bytes calldata upgradeParameters) external {}
 
-    function verifyAggregatedBlockProof(
-        uint256[] memory _recursiveInput,
-        uint256[] memory _proof,
-        uint8[] memory _vkIndexes,
-        uint256[] memory _individualVksInputs,
-        uint256[16] memory _subProofsLimbs
-    ) external virtual view returns (bool) {
+    function verifyAggregatedBlockProof(uint256[] memory _recursiveInput, uint256[] memory _proof, uint8[] memory _vkIndexes, uint256[] memory _individualVksInputs, uint256[16] memory _subProofsLimbs) external virtual view returns (bool) {
         for (uint256 i = 0; i < _individualVksInputs.length; ++i) {
             _individualVksInputs[i] = _individualVksInputs[i] & INPUT_MASK;
         }
@@ -41,17 +35,7 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld, Config {
         );
     }
 
-    function verifyExitProof(
-        bytes32 _rootHash,
-        uint8 _chainId,
-        uint32 _accountId,
-        uint8 _subAccountId,
-        address _owner,
-        uint16 _tokenId,
-        uint16 _srcTokenId,
-        uint128 _amount,
-        uint256[] calldata _proof
-    ) external virtual view returns (bool) {
+    function verifyExitProof(bytes32 _rootHash, uint8 _chainId, uint32 _accountId, uint8 _subAccountId, address _owner, uint16 _tokenId, uint16 _srcTokenId, uint128 _amount, uint256[] calldata _proof) external virtual view returns (bool) {
         bytes32 commitment = sha256(abi.encodePacked(_rootHash, _chainId, _accountId, _subAccountId, _owner, _tokenId, _srcTokenId, _amount));
 
         uint256[] memory inputs = new uint256[](1);
