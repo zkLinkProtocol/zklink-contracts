@@ -17,7 +17,7 @@ contract Config {
     uint8 internal constant PUBKEY_HASH_BYTES = 20;
 
     /// @dev Max amount of tokens registered in the network
-    uint16 internal constant MAX_AMOUNT_OF_REGISTERED_TOKENS = 4096;
+    uint16 internal constant MAX_AMOUNT_OF_REGISTERED_TOKENS = 65535;
 
     /// @dev Max account id that could be registered in the network
     uint32 internal constant MAX_ACCOUNT_ID = $$((2**24) - 1);

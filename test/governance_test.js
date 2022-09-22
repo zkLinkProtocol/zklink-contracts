@@ -26,7 +26,6 @@ describe('Governance unit tests', function () {
         await expect(testContract.connect(jack).addToken(tokenId, tokenAddress, 6, true, 0)).to.be.revertedWith("3");
 
         await expect(testContract.connect(bob).addToken(0, tokenAddress, 18, true, 0)).to.be.revertedWith("I0");
-        await expect(testContract.connect(bob).addToken(8192, tokenAddress, 18, true, 0)).to.be.revertedWith("I0");
         await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero, 18, true, 0)).to.be.revertedWith("I1");
         await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19, true, 0)).to.be.revertedWith("I3");
 

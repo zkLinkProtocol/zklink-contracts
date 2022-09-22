@@ -151,7 +151,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _mappingTokenId The mapping token id at l2
     function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals, bool _standard, uint16 _mappingTokenId) public onlyGovernor {
         // token id MUST be in a valid range
-        require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
+        require(_tokenId > 0 && _tokenId <= MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
         require(_tokenAddress != address(0), "I1");
         // revert duplicate register
