@@ -20,10 +20,7 @@ library Operations {
         FullExit, // 5 L1 Op
         ChangePubKey, // 6 L2 Op
         ForcedExit, // 7 L2 Op
-        L2CurveAddLiq, // 8 L2 Op
-        L2CurveSwap, // 9 L2 Op
-        L2CurveRemoveLiquidity, // 10 Op
-        OrderMatching // 11 L2 Op
+        OrderMatching // 8 L2 Op
     }
 
     // Byte lengths
