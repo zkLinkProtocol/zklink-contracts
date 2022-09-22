@@ -378,8 +378,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal active {
         // ===Checks===
-        // disable deposit to zero address or with zero amount
-        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "e0");
+        // disable deposit to zero address
         require(_zkLinkAddress != address(0), "e1");
         // subAccountId MUST be valid
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "e2");
@@ -389,6 +388,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         RegisteredToken memory rt = tokens[tokenId];
         require(rt.registered, "e3");
         require(!rt.paused, "e4");
+
+        // improve decimals before send to layer two
+        _amount = improveDecimals(_amount, rt.decimals);
+        // disable deposit with zero amount
+        require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "e0");
+
         if (_mapping) {
             require(rt.mappingTokenId > 0, "e5");
             targetTokenId = rt.mappingTokenId;
@@ -755,10 +760,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 executeWithdraw(op);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                withdrawOrStore(op.tokenId, op.target, op.amount);
+                executeForcedExit(op);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                withdrawOrStore(op.tokenId, op.owner, op.amount);
+                executeFullExit(op);
             } else {
                 revert("m2");
             }
@@ -769,48 +774,66 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @dev Execute withdraw operation
     function executeWithdraw(Operations.Withdraw memory op) internal {
+        // token MUST be registered
+        RegisteredToken memory rt = tokens[op.tokenId];
+        require(rt.registered, "o0");
+        // recover withdraw amount
+        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
+
         // nonce > 0 means fast withdraw
         if (op.nonce > 0) {
-            bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.nonce));
+            bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, amount, op.fastWithdrawFeeRate, op.nonce));
             address accepter = accepts[op.accountId][fwHash];
             if (accepter == address(0)) {
                 // receiver act as a accepter
                 accepts[op.accountId][fwHash] = op.owner;
-                withdrawOrStore(op.tokenId, op.owner, op.amount);
+                withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
             } else {
                 // just increase the pending balance of accepter
-                increasePendingBalance(op.tokenId, accepter, op.amount);
+                increasePendingBalance(op.tokenId, accepter, amount);
             }
         } else {
-            withdrawOrStore(op.tokenId, op.owner, op.amount);
+            withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
         }
+    }
+
+    /// @dev Execute force exit operation
+    function executeForcedExit(Operations.ForcedExit memory op) internal {
+        // token MUST be registered
+        RegisteredToken memory rt = tokens[op.tokenId];
+        require(rt.registered, "p0");
+        // recover withdraw amount
+        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
+
+        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.target, amount);
+    }
+
+    /// @dev Execute full exit operation
+    function executeFullExit(Operations.FullExit memory op) internal {
+        // token MUST be registered
+        RegisteredToken memory rt = tokens[op.tokenId];
+        require(rt.registered, "r0");
+        // recover withdraw amount
+        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
+
+        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
     }
 
     /// @dev 1. Try to send token to _recipients
     /// 2. On failure: Increment _recipients balance to withdraw.
-    function withdrawOrStore(
-        uint16 _tokenId,
-        address _recipient,
-        uint128 _amount
-    ) internal {
+    function withdrawOrStore(uint16 _tokenId, address _tokenAddress, bool _isTokenStandard, address _recipient, uint128 _amount) internal {
         if (_amount == 0) {
             return;
         }
-        RegisteredToken memory rt = tokens[_tokenId];
-        if (!rt.registered) {
-            increasePendingBalance(_tokenId, _recipient, _amount);
-            return;
-        }
-        address tokenAddress = rt.tokenAddress;
         bool sent = false;
-        if (tokenAddress == ETH_ADDRESS) {
+        if (_tokenAddress == ETH_ADDRESS) {
             address payable toPayable = address(uint160(_recipient));
             sent = sendETHNoRevert(toPayable, _amount);
         } else {
             // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`
             // and fail if token subtracted from zkLink balance more then `_amount` that was requested.
             // This can happen if token subtracts fee from sender while transferring `_amount` that was requested to transfer.
-            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(tokenAddress), _recipient, _amount, _amount, rt.standard) {
+            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(_tokenAddress), _recipient, _amount, _amount, _isTokenStandard) {
                 sent = true;
             } catch {
                 sent = false;
@@ -845,5 +868,20 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             callSuccess := call(WITHDRAWAL_GAS_LIMIT, _to, _amount, 0, 0, 0, 0)
         }
         return callSuccess;
+    }
+
+    /// @dev improve decimals when deposit, for example, user deposit 2 USDC in ui, and the decimals of USDC is 6
+    /// the `_amount` params when call contract will be 2 * 10^6
+    /// because all token decimals defined in layer two is 18
+    /// so the `_amount` in deposit pubdata should be 2 * 10^6 * 10^(18 - 6) = 2 * 10^18
+    function improveDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
+        // overflow is impossible,  `_decimals` has been checked when register token
+        return _amount.mul(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
+    }
+
+    /// @dev recover decimals when withdraw, this is the opposite of improve decimals
+    function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
+        // overflow is impossible,  `_decimals` has been checked when register token
+        return _amount.div(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
     }
 }

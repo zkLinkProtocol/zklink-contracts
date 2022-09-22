@@ -1,10 +1,12 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
 const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata} = require('./utils');
-const {parseEther} = require("ethers/lib/utils");
+const {parseEther, parseUnits} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
-    let zkLink, periphery, ethId, token2, token2Id, token3, token3Id, token4, token4Id, token4Mapping, defaultSender, governor;
+    let zkLink, periphery, ethId,
+        token2, token2Id, token3, token3Id, token4, token4Id, token4Mapping, token5, token5Id,
+        defaultSender, governor;
     let tpn = 0;
     before(async () => {
         const deployedInfo = await deploy();
@@ -18,6 +20,8 @@ describe('ZkLink priority queue ops unit tests', function () {
         token4 = deployedInfo.token4.contract;
         token4Id = deployedInfo.token4.tokenId;
         token4Mapping = deployedInfo.token4.mappingToken;
+        token5 = deployedInfo.token5.contract;
+        token5Id = deployedInfo.token5.tokenId;
         defaultSender = deployedInfo.defaultSender;
         governor = deployedInfo.governor;
     });
@@ -129,6 +133,24 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token4Id, targetTokenId:token4Mapping, amount, owner:to });
+        expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
+    });
+
+    it('deposit standard erc20 with decimals should success', async () => {
+        const to = "0x72847C8Bdc54b338E787352bceC33ba90cD7aFe0";
+        const subAccountId = 0;
+        const amount = parseUnits("30000000", "wei"); // 30 * 10^6
+        await token5.connect(defaultSender).mint(parseUnits("10000000000", "wei")); // 10000 * 10 ^6
+        let senderBalance = await token5.balanceOf(defaultSender.address);
+        let contractBalance = await token5.balanceOf(zkLink.address);
+        await token5.connect(defaultSender).approve(zkLink.address, parseUnits("100000000", "wei")); // 100 * 10 ^6
+        await zkLink.connect(defaultSender).depositERC20(token5.address, amount, to, subAccountId, false);
+        expect(await token5.balanceOf(zkLink.address)).equal(contractBalance.add(amount));
+        expect(await token5.balanceOf(defaultSender.address)).equal(senderBalance.sub(amount));
+
+        const hashedPubdata = await zkLink.getPriorityHash(tpn++);
+        const amountInPubdata = parseEther("30"); // 30 * 10 ^18
+        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token5Id, targetTokenId:token5Id, amount:amountInPubdata, owner:to });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 

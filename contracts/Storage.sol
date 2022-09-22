@@ -104,6 +104,7 @@ contract Storage is Config {
         bool registered; // whether token registered to ZkLink or not, default is false
         bool paused; // whether token can deposit to ZkLink or not, default is false
         address tokenAddress; // the token address
+        uint8 decimals; // the token decimals of layer one
         bool standard; // if a standard token
         uint16 mappingTokenId; // eg. USDC -> USD, zero means no mapping token
     }

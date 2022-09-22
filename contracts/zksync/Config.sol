@@ -111,4 +111,7 @@ contract Config {
     bytes32 internal constant CHANGE_PUBKEY_HASHED_NAME =  keccak256("ZkLink");
     bytes32 internal constant CHANGE_PUBKEY_HASHED_VERSION = keccak256("1");
     bytes32 internal constant CHANGE_PUBKEY_TYPE_HASH = keccak256("ChangePubKey(bytes20 pubKeyHash,uint32 nonce,uint32 accountId)");
+
+    /// @dev Token decimals is a fixed value at layer two in ZkLink
+    uint8 internal constant TOKEN_DECIMALS_OF_LAYER2 = 18;
 }

@@ -146,9 +146,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Add token to the list of networks tokens
     /// @param _tokenId Token id
     /// @param _tokenAddress Token address
+    /// @param _decimals Token decimals of layer one
     /// @param _standard If token is a standard erc20
     /// @param _mappingTokenId The mapping token id at l2
-    function addToken(uint16 _tokenId, address _tokenAddress, bool _standard, uint16 _mappingTokenId) public onlyGovernor {
+    function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals, bool _standard, uint16 _mappingTokenId) public onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId < MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
@@ -157,9 +158,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         RegisteredToken memory rt = tokens[_tokenId];
         require(!rt.registered, "I2");
         require(tokenIds[_tokenAddress] == 0, "I2");
+        // token decimals of layer one MUST not be larger than decimals defined in layer two
+        require(_decimals <= TOKEN_DECIMALS_OF_LAYER2, "I3");
 
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
+        rt.decimals = _decimals;
         rt.standard = _standard;
         rt.mappingTokenId = _mappingTokenId;
         tokens[_tokenId] = rt;
@@ -170,11 +174,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Add tokens to the list of networks tokens
     /// @param _tokenIdList Token id list
     /// @param _tokenAddressList Token address list
+    /// @param _decimalsList Token decimals list
     /// @param _standardList Token standard list
     /// @param _mappingTokenList Mapping token list
-    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, bool[] calldata _standardList, uint16[] calldata _mappingTokenList) external {
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, uint8[] calldata _decimalsList, bool[] calldata _standardList, uint16[] calldata _mappingTokenList) external {
         for (uint i; i < _tokenIdList.length; i++) {
-            addToken(_tokenIdList[i], _tokenAddressList[i], _standardList[i], _mappingTokenList[i]);
+            addToken(_tokenIdList[i], _tokenAddressList[i], _decimalsList[i], _standardList[i], _mappingTokenList[i]);
         }
     }
 
