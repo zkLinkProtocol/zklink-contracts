@@ -57,14 +57,14 @@ function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
-function getForcedExitPubdata({ chainId, initiatorAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, feeTokenId, amount, fee, target }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint32","uint8","uint16","uint16","uint16","uint128","uint16","address"],
-        [OP_FORCE_EXIT,chainId,initiatorAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,feeTokenId,amount,fee,target]);
+function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, feeTokenId, amount, fee, target }) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint8","uint16","uint16","uint16","uint128","uint16","address"],
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,feeTokenId,amount,fee,target]);
 }
 
-function getChangePubkeyPubdata({ chainId, accountId, pubKeyHash, owner, nonce, tokenId, fee}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","bytes20","address","uint32","uint16","uint16"],
-        [OP_CHANGE_PUBKEY,chainId,accountId,pubKeyHash,owner,nonce,tokenId,fee]);
+function getChangePubkeyPubdata({ chainId, accountId, subAccountId, pubKeyHash, owner, nonce, tokenId, fee}) {
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes20","address","uint32","uint16","uint16"],
+        [OP_CHANGE_PUBKEY,chainId,accountId,subAccountId,pubKeyHash,owner,nonce,tokenId,fee]);
 }
 
 function getTransferPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, fee}) {

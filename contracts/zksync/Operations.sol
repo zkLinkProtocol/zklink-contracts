@@ -180,6 +180,7 @@ library Operations {
         //uint8 opType; -- present in pubdata, ignored at serialization
         uint8 chainId; // which chain the force exit happened
         //uint32 initiatorAccountId; -- present in pubdata, ignored at serialization
+        //uint8 initiatorSubAccountId; -- present in pubdata, ignored at serialization
         //uint32 targetAccountId; -- present in pubdata, ignored at serialization
         //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw
@@ -188,13 +189,13 @@ library Operations {
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
         address target; // the address to receive token
-    } // 55 bytes
+    } // 56 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
-        offset += ACCOUNT_ID_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
+        offset += ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         offset += TOKEN_BYTES * 2;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
@@ -207,17 +208,19 @@ library Operations {
         // uint8 opType; -- present in pubdata, ignored at serialization
         uint8 chainId; // which chain to verify(only one chain need to verify for gas saving)
         uint32 accountId; // the account that to change pubkey
+        //uint8 subAccountId; -- present in pubdata, ignored at serialization
         bytes20 pubKeyHash; // hash of the new rollup pubkey
         address owner; // the owner that own this account
         uint32 nonce; // the account nonce
         //uint16 tokenId; -- present in pubdata, ignored at serialization
         //uint16 fee; -- present in pubdata, ignored at serialization
-    } // 54 bytes
+    } // 55 bytes
 
     function readChangePubKeyPubdata(bytes memory _data) internal pure returns (ChangePubKey memory parsed) {
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
+        offset += SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.pubKeyHash) = Bytes.readBytes20(_data, offset);
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);

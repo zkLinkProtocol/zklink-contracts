@@ -46,7 +46,7 @@ describe('ZkLink change pubkey unit tests', function () {
 
     it('verify onchain pubkey should be success', async () => {
         const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId:1, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId:1, subAccountId:4, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
         const onchainOperations = [{
             "ethWitness":"0x",
@@ -69,7 +69,7 @@ describe('ZkLink change pubkey unit tests', function () {
     it('verify ECRECOVER should be success', async () => {
         const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         const accountId = 15;
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:5, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
         const ethWitness = createEthWitnessOfECRECOVER(zkLink.address,pubKeyHash,nonce,accountId,alice);
         const onchainOperations = [{
@@ -97,7 +97,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
         const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";
         const {ethWitness, owner} = createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash);
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, pubKeyHash, owner, nonce:0, tokenId:0, fee:0});
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:0, pubKeyHash, owner, nonce:0, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata);
 
         const onchainOperations = [{

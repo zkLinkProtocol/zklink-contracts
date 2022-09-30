@@ -166,6 +166,7 @@ class TestSetUp {
             }
         } else if (opType === OP_CHANGE_PUBKEY) {
             const accountId = 1;
+            const subAccountId = 0;
             let pubKeyHash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
             let nonce = 1;
             const changePubkeyType = params.changePubkeyType;
@@ -184,7 +185,7 @@ class TestSetUp {
                 owner = params.owner;
                 nonce = params.nonce;
             }
-            const opParams = {chainId:chainId,accountId,pubKeyHash,owner,nonce,tokenId:this.token2Id,fee:0};
+            const opParams = {chainId:chainId,accountId,subAccountId,pubKeyHash,owner,nonce,tokenId:this.token2Id,fee:0};
             op = getChangePubkeyPubdata(opParams);
         } else if (opType === OP_WITHDRAW) {
             const accountId = 1;
