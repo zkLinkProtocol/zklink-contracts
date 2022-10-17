@@ -8,6 +8,7 @@ require("./script/upgrade_zklink");
 require("./script/deploy_zkl");
 require("./script/deploy_lz_bridge");
 require("./script/upgrade_lz_bridge");
+require("./script/deploy_faucet");
 require("./script/interact");
 
 /**
