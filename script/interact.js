@@ -299,3 +299,32 @@ task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
                 {value:nativeFee});
         console.log('tx', tx.hash);
     });
+
+task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or testnet")
+    .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("address", "The account address")
+    .addParam("pubkeyHash", "The new pubkey hash that will be set to account")
+    .addParam("nonce", "The account latest nonce")
+    .setAction(async (taskArgs, hardhat) => {
+        let zkLinkProxy = taskArgs.zkLink;
+        if (zkLinkProxy === undefined) {
+            zkLinkProxy = readDeployContract('deploy', 'zkLinkProxy');
+        }
+        const address = taskArgs.address;
+        const pubkeyHash = taskArgs.pubkeyHash;
+        const nonce = taskArgs.nonce;
+        console.log('zkLink', zkLinkProxy);
+        console.log('address', address);
+        console.log('pubkeyHash', pubkeyHash);
+        console.log('nonce', nonce);
+
+        const sender = await hardhat.ethers.getSigner(address);
+
+        const balance = await sender.getBalance();
+        console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
+
+        const zkLinkPeripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+        const zkLink = zkLinkPeripheryFactory.attach(zkLinkProxy);
+        const tx = await zkLink.connect(sender).setAuthPubkeyHash(pubkeyHash, nonce);
+        console.log('tx', tx.hash);
+    });
