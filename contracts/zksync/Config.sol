@@ -114,4 +114,9 @@ contract Config {
 
     /// @dev Token decimals is a fixed value at layer two in ZkLink
     uint8 internal constant TOKEN_DECIMALS_OF_LAYER2 = 18;
+
+    /// @dev Global asset account in the network
+    /// @dev Can not deposit to or full exit this account
+    uint32 internal constant GLOBAL_ASSET_ACCOUNT_ID = 1;
+    address internal constant GLOBAL_ASSET_ACCOUNT_ADDRESS = 0xffffffffffffffffffffffffffffffffffffffff;
 }
