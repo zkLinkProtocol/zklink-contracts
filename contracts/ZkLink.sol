@@ -138,6 +138,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _subAccountId The receiver sub account
     /// @param _mapping If true and token has a mapping token, user will receive mapping token at l2
     function depositERC20(IERC20 _token, uint104 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
+        // erc20 token address MUST NOT be ETH_ADDRESS which represent deposit eth
+        // it's nearly impossible to create an erc20 token which address is the ETH_ADDRESS
+        // add check to avoid this extreme case
+        require(address(_token) != ETH_ADDRESS, "e");
         // support non-standard tokens
         uint256 balanceBefore = _token.balanceOf(address(this));
         // NOTE, the balance of this contract will be increased
