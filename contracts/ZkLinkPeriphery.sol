@@ -139,8 +139,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenAddress Token address
     /// @param _decimals Token decimals of layer one
     /// @param _standard If token is a standard erc20
-    /// @param _mappingTokenId The mapping token id at l2
-    function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals, bool _standard, uint16 _mappingTokenId) public onlyGovernor {
+    function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals, bool _standard) public onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId <= MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
@@ -156,7 +155,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         rt.tokenAddress = _tokenAddress;
         rt.decimals = _decimals;
         rt.standard = _standard;
-        rt.mappingTokenId = _mappingTokenId;
         tokens[_tokenId] = rt;
         tokenIds[_tokenAddress] = _tokenId;
         emit NewToken(_tokenId, _tokenAddress);
@@ -167,10 +165,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenAddressList Token address list
     /// @param _decimalsList Token decimals list
     /// @param _standardList Token standard list
-    /// @param _mappingTokenList Mapping token list
-    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, uint8[] calldata _decimalsList, bool[] calldata _standardList, uint16[] calldata _mappingTokenList) external {
+    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, uint8[] calldata _decimalsList, bool[] calldata _standardList) external {
         for (uint i; i < _tokenIdList.length; i++) {
-            addToken(_tokenIdList[i], _tokenAddressList[i], _decimalsList[i], _standardList[i], _mappingTokenList[i]);
+            addToken(_tokenIdList[i], _tokenAddressList[i], _decimalsList[i], _standardList[i]);
         }
     }
 

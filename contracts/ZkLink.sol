@@ -169,8 +169,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(rt.registered, "a2");
         uint16 srcTokenId = _tokenId;
         if (_mapping) {
-            require(rt.mappingTokenId > 0, "a3");
-            srcTokenId = rt.mappingTokenId;
+            require(_tokenId >= MIN_USD_STABLE_TOKEN_ID && _tokenId <= MAX_USD_STABLE_TOKEN_ID, "a3");
+            srcTokenId = USD_TOKEN_ID;
         }
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "a4");
@@ -390,8 +390,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_amount > 0 && _amount <= MAX_DEPOSIT_AMOUNT, "e0");
 
         if (_mapping) {
-            require(rt.mappingTokenId > 0, "e5");
-            targetTokenId = rt.mappingTokenId;
+            require(tokenId >= MIN_USD_STABLE_TOKEN_ID && tokenId <= MAX_USD_STABLE_TOKEN_ID, "e5");
+            targetTokenId = USD_TOKEN_ID;
         }
         // to prevent ddos
         require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "e6");

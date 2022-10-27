@@ -119,4 +119,11 @@ contract Config {
     /// @dev Can not deposit to or full exit this account
     uint32 internal constant GLOBAL_ASSET_ACCOUNT_ID = 1;
     address internal constant GLOBAL_ASSET_ACCOUNT_ADDRESS = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+
+    /// @dev USD and USD stable tokens defined by zkLink
+    /// @dev User can deposit USD stable token(eg. USDC, BUSD) to get USD in layer two
+    /// @dev And user also can full exit USD in layer two and get back USD stable tokens
+    uint16 internal constant USD_TOKEN_ID = 1;
+    uint16 internal constant MIN_USD_STABLE_TOKEN_ID = 17;
+    uint16 internal constant MAX_USD_STABLE_TOKEN_ID = 31;
 }

@@ -31,6 +31,9 @@ const GENESIS_BLOCK = {
     commitment:ZERO_BYTES32,
     syncHash:EMPTY_STRING_KECCAK
 }
+const USD_TOKEN_ID = 1;
+const MIN_USD_STABLE_TOKEN_ID = 17;
+const MAX_USD_STABLE_TOKEN_ID = 31;
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
@@ -145,25 +148,28 @@ async function deploy() {
     const upgradeGatekeeper = log.args.upgradeGatekeeper;
 
     // add some tokens
-    const ethId = 1;
+    const ethId = 33;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18, true, 0);
+    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18, true);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
-    await peripheryProxy.connect(governor).addToken(2, token2.address, 18, true, 0);
+    const token2Id = 34;
+    await peripheryProxy.connect(governor).addToken(token2Id, token2.address, 18, true);
 
     const nstFactory = await hardhat.ethers.getContractFactory('NonStandardToken');
     const token3 = await nstFactory.deploy("Token3", "T3");
-    await peripheryProxy.connect(governor).addToken(3, token3.address, 18, false, 0);
+    const token3Id = 35;
+    await peripheryProxy.connect(governor).addToken(token3Id, token3.address, 18, false);
 
     const token4 = await stFactory.deploy("Token4", "T4");
-    const token4Mapping = 1000;
-    await peripheryProxy.connect(governor).addToken(4, token4.address, 18, true, token4Mapping);
+    const token4Id = 17;
+    await peripheryProxy.connect(governor).addToken(token4Id, token4.address, 18, true);
 
     const stdFactory = await hardhat.ethers.getContractFactory('StandardTokenWithDecimals');
     const token5 = await stdFactory.deploy("Token5", "T5", 6);
-    await peripheryProxy.connect(governor).addToken(5, token5.address, 6, true, 0);
+    const token5Id = 36;
+    await peripheryProxy.connect(governor).addToken(token5Id, token5.address, 6, true);
 
     return {
         zkLink: zkLinkProxy,
@@ -178,27 +184,22 @@ async function deploy() {
         eth: {
             tokenId: ethId,
             tokenAddress: ethAddress,
-            mappingToken: 0
         },
         token2: {
-            tokenId: 2,
+            tokenId: token2Id,
             contract: token2,
-            mappingToken: 0
         },
         token3: {
-            tokenId: 3,
+            tokenId: token3Id,
             contract: token3,
-            mappingToken: 0
         },
         token4: {
-            tokenId: 4,
+            tokenId: token4Id,
             contract: token4,
-            mappingToken: token4Mapping
         },
         token5: {
-            tokenId: 5,
+            tokenId: token5Id,
             contract: token5,
-            mappingToken: 0
         }
     }
 }
@@ -287,5 +288,8 @@ module.exports = {
     ZERO_BYTES32,
     EMPTY_STRING_KECCAK,
     GENESIS_ROOT,
-    GENESIS_BLOCK
+    GENESIS_BLOCK,
+    USD_TOKEN_ID,
+    MIN_USD_STABLE_TOKEN_ID,
+    MAX_USD_STABLE_TOKEN_ID
 };

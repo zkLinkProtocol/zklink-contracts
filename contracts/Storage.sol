@@ -106,7 +106,6 @@ contract Storage is Config {
         address tokenAddress; // the token address
         uint8 decimals; // the token decimals of layer one
         bool standard; // if a standard token
-        uint16 mappingTokenId; // eg. USDC -> USD, zero means no mapping token
     }
 
     /// @notice A map of registered token infos

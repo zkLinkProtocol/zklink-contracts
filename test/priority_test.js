@@ -1,6 +1,6 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
-const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata} = require('./utils');
+const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, USD_TOKEN_ID} = require('./utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
@@ -19,7 +19,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         token3Id = deployedInfo.token3.tokenId;
         token4 = deployedInfo.token4.contract;
         token4Id = deployedInfo.token4.tokenId;
-        token4Mapping = deployedInfo.token4.mappingToken;
+        token4Mapping = USD_TOKEN_ID;
         token5 = deployedInfo.token5.contract;
         token5Id = deployedInfo.token5.tokenId;
         defaultSender = deployedInfo.defaultSender;
