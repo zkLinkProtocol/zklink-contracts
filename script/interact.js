@@ -1,4 +1,3 @@
-const fs = require('fs');
 const { readDeployContract, readDeployLogField} = require('./utils');
 const { layerZero } = require('./layerzero');
 
@@ -16,18 +15,6 @@ async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, to
     }
 }
 
-async function governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList, tokenDecimalsList, tokenStandardList, mappingTokenList) {
-    const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-    const governance = governanceFactory.attach(governanceAddr);
-    const tx = await governance.connect(governor).addTokens(tokenIdList, tokenAddrList, tokenDecimalsList, tokenStandardList, mappingTokenList);
-    console.log('tx hash: ', tx.hash);
-    const receipt = await tx.wait();
-    if (receipt.status) {
-        console.log('tx success');
-    } else {
-        throw new Error(`failed add tokens to the zkLink`);
-    }
-}
 task("addToken", "Adds a new token with a given address for testnet")
     .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
     .addParam("tokenId", "The token id")
@@ -58,33 +45,6 @@ task("addToken", "Adds a new token with a given address for testnet")
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
         await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard, mappingTokenId);
-    });
-
-task("addMultipleToken", "Adds multiple tokens for testnet")
-    .setAction(async (taskArgs, hardhat) => {
-        const [governor] = await hardhat.ethers.getSigners();
-        const governanceAddr = readDeployContract('deploy', 'zkLinkProxy');
-        console.log('governor', governor.address);
-        console.log('zkLink', governanceAddr);
-
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
-
-        const tokens = JSON.parse(fs.readFileSync(`etc/tokens/${process.env.NET}.json`, 'utf8'));
-        const tokenIdList = [];
-        const tokenAddrList = [];
-        const tokenDecimalsList = [];
-        const tokenStandardList = [];
-        const mappingTokenList = [];
-        for (const token of tokens) {
-            tokenIdList.push(token.id);
-            tokenAddrList.push(token.address);
-            tokenDecimalsList.push(token.decimals);
-            tokenStandardList.push(token.standard);
-            mappingTokenList.push(token.mappingToken);
-        }
-        console.log('token num: ', tokenIdList.length);
-        await governanceAddTokens(hardhat, governor, governanceAddr, tokenIdList, tokenAddrList, tokenDecimalsList, tokenStandardList, mappingTokenList);
     });
 
 task("depositERC20", "Deposit erc20 token to zkLink on testnet")
@@ -218,21 +178,17 @@ task("addBridge", "Add bridge to zkLink")
         console.log('tx', tx.hash);
     });
 
-task("mintZKL", "Mint zkl for POLYGONTEST")
-    .addParam("zkl", "The zkl contract address on POLYGONTEST (default get from deploy log)", undefined, types.string, true)
-    .addParam("account", "The account address")
-    .addParam("amount", "The mint amount")
+task("mintFaucetToken", "Mint faucet token for testnet")
+    .addParam("token", "The token contract address", undefined, types.string, false)
+    .addParam("to", "The account address", undefined, types.string, false)
+    .addParam("amount", "The mint amount", undefined, types.string, false)
+    .addParam("decimals", "The token decimals", 18, types.int, true)
     .setAction(async (taskArgs, hardhat) => {
-        if (process.env.NET !== 'POLYGONTEST') {
-            console.log('only POLYGONTEST can mint zkl');
-            return;
-        }
-        let zklAddr = taskArgs.zkl;
-        if (zklAddr === undefined) {
-            zklAddr = readDeployContract('deploy_zkl', 'zkl');
-        }
-        const accountAddr = taskArgs.account;
-        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
+        let tokenAddr = taskArgs.token;
+        const accountAddr = taskArgs.to;
+        const amount = hardhat.ethers.utils.parseUnits(taskArgs.amount, taskArgs.decimals);
+        console.log('to', accountAddr);
+        console.log('amount', amount);
 
         const [governor] = await hardhat.ethers.getSigners();
         console.log('governor', governor.address);
@@ -240,11 +196,11 @@ task("mintZKL", "Mint zkl for POLYGONTEST")
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        const zklFactory = await hardhat.ethers.getContractFactory('ZKL');
-        const zklContract = zklFactory.attach(zklAddr);
+        const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
+        const tokenContract = tokenFactory.attach(tokenAddr);
 
-        console.log('Mint zkl...')
-        const tx = await zklContract.connect(governor).mintTo(accountAddr, amount);
+        console.log('Mint token...')
+        const tx = await tokenContract.connect(governor).mintTo(accountAddr, amount);
         console.log('tx', tx.hash);
     });
 

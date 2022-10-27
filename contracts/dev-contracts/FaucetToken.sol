@@ -21,6 +21,10 @@ contract FaucetToken is ERC20, Ownable {
         _toTransferFeeRatio = toTransferFeeRatio_;
     }
 
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+
     function mintTo(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
