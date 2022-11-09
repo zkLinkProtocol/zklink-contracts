@@ -51,9 +51,10 @@ contract Storage is Config {
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
     uint64 public totalCommittedPriorityRequests;
 
-    // self(20 bytes) + totalBlocksSynchronized(4 bytes) + exodusMode(1 bytes) stored in the same slot
-    /// @dev Used to safely call `delegatecall`
+    /// @dev Used to safely call `delegatecall`, immutable state variables don't occupy storage slot
     address internal immutable self = address(this);
+
+    // totalBlocksSynchronized(4 bytes) + exodusMode(1 bytes) stored in the same slot
 
     /// @dev Latest synchronized block height
     uint32 public totalBlocksSynchronized;
@@ -65,7 +66,10 @@ contract Storage is Config {
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
     mapping(bytes22 => uint128) internal pendingBalances;
 
-    /// @notice Flag indicates that a user has exited in the exodus mode certain token balance (accountId => subAccountId => tokenId => srcTokenId)
+    /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
+    /// @dev The struct of this map is (accountId => subAccountId => withdrawTokenId => deductTokenId => performed)
+    /// @dev withdrawTokenId is the token that withdraw to user in l1
+    /// @dev deductTokenId is the token that deducted from user in l2
     mapping(uint32 => mapping(uint8 => mapping(uint16 => mapping(uint16 => bool)))) public performedExodus;
 
     /// @dev Priority Requests mapping (request id - operation)
@@ -94,10 +98,12 @@ contract Storage is Config {
     /// address is the accepter
     mapping(uint32 => mapping(bytes32 => address)) public accepts;
 
-    /// @dev Broker allowance used in accept
+    /// @dev Broker allowance used in accept, accepter can authorize broker to do accept
+    /// @dev Similar to the allowance of transfer in ERC20
+    /// @dev The struct of this map is (tokenId => accepter => broker => allowance)
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
 
-    /// @notice List of permitted validators
+    /// @notice A set of permitted validators
     mapping(address => bool) public validators;
 
     struct RegisteredToken {
@@ -105,7 +111,7 @@ contract Storage is Config {
         bool paused; // whether token can deposit to ZkLink or not, default is false
         address tokenAddress; // the token address
         uint8 decimals; // the token decimals of layer one
-        bool standard; // if a standard token
+        bool standard; // we will not check the balance different of zkLink contract after transfer when a token comply with erc20 standard
     }
 
     /// @notice A map of registered token infos
@@ -189,25 +195,25 @@ contract Storage is Config {
     function _fallback(address _target) internal {
         require(_target != address(0), "5");
         assembly {
-            // The pointer to the free memory slot
-            let ptr := mload(0x40)
-            // Copy function signature and arguments from calldata at zero position into memory at pointer position
-            calldatacopy(ptr, 0x0, calldatasize())
-            // Delegatecall method of the implementation contract, returns 0 on error
-            let result := delegatecall(gas(), _target, ptr, calldatasize(), 0x0, 0)
-            // Get the size of the last return data
-            let size := returndatasize()
-            // Copy the size length of bytes from return data at zero position to pointer position
-            returndatacopy(ptr, 0x0, size)
-            // Depending on result value
+            // Copy msg.data. We take full control of memory in this inline assembly
+            // block because it will not return to Solidity code. We overwrite the
+            // Solidity scratch pad at memory position 0.
+            calldatacopy(0, 0, calldatasize())
+
+            // Call the implementation.
+            // out and outsize are 0 because we don't know the size yet.
+            let result := delegatecall(gas(), _target, 0, calldatasize(), 0, 0)
+
+            // Copy the returned data.
+            returndatacopy(0, 0, returndatasize())
+
             switch result
+            // delegatecall returns 0 on error.
             case 0 {
-                // End execution and revert state changes
-                revert(ptr, size)
+                revert(0, returndatasize())
             }
             default {
-                // Return data with length of size at pointers position
-                return(ptr, size)
+                return(0, returndatasize())
             }
         }
     }

@@ -11,6 +11,9 @@ interface Events {
     /// @notice Event emitted when a block is committed
     event BlockCommit(uint32 indexed blockNumber);
 
+    /// @notice Event emitted when a block is proven
+    event BlockProven(uint32 indexed blockNumber);
+
     /// @notice Event emitted when a block is executed
     event BlockExecuted(uint32 indexed blockNumber);
 
@@ -22,6 +25,9 @@ interface Events {
 
     /// @notice Event emitted when user sends a authentication fact (e.g. pub-key hash)
     event FactAuth(address indexed sender, uint32 nonce, bytes fact);
+
+    /// @notice Event emitted when authentication fact reset clock start
+    event FactAuthResetTime(address indexed sender, uint32 nonce, uint256 time);
 
     /// @notice Event emitted when blocks are reverted
     event BlocksRevert(uint32 totalBlocksVerified, uint32 totalBlocksCommitted);
@@ -57,7 +63,7 @@ interface Events {
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
     /// @notice New bridge added
-    event AddBridge(address indexed bridge);
+    event AddBridge(address indexed bridge, uint256 bridgeIndex);
 
     /// @notice Bridge update
     event UpdateBridge(uint256 indexed bridgeIndex, bool enableBridgeTo, bool enableBridgeFrom);

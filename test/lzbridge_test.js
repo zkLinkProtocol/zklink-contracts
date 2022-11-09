@@ -31,15 +31,6 @@ describe('LayerZero bridge unit tests', function () {
             .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase());
     });
 
-    it('only network governor can set bridge address length', async () => {
-        await expect(lzBridgeInETH.connect(alice).setDestinationAddressLength(lzChainIdInBSC, 20))
-            .to.be.revertedWith('Caller is not governor');
-
-        await expect(lzBridgeInETH.connect(networkGovernor).setDestinationAddressLength(lzChainIdInBSC, 20))
-            .to.be.emit(lzBridgeInETH, "UpdateDestinationAddressLength")
-            .withArgs(lzChainIdInBSC, 20);
-    });
-
     it('only network governor can set app', async () => {
         await expect(lzBridgeInETH.connect(alice).setApp(0, zklInETH.address))
             .to.be.revertedWith('Caller is not governor');

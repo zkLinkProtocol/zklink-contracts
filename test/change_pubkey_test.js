@@ -29,7 +29,8 @@ describe('ZkLink change pubkey unit tests', function () {
 
         const oldHash = await periphery.getAuthFact(alice.address, nonce);
         // reset time count down begin
-        await periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
+        await expect(periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce))
+            .to.be.emit(periphery, 'FactAuthResetTime');
         expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(oldHash);
 
         // must wait 24 hours

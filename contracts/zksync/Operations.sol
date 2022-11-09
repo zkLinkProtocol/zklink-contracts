@@ -109,8 +109,8 @@ library Operations {
         uint32 accountId; // the account id to withdraw from
         uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
         address owner; // the address that own the account at l2
-        uint16 tokenId; // the token that registered to l2
-        uint16 srcTokenId; // the token that decreased in l2
+        uint16 tokenId; // the token that withdraw to l1
+        uint16 srcTokenId; // the token that deducted in l2
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
     } // 47
 

@@ -71,8 +71,8 @@ describe('Governance unit tests', function () {
 
         await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
             .to.be.emit(testContract, "AddBridge")
-            .withArgs(lzBridgeInETH.address);
-        // duplicate add bridge should failed
+            .withArgs(lzBridgeInETH.address, 1);
+        // duplicate add bridge should be failed
         await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
             .to.be.revertedWith("L1");
     });

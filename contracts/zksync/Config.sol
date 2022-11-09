@@ -86,7 +86,7 @@ contract Config {
     uint8 internal constant CHAIN_ID = $(CHAIN_ID);
 
     /// @dev Min chain id defined by ZkLink
-    uint8 internal constant MIN_CHAIN_ID = $(MIN_CHAIN_ID);
+    uint8 internal constant MIN_CHAIN_ID = 1;
 
     /// @dev Max chain id defined by ZkLink
     uint8 internal constant MAX_CHAIN_ID = $(MAX_CHAIN_ID);

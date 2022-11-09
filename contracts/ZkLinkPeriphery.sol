@@ -10,6 +10,7 @@ import "./Storage.sol";
 import "./zksync/Bytes.sol";
 import "./zksync/Utils.sol";
 import "./zksync/SafeMath.sol";
+import "./zksync/SafeMathUInt128.sol";
 import "./zksync/SafeCast.sol";
 import "./zksync/IERC20.sol";
 
@@ -17,6 +18,7 @@ import "./zksync/IERC20.sol";
 /// @author zk.link
 contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     using SafeMath for uint256;
+    using SafeMathUInt128 for uint128;
 
     // =================User interface=================
 
@@ -39,24 +41,24 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _accountId Id of the account in the tree
     /// @param _subAccountId Id of the subAccount in the tree
     /// @param _proof Proof
-    /// @param _tokenId The token want to withdraw
-    /// @param _srcTokenId The token deducted at l2
+    /// @param _withdrawTokenId The token want to withdraw in l1
+    /// @param _deductTokenId The token deducted in l2
     /// @param _amount Amount for owner (must be total amount, not part of it)
-    function performExodus(StoredBlockInfo calldata _storedBlockInfo, address _owner, uint32 _accountId, uint8 _subAccountId, uint16 _tokenId, uint16 _srcTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
+    function performExodus(StoredBlockInfo calldata _storedBlockInfo, address _owner, uint32 _accountId, uint8 _subAccountId, uint16 _withdrawTokenId, uint16 _deductTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
-        require(!performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId], "y0");
+        require(!performedExodus[_accountId][_subAccountId][_withdrawTokenId][_deductTokenId], "y0");
         // incorrect stored block info
         require(storedBlockHashes[totalBlocksExecuted] == hashStoredBlockInfo(_storedBlockInfo), "y1");
         // exit proof MUST be correct
-        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _tokenId, _srcTokenId, _amount, _proof);
+        bool proofCorrect = verifier.verifyExitProof(_storedBlockInfo.stateHash, CHAIN_ID, _accountId, _subAccountId, _owner, _withdrawTokenId, _deductTokenId, _amount, _proof);
         require(proofCorrect, "y2");
 
         // ===Effects===
-        performedExodus[_accountId][_subAccountId][_tokenId][_srcTokenId] = true;
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
+        performedExodus[_accountId][_subAccountId][_withdrawTokenId][_deductTokenId] = true;
+        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _withdrawTokenId);
         increaseBalanceToWithdraw(packedBalanceKey, _amount);
-        emit WithdrawalPending(_tokenId, _owner, _amount);
+        emit WithdrawalPending(_withdrawTokenId, _owner, _amount);
     }
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
@@ -71,7 +73,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Effects===
         uint64 currentDepositIdx = 0;
-        for (uint64 id = firstPriorityRequestId; id < firstPriorityRequestId + toProcess; ++id) {
+        // overflow is impossible, firstPriorityRequestId >= 0 and toProcess > 0
+        uint64 lastPriorityRequestId = firstPriorityRequestId + toProcess - 1;
+        for (uint64 id = firstPriorityRequestId; id <= lastPriorityRequestId; ++id) {
             Operations.PriorityOperation memory pr = priorityRequests[id];
             if (pr.opType == Operations.OpType.Deposit) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
@@ -82,6 +86,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 bytes22 packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
                 increaseBalanceToWithdraw(packedBalanceKey, op.amount);
             }
+            // after return back deposited token to user, delete the priorityRequest to avoid redundant cancel
+            // other priority requests(ie. FullExit) are also be deleted because they are no used anymore
+            // and we can get gas reward for free these slots
             delete priorityRequests[id];
         }
         // overflow is impossible
@@ -105,6 +112,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             uint256 currentResetTimer = authFactsResetTimer[msg.sender][_nonce];
             if (currentResetTimer == 0) {
                 authFactsResetTimer[msg.sender][_nonce] = block.timestamp;
+                emit FactAuthResetTime(msg.sender, _nonce, block.timestamp);
             } else {
                 require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "B1"); // too early to reset auth
                 authFactsResetTimer[msg.sender][_nonce] = 0;
@@ -160,14 +168,19 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         emit NewToken(_tokenId, _tokenAddress);
     }
 
+    struct Token {
+        uint16 tokenId; // token id defined by zkLink
+        address tokenAddress; // token address in l1
+        uint8 decimals; // token decimals in l1
+        bool standard; // if token a pure erc20 or not
+    }
+
     /// @notice Add tokens to the list of networks tokens
-    /// @param _tokenIdList Token id list
-    /// @param _tokenAddressList Token address list
-    /// @param _decimalsList Token decimals list
-    /// @param _standardList Token standard list
-    function addTokens(uint16[] calldata _tokenIdList, address[] calldata _tokenAddressList, uint8[] calldata _decimalsList, bool[] calldata _standardList) external {
-        for (uint i; i < _tokenIdList.length; i++) {
-            addToken(_tokenIdList[i], _tokenAddressList[i], _decimalsList[i], _standardList[i]);
+    /// @param _tokenList Token list
+    function addTokens(Token[] calldata _tokenList) external {
+        for (uint i; i < _tokenList.length; i++) {
+            Token memory _token = _tokenList[i];
+            addToken(_token.tokenId, _token.tokenAddress, _token.decimals, _token.standard);
         }
     }
 
@@ -175,12 +188,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenId Token id
     /// @param _tokenPaused Token paused status
     function setTokenPaused(uint16 _tokenId, bool _tokenPaused) external onlyGovernor {
-        RegisteredToken memory rt = tokens[_tokenId];
+        RegisteredToken storage rt = tokens[_tokenId];
         require(rt.registered, "K");
 
         if (rt.paused != _tokenPaused) {
             rt.paused = _tokenPaused;
-            tokens[_tokenId] = rt;
             emit TokenPausedUpdate(_tokenId, _tokenPaused);
         }
     }
@@ -197,7 +209,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
     /// @notice Add a new bridge
     /// @param bridge the bridge contract
-    function addBridge(address bridge) external onlyGovernor {
+    /// @return the index of new bridge
+    function addBridge(address bridge) external onlyGovernor returns (uint256) {
         require(bridge != address(0), "L0");
         // the index of non-exist bridge is zero
         require(bridgeIndex[bridge] == 0, "L1");
@@ -209,7 +222,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         });
         bridges.push(info);
         bridgeIndex[bridge] = bridges.length;
-        emit AddBridge(bridge);
+        emit AddBridge(bridge, bridges.length);
+
+        return bridges.length;
     }
 
     /// @notice Update bridge info
@@ -230,14 +245,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
     function isBridgeToEnabled(address bridge) external view returns (bool) {
         uint256 index = bridgeIndex[bridge].sub(1);
-        BridgeInfo memory info = bridges[index];
-        return info.bridge == bridge && info.enableBridgeTo;
+        return bridges[index].enableBridgeTo;
     }
 
     function isBridgeFromEnabled(address bridge) public view returns (bool) {
         uint256 index = bridgeIndex[bridge].sub(1);
-        BridgeInfo memory info = bridges[index];
-        return info.bridge == bridge && info.enableBridgeFrom;
+        return bridges[index].enableBridgeFrom;
     }
 
     // =======================Cross chain block synchronization======================
@@ -353,15 +366,19 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         emit Accept(accepter, accountId, receiver, tokenId, amountSent, amountReceive);
     }
 
-    function brokerAllowance(uint16 tokenId, address owner, address spender) public view returns (uint128) {
-        return brokerAllowances[tokenId][owner][spender];
+    /// @return Return the accept allowance of broker
+    function brokerAllowance(uint16 tokenId, address accepter, address broker) public view returns (uint128) {
+        return brokerAllowances[tokenId][accepter][broker];
     }
 
-    /// @notice Give allowance to spender to call accept
-    function brokerApprove(uint16 tokenId, address spender, uint128 amount) external returns (bool) {
-        require(spender != address(0), "G");
-        brokerAllowances[tokenId][msg.sender][spender] = amount;
-        emit BrokerApprove(tokenId, msg.sender, spender, amount);
+    /// @notice Give allowance to broker to call accept
+    /// @param tokenId token that transfer to the receiver of accept request from accepter or broker
+    /// @param broker who are allowed to do accept by accepter(the msg.sender)
+    /// @param amount the accept allowance of broker
+    function brokerApprove(uint16 tokenId, address broker, uint128 amount) external returns (bool) {
+        require(broker != address(0), "G");
+        brokerAllowances[tokenId][msg.sender][broker] = amount;
+        emit BrokerApprove(tokenId, msg.sender, broker, amount);
         return true;
     }
 
@@ -374,9 +391,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         RegisteredToken memory rt = tokens[tokenId];
         require(rt.registered, "H3");
         tokenAddress = rt.tokenAddress;
-        // feeRate MUST be valid
+        // feeRate MUST be valid and MUST not be 100%
         require(withdrawFeeRate < MAX_ACCEPT_FEE_RATE, "H4");
-        amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
+        amountReceive = amount.mul(MAX_ACCEPT_FEE_RATE - withdrawFeeRate).div(MAX_ACCEPT_FEE_RATE);
         // nonce MUST not be zero
         require(nonce > 0, "H5");
 

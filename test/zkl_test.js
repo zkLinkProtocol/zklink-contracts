@@ -39,9 +39,6 @@ describe('ZKL unit tests', function () {
         lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
         lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
 
-        // lzBridgeInETH not set, test default is 20
-        lzBridgeInBSC.connect(networkGovernor).setDestinationAddressLength(lzChainIdInETH, 20);
-
         lzBridgeInETH.connect(networkGovernor).setApp(0, zklInETH.address);
         lzBridgeInBSC.connect(networkGovernor).setApp(0, zklInBSC.address)
     });
