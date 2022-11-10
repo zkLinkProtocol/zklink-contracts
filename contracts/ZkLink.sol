@@ -168,8 +168,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         } else {
             srcTokenId = _tokenId;
         }
-        // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "a4");
 
         // ===Effects===
         // Priority Queue request
@@ -411,8 +409,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         } else {
             targetTokenId = tokenId;
         }
-        // to prevent ddos
-        require(totalOpenPriorityRequests < MAX_PRIORITY_REQUESTS, "e6");
 
         // ===Effects===
         // Priority Queue request

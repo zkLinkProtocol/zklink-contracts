@@ -38,11 +38,6 @@ describe('ZkLink priority queue ops unit tests', function () {
         await expect(zkLink.connect(defaultSender).depositERC20(token2.address, 30, to, 0, false)).to.be.revertedWith("0");
         await zkLink.setExodus(false);
 
-        // ddos?
-        await periphery.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).depositETH(to, subAccountId, {value: amount})).to.be.revertedWith("e6");
-        await periphery.setTotalOpenPriorityRequests(tpn);
-
         // token not registered
         const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
         const tokenNotRegistered = await stFactory.deploy("Token not registered", "TNR");
@@ -161,11 +156,6 @@ describe('ZkLink priority queue ops unit tests', function () {
         const subAccountId = 0;
         await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId, false)).to.be.revertedWith("0");
         await zkLink.setExodus(false);
-
-        // ddos?
-        await periphery.setTotalOpenPriorityRequests(4096);
-        await expect(zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId, false)).to.be.revertedWith("a4");
-        await periphery.setTotalOpenPriorityRequests(tpn);
 
         // accountId too large
         const tooLargeAccountId = 16777216; // 2**24

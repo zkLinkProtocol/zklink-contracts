@@ -44,13 +44,6 @@ contract Config {
     uint256 internal constant PRIORITY_EXPIRATION =
         $(defined(PRIORITY_EXPIRATION) ? PRIORITY_EXPIRATION : PRIORITY_EXPIRATION_PERIOD / BLOCK_PERIOD);
 
-    /// @dev Maximum number of priority request that wait to be proceed
-    /// to prevent an attacker submit a large number of priority requests
-    /// that exceeding the processing power of the l2 server
-    /// and force the contract to enter exodus mode
-    /// this attack may occur on some blockchains with high tps but low gas prices
-    uint256 internal constant MAX_PRIORITY_REQUESTS = $(defined(MAX_PRIORITY_REQUESTS) ? MAX_PRIORITY_REQUESTS : 4096);
-
     /// @dev Reserved time for users to send full exit priority operation in case of an upgrade (in seconds)
     uint256 internal constant MASS_FULL_EXIT_PERIOD = 5 days;
 
