@@ -43,7 +43,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _proof Proof
     /// @param _withdrawTokenId The token want to withdraw in l1
     /// @param _deductTokenId The token deducted in l2
-    /// @param _amount Amount for owner (must be total amount, not part of it)
+    /// @param _amount Amount for owner (must be total amount, not part of it) in l2
     function performExodus(StoredBlockInfo calldata _storedBlockInfo, address _owner, uint32 _accountId, uint8 _subAccountId, uint16 _withdrawTokenId, uint16 _deductTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
@@ -84,6 +84,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
                 Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
                 bytes22 packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
+                // amount of Deposit has already improve decimals
                 increaseBalanceToWithdraw(packedBalanceKey, op.amount);
             }
             // after return back deposited token to user, delete the priorityRequest to avoid redundant cancel
@@ -125,7 +126,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkLink contract
     /// @param _address Address of the tokens owner
     /// @param _tokenId Token id
-    /// @return The pending balance can be withdrawn
+    /// @return The pending balance(without recovery decimals) can be withdrawn
     function getPendingBalance(address _address, uint16 _tokenId) external view returns (uint128) {
         return pendingBalances[packAddressAndTokenId(_address, _tokenId)];
     }

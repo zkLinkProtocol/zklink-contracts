@@ -64,6 +64,7 @@ contract Storage is Config {
     bool public exodusMode;
 
     /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
+    /// @dev the amount of pending balance need to recovery decimals when withdraw
     mapping(bytes22 => uint128) internal pendingBalances;
 
     /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
@@ -179,6 +180,9 @@ contract Storage is Config {
         return keccak256(abi.encode(_storedBlockInfo));
     }
 
+    /// @notice Increase pending balance to withdraw
+    /// @param _packedBalanceKey address tokenId packed key
+    /// @param _amount pending amount that need to recovery decimals when withdraw
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
         uint128 balance = pendingBalances[_packedBalanceKey];
         pendingBalances[_packedBalanceKey] = balance.add(_amount);

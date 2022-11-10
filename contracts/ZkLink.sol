@@ -202,12 +202,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         // Set the available amount to withdraw
         bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
+        // balance need to be recovery decimals
         uint128 balance = pendingBalances[packedBalanceKey];
-        uint128 amount = Utils.minU128(balance, _amount);
+        uint128 withdrawBalance = recoveryDecimals(balance, rt.decimals);
+        uint128 amount = Utils.minU128(withdrawBalance, _amount);
         require(amount > 0, "b1");
-
-        // ===Effects====
-        pendingBalances[packedBalanceKey] = balance - amount; // amount <= balance
 
         // ===Interactions===
         address tokenAddress = rt.tokenAddress;
@@ -219,12 +218,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             // We will allow withdrawals of `value` such that:
             // `value` <= user pending balance
             // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
-            uint128 amount1 = this.transferERC20(IERC20(tokenAddress), _owner, amount, balance, rt.standard);
-            if (amount1 != amount) {
-                pendingBalances[packedBalanceKey] = balance - amount1; // amount1 <= balance
-                amount = amount1;
-            }
+            amount = this.transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
         }
+
+        // improve withdrawn amount decimals
+        pendingBalances[packedBalanceKey] = balance.sub(improveDecimals(amount, rt.decimals));
         emit Withdrawal(_tokenId, amount);
 
         return amount;
@@ -769,23 +767,28 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // token MUST be registered
         RegisteredToken storage rt = tokens[op.tokenId];
         require(rt.registered, "o0");
-        // recover withdraw amount
-        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
 
         // nonce > 0 means fast withdraw
         if (op.nonce > 0) {
-            bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, amount, op.fastWithdrawFeeRate, op.nonce));
+            // recover withdraw amount
+            uint128 acceptAmount = recoveryDecimals(op.amount, rt.decimals);
+            uint128 dustAmount = op.amount.sub(improveDecimals(acceptAmount, rt.decimals));
+            bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, acceptAmount, op.fastWithdrawFeeRate, op.nonce));
             address accepter = accepts[op.accountId][fwHash];
             if (accepter == address(0)) {
                 // receiver act as a accepter
                 accepts[op.accountId][fwHash] = op.owner;
-                withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
+                withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
             } else {
                 // just increase the pending balance of accepter
-                increasePendingBalance(op.tokenId, accepter, amount);
+                increasePendingBalance(op.tokenId, accepter, op.amount);
+                // add dust to owner
+                if (dustAmount > 0) {
+                    increasePendingBalance(op.tokenId, op.owner, dustAmount);
+                }
             }
         } else {
-            withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
+            withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
         }
     }
 
@@ -794,10 +797,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // token MUST be registered
         RegisteredToken storage rt = tokens[op.tokenId];
         require(rt.registered, "p0");
-        // recover withdraw amount
-        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
 
-        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.target, amount);
+        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.target, op.amount);
     }
 
     /// @dev Execute full exit operation
@@ -805,40 +806,45 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // token MUST be registered
         RegisteredToken storage rt = tokens[op.tokenId];
         require(rt.registered, "r0");
-        // recover withdraw amount
-        uint128 amount = recoveryDecimals(op.amount, rt.decimals);
 
-        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, op.owner, amount);
+        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
     }
 
     /// @dev 1. Try to send token to _recipients
     /// 2. On failure: Increment _recipients balance to withdraw.
-    function withdrawOrStore(uint16 _tokenId, address _tokenAddress, bool _isTokenStandard, address _recipient, uint128 _amount) internal {
+    function withdrawOrStore(uint16 _tokenId, address _tokenAddress, bool _isTokenStandard, uint8 _decimals, address _recipient, uint128 _amount) internal {
         if (_amount == 0) {
             return;
         }
+        // recover withdraw amount and add dust to pending balance
+        uint128 withdrawAmount = recoveryDecimals(_amount, _decimals);
+        uint128 dustAmount = _amount.sub(improveDecimals(withdrawAmount, _decimals));
         bool sent = false;
         if (_tokenAddress == ETH_ADDRESS) {
             address payable toPayable = address(uint160(_recipient));
-            sent = sendETHNoRevert(toPayable, _amount);
+            sent = sendETHNoRevert(toPayable, withdrawAmount);
         } else {
             // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`
             // and fail if token subtracted from zkLink balance more then `_amount` that was requested.
             // This can happen if token subtracts fee from sender while transferring `_amount` that was requested to transfer.
-            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(_tokenAddress), _recipient, _amount, _amount, _isTokenStandard) {
+            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(_tokenAddress), _recipient, withdrawAmount, withdrawAmount, _isTokenStandard) {
                 sent = true;
             } catch {
                 sent = false;
             }
         }
         if (sent) {
-            emit Withdrawal(_tokenId, _amount);
+            emit Withdrawal(_tokenId, withdrawAmount);
+            if (dustAmount > 0) {
+                increasePendingBalance(_tokenId, _recipient, dustAmount);
+            }
         } else {
             increasePendingBalance(_tokenId, _recipient, _amount);
         }
     }
 
     /// @dev Increase `_recipient` balance to withdraw
+    /// @param _amount amount that need to recovery decimals when withdraw
     function increasePendingBalance(uint16 _tokenId, address _recipient, uint128 _amount) internal {
         bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
         increaseBalanceToWithdraw(packedBalanceKey, _amount);
