@@ -11,14 +11,16 @@ import "./zksync/Bytes.sol";
 import "./zksync/Utils.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
-import "./zksync/SafeCast.sol";
-import "./zksync/IERC20.sol";
+import "./zksync/SafeMathUInt64.sol";
+import "./zksync/SafeMathUInt32.sol";
 
 /// @title ZkLink periphery contract
 /// @author zk.link
 contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     using SafeMath for uint256;
     using SafeMathUInt128 for uint128;
+    using SafeMathUInt64 for uint64;
+    using SafeMathUInt32 for uint32;
 
     // =================User interface=================
 
@@ -121,6 +123,47 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 emit FactAuth(msg.sender, _nonce, _pubkeyHash);
             }
         }
+    }
+
+    /// @notice  Withdraws tokens from zkLink contract to the owner
+    /// @param _owner Address of the tokens owner
+    /// @param _tokenId Token id
+    /// @param _amount Amount to withdraw to request.
+    /// @return The actual withdrawn amount
+    /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
+    /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
+    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant returns (uint128) {
+        // ===Checks===
+        // token MUST be registered to ZkLink
+        RegisteredToken storage rt = tokens[_tokenId];
+        require(rt.registered, "b0");
+
+        // Set the available amount to withdraw
+        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
+        // balance need to be recovery decimals
+        uint128 balance = pendingBalances[packedBalanceKey];
+        uint128 withdrawBalance = recoveryDecimals(balance, rt.decimals);
+        uint128 amount = Utils.minU128(withdrawBalance, _amount);
+        require(amount > 0, "b1");
+
+        // ===Interactions===
+        address tokenAddress = rt.tokenAddress;
+        if (tokenAddress == ETH_ADDRESS) {
+            // solhint-disable-next-line  avoid-low-level-calls
+            (bool success, ) = _owner.call{value: amount}("");
+            require(success, "b2");
+        } else {
+            // We will allow withdrawals of `value` such that:
+            // `value` <= user pending balance
+            // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
+            amount = this.transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
+        }
+
+        // improve withdrawn amount decimals
+        pendingBalances[packedBalanceKey] = balance.sub(improveDecimals(amount, rt.decimals));
+        emit Withdrawal(_tokenId, amount);
+
+        return amount;
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkLink contract
@@ -252,6 +295,74 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     function isBridgeFromEnabled(address bridge) public view returns (bool) {
         uint256 index = bridgeIndex[bridge].sub(1);
         return bridges[index].enableBridgeFrom;
+    }
+
+    // =======================Block interface======================
+
+    /// @notice Recursive proof input data (individual commitments are constructed onchain)
+    struct ProofInput {
+        uint256[] recursiveInput;
+        uint256[] proof;
+        uint256[] commitments;
+        uint8[] vkIndexes;
+        uint256[16] subproofsLimbs;
+    }
+
+    /// @notice Blocks commitment verification.
+    /// @dev Only verifies block commitments without any other processing
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+        // ===Checks===
+        uint32 currentTotalBlocksProven = totalBlocksProven;
+        for (uint256 i = 0; i < _committedBlocks.length; ++i) {
+            currentTotalBlocksProven = currentTotalBlocksProven.add(1);
+            require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven], "x0");
+
+            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+        }
+
+        // ===Effects===
+        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
+        totalBlocksProven = currentTotalBlocksProven;
+
+        // ===Interactions===
+        bool success = verifier.verifyAggregatedBlockProof(
+            _proof.recursiveInput,
+            _proof.proof,
+            _proof.vkIndexes,
+            _proof.commitments,
+            _proof.subproofsLimbs
+        );
+        require(success, "x3");
+
+        emit BlockProven(currentTotalBlocksProven);
+    }
+
+    /// @notice Reverts unExecuted blocks
+    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
+        uint32 blocksCommitted = totalBlocksCommitted;
+        uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted.sub(totalBlocksExecuted));
+        uint64 revertedPriorityRequests = 0;
+
+        for (uint32 i = 0; i < blocksToRevert; ++i) {
+            StoredBlockInfo memory storedBlockInfo = _blocksToRevert[i];
+            require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "c"); // incorrect stored block info
+
+            delete storedBlockHashes[blocksCommitted];
+
+            --blocksCommitted;
+            revertedPriorityRequests = revertedPriorityRequests.add(storedBlockInfo.priorityOperations);
+        }
+
+        totalBlocksCommitted = blocksCommitted;
+        totalCommittedPriorityRequests = totalCommittedPriorityRequests.sub(revertedPriorityRequests);
+        if (totalBlocksCommitted < totalBlocksProven) {
+            totalBlocksProven = totalBlocksCommitted;
+        }
+        if (totalBlocksProven < totalBlocksSynchronized) {
+            totalBlocksSynchronized = totalBlocksProven;
+        }
+
+        emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
 
     // =======================Cross chain block synchronization======================

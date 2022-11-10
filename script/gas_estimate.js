@@ -116,7 +116,7 @@ class TestSetUp {
         for (let i = 0; i < 16; i++) {
             proofInput.subproofsLimbs.push(constants.MaxUint256);
         }
-        const tx = await this.zkLink.proveBlocks(committedBlocks, proofInput);
+        const tx = await this.periphery.proveBlocks(committedBlocks, proofInput);
         let txr = await this.zkLink.provider.getTransactionReceipt(tx.hash);
         this.totalProven += nBlocks;
         return txr.gasUsed;
@@ -126,7 +126,9 @@ class TestSetUp {
         const sb = this.storedBlock[this.totalProven];
         // mock sync block from all other chains ( 14 = 1 << 1 | 1 << 2 | 1 << 3)
         await this.periphery.setSyncProgress(sb.syncHash, 14);
-        await this.periphery.syncBlocks(sb);
+        const tx = await this.periphery.syncBlocks(sb);
+        let txr = await this.zkLink.provider.getTransactionReceipt(tx.hash);
+        return txr.gasUsed;
     }
 
     async executeBlocks(nBlocks, pendingOnchainOpsPubdata) {
@@ -251,9 +253,9 @@ class TestSetUp {
 async function estimateBlockFee(testSetUp, nBlocks, publicData, onchainOperations, pendingOnchainOpsPubdata) {
     const commitCost = await testSetUp.commitBlocks(nBlocks, publicData, onchainOperations);
     const proveCost = await testSetUp.proveBlocks(nBlocks);
-    await testSetUp.syncBlocks();
+    const syncCost = await testSetUp.syncBlocks();
     const executeCost = await testSetUp.executeBlocks(nBlocks, pendingOnchainOpsPubdata);
-    return {commitCost, proveCost, executeCost};
+    return {commitCost, proveCost, syncCost, executeCost};
 }
 
 async function estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost) {
@@ -308,6 +310,8 @@ async function main() {
     const proveCostPerBlock = (nBaseCost.proveCost.sub(baseCost.proveCost)).div(BigNumber.from(nBlocks - 1));
     console.log("ProveCostPerBlock: " + proveCostPerBlock);
     // ProveBaseCost is not accurate when use `VerifierMock` instead of `Verifier`
+
+    console.log("SyncCost: " + nBaseCost.syncCost);
 
     const executeCostPerBlock = (nBaseCost.executeCost.sub(baseCost.executeCost)).div(BigNumber.from(nBlocks - 1));
     const executeBaseCost = baseCost.executeCost.sub(executeCostPerBlock);

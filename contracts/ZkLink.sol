@@ -10,9 +10,7 @@ import "./zksync/Events.sol";
 import "./zksync/UpgradeableMaster.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
-import "./zksync/SafeCast.sol";
 import "./zksync/Utils.sol";
-import "./zksync/IERC20.sol";
 import "./zksync/SafeMathUInt32.sol";
 import "./zksync/SafeMathUInt64.sol";
 
@@ -185,76 +183,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         addPriorityRequest(Operations.OpType.FullExit, pubData);
     }
 
-    /// @notice  Withdraws tokens from zkLink contract to the owner
-    /// @param _owner Address of the tokens owner
-    /// @param _tokenId Token id
-    /// @param _amount Amount to withdraw to request.
-    /// @return The actual withdrawn amount
-    /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
-    /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant returns (uint128) {
-        // ===Checks===
-        // token MUST be registered to ZkLink
-        RegisteredToken storage rt = tokens[_tokenId];
-        require(rt.registered, "b0");
-
-        // Set the available amount to withdraw
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
-        // balance need to be recovery decimals
-        uint128 balance = pendingBalances[packedBalanceKey];
-        uint128 withdrawBalance = recoveryDecimals(balance, rt.decimals);
-        uint128 amount = Utils.minU128(withdrawBalance, _amount);
-        require(amount > 0, "b1");
-
-        // ===Interactions===
-        address tokenAddress = rt.tokenAddress;
-        if (tokenAddress == ETH_ADDRESS) {
-            // solhint-disable-next-line  avoid-low-level-calls
-            (bool success, ) = _owner.call{value: amount}("");
-            require(success, "b2");
-        } else {
-            // We will allow withdrawals of `value` such that:
-            // `value` <= user pending balance
-            // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
-            amount = this.transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
-        }
-
-        // improve withdrawn amount decimals
-        pendingBalances[packedBalanceKey] = balance.sub(improveDecimals(amount, rt.decimals));
-        emit Withdrawal(_tokenId, amount);
-
-        return amount;
-    }
-
-    /// @notice Sends tokens
-    /// @dev NOTE: will revert if transfer call fails or rollup balance difference (before and after transfer) is bigger than _maxAmount
-    /// This function is used to allow tokens to spend zkLink contract balance up to amount that is requested
-    /// @param _token Token address
-    /// @param _to Address of recipient
-    /// @param _amount Amount of tokens to transfer
-    /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
-    /// @param _isStandard If token is a standard erc20
-    /// @return withdrawnAmount The really amount than will be debited from user
-    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) external returns (uint128 withdrawnAmount) {
-        require(msg.sender == address(this), "n0"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
-
-        // most tokens are standard, fewer query token balance can save gas
-        if (_isStandard) {
-            _token.transfer(_to, _amount);
-            return _amount;
-        } else {
-            uint256 balanceBefore = _token.balanceOf(address(this));
-            _token.transfer(_to, _amount);
-            uint256 balanceAfter = _token.balanceOf(address(this));
-            uint256 balanceDiff = balanceBefore.sub(balanceAfter);
-            require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
-            require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
-
-            // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
-            return uint128(balanceDiff);
-        }
-    }
-
     // =================Validator interface=================
 
     /// @notice Commit block
@@ -271,72 +199,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// 2. Store block commitments, sync hash
     function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, CompressedBlockExtraInfo[] memory _newBlocksExtraData) external {
         _commitBlocks(_lastCommittedBlockData, _newBlocksData, true, _newBlocksExtraData);
-    }
-
-    /// @notice Recursive proof input data (individual commitments are constructed onchain)
-    struct ProofInput {
-        uint256[] recursiveInput;
-        uint256[] proof;
-        uint256[] commitments;
-        uint8[] vkIndexes;
-        uint256[16] subproofsLimbs;
-    }
-
-    /// @notice Blocks commitment verification.
-    /// @dev Only verifies block commitments without any other processing
-    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
-        // ===Checks===
-        uint32 currentTotalBlocksProven = totalBlocksProven;
-        for (uint256 i = 0; i < _committedBlocks.length; ++i) {
-            currentTotalBlocksProven = currentTotalBlocksProven.add(1);
-            require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven], "x0");
-
-            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
-        }
-
-        // ===Effects===
-        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
-        totalBlocksProven = currentTotalBlocksProven;
-
-        // ===Interactions===
-        bool success = verifier.verifyAggregatedBlockProof(
-            _proof.recursiveInput,
-            _proof.proof,
-            _proof.vkIndexes,
-            _proof.commitments,
-            _proof.subproofsLimbs
-        );
-        require(success, "x3");
-
-        emit BlockProven(currentTotalBlocksProven);
-    }
-
-    /// @notice Reverts unExecuted blocks
-    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
-        uint32 blocksCommitted = totalBlocksCommitted;
-        uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted.sub(totalBlocksExecuted));
-        uint64 revertedPriorityRequests = 0;
-
-        for (uint32 i = 0; i < blocksToRevert; ++i) {
-            StoredBlockInfo memory storedBlockInfo = _blocksToRevert[i];
-            require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "c"); // incorrect stored block info
-
-            delete storedBlockHashes[blocksCommitted];
-
-            --blocksCommitted;
-            revertedPriorityRequests = revertedPriorityRequests.add(storedBlockInfo.priorityOperations);
-        }
-
-        totalBlocksCommitted = blocksCommitted;
-        totalCommittedPriorityRequests = totalCommittedPriorityRequests.sub(revertedPriorityRequests);
-        if (totalBlocksCommitted < totalBlocksProven) {
-            totalBlocksProven = totalBlocksCommitted;
-        }
-        if (totalBlocksProven < totalBlocksSynchronized) {
-            totalBlocksSynchronized = totalBlocksProven;
-        }
-
-        emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
 
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
@@ -858,20 +720,5 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             callSuccess := call(WITHDRAWAL_GAS_LIMIT, _to, _amount, 0, 0, 0, 0)
         }
         return callSuccess;
-    }
-
-    /// @dev improve decimals when deposit, for example, user deposit 2 USDC in ui, and the decimals of USDC is 6
-    /// the `_amount` params when call contract will be 2 * 10^6
-    /// because all token decimals defined in layer two is 18
-    /// so the `_amount` in deposit pubdata should be 2 * 10^6 * 10^(18 - 6) = 2 * 10^18
-    function improveDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
-        // overflow is impossible,  `_decimals` has been checked when register token
-        return _amount.mul(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
-    }
-
-    /// @dev recover decimals when withdraw, this is the opposite of improve decimals
-    function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
-        // overflow is impossible,  `_decimals` has been checked when register token
-        return _amount.div(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
     }
 }

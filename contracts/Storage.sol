@@ -9,6 +9,8 @@ import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 import "./zksync/Config.sol";
 import "./zksync/Verifier.sol";
+import "./zksync/IERC20.sol";
+import "./zksync/SafeCast.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
@@ -191,6 +193,50 @@ contract Storage is Config {
     /// @notice Packs address and token id into single word to use as a key in balances mapping
     function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
         return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
+    }
+
+    /// @notice Sends tokens
+    /// @dev NOTE: will revert if transfer call fails or rollup balance difference (before and after transfer) is bigger than _maxAmount
+    /// This function is used to allow tokens to spend zkLink contract balance up to amount that is requested
+    /// @param _token Token address
+    /// @param _to Address of recipient
+    /// @param _amount Amount of tokens to transfer
+    /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
+    /// @param _isStandard If token is a standard erc20
+    /// @return withdrawnAmount The really amount than will be debited from user
+    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) external returns (uint128 withdrawnAmount) {
+        require(msg.sender == address(this), "n0"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
+
+        // most tokens are standard, fewer query token balance can save gas
+        if (_isStandard) {
+            _token.transfer(_to, _amount);
+            return _amount;
+        } else {
+            uint256 balanceBefore = _token.balanceOf(address(this));
+            _token.transfer(_to, _amount);
+            uint256 balanceAfter = _token.balanceOf(address(this));
+            uint256 balanceDiff = balanceBefore.sub(balanceAfter);
+            require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
+            require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
+
+            // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
+            return uint128(balanceDiff);
+        }
+    }
+
+    /// @dev improve decimals when deposit, for example, user deposit 2 USDC in ui, and the decimals of USDC is 6
+    /// the `_amount` params when call contract will be 2 * 10^6
+    /// because all token decimals defined in layer two is 18
+    /// so the `_amount` in deposit pubdata should be 2 * 10^6 * 10^(18 - 6) = 2 * 10^18
+    function improveDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
+        // overflow is impossible,  `_decimals` has been checked when register token
+        return _amount.mul(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
+    }
+
+    /// @dev recover decimals when withdraw, this is the opposite of improve decimals
+    function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
+        // overflow is impossible,  `_decimals` has been checked when register token
+        return _amount.div(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
     }
 
     /// @notice Performs a delegatecall to the contract implementation
