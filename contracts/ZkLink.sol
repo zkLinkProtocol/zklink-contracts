@@ -320,14 +320,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
 
         // ===Effects===
-        uint64 committedPriorityRequests = 0;
         for (uint32 i = 0; i < _newBlocksData.length; ++i) {
             _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i], compressed, _newBlocksExtraData[i]);
 
-            committedPriorityRequests = committedPriorityRequests.add(_lastCommittedBlockData.priorityOperations);
+            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
+            totalCommittedPriorityRequests = totalCommittedPriorityRequests.add(_lastCommittedBlockData.priorityOperations);
             storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
         }
-        totalCommittedPriorityRequests = totalCommittedPriorityRequests.add(committedPriorityRequests);
         require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
 
         totalBlocksCommitted = totalBlocksCommitted.add(SafeCast.toUint32(_newBlocksData.length));
