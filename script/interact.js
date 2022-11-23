@@ -281,3 +281,21 @@ task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or te
         const tx = await zkLink.connect(sender).setAuthPubkeyHash(pubkeyHash, nonce);
         console.log('tx', tx.hash);
     });
+
+task("zkLinkStatus", "Query zkLink status")
+    .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("property", "The zkLink property", undefined, types.string, false)
+    .setAction(async (taskArgs, hardhat) => {
+        let zkLinkProxy = taskArgs.zkLink;
+        let property = taskArgs.property;
+        if (zkLinkProxy === undefined) {
+            zkLinkProxy = readDeployContract('deploy', 'zkLinkProxy');
+        }
+        console.log('zkLink', zkLinkProxy);
+        console.log('property', property);
+
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+        const zkLink = zkLinkFactory.attach(zkLinkProxy);
+        const result = await zkLink[property]();
+        console.log('result:%s', result);
+    });
