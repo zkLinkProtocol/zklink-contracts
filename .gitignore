@@ -3,10 +3,10 @@ node_modules
 
 contracts/zksync/KeysWithPlonkVerifier.sol
 log
-etc
-hardhat.config.devnet.js
-hardhat.config.testnet.js
-hardhat.config.mainnet.js
+
+etc/*
+!etc/DEFAULT.json
+!etc/EXAMPLE.json
 
 #Hardhat files
 cache

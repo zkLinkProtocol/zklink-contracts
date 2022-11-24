@@ -1,0 +1,17 @@
+{
+  "network": {
+    "url": "https://matic-mumbai.chainstacklabs.com",
+    "accounts": ["YOUR_DEPLOYER_KEY", "YOUR_GOVERNOR_KEY"]
+  },
+  "scan": "YOUR_ETHERSCAN_KEY",
+  "macro":{
+    "BLOCK_PERIOD": "1 seconds",
+    "UPGRADE_NOTICE_PERIOD": 0,
+    "PRIORITY_EXPIRATION": 0,
+    "CHAIN_ID": 1,
+    "ENABLE_COMMIT_COMPRESSED_BLOCK": true,
+    "MIN_CHAIN_ID": 1,
+    "MAX_CHAIN_ID": 4,
+    "ALL_CHAINS": 15
+  }
+}

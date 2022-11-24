@@ -12,6 +12,27 @@ require("./script/deploy_faucet");
 require("./script/deploy_account_mock");
 require("./script/interact");
 
+const defaultNet = "DEFAULT";
+// load config file by env 'NET'
+const netName = process.env.NET === undefined ? defaultNet : process.env.NET;
+const hardhatConfig = require(`./etc/${netName}.json`);
+
+// custom network for example:
+// {
+//   url: "http://localhost:8545",
+//   accounts: [deployerKey, governorKey]
+// }
+const defaultNetwork = netName === defaultNet ? "hardhat": "custom";
+
+const networks = {
+  hardhat: {
+    allowUnlimitedContractSize: true,
+  }
+};
+if (netName !== defaultNet) {
+  networks.custom = hardhatConfig.network;
+}
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -38,22 +59,13 @@ module.exports = {
       }
     ]
   },
-  networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true
-    }
+  defaultNetwork: defaultNetwork,
+  networks: networks,
+  solpp: {
+    defs: hardhatConfig.macro
   },
-  solpp:{
-    defs: {
-      BLOCK_PERIOD: '1 seconds',
-      UPGRADE_NOTICE_PERIOD: 0,
-      PRIORITY_EXPIRATION: 0,
-      CHAIN_ID: 1,
-      ENABLE_COMMIT_COMPRESSED_BLOCK: true,
-      MIN_CHAIN_ID: 1,
-      MAX_CHAIN_ID: 4,
-      ALL_CHAINS: 15
-    }
+  etherscan: {
+    apiKey: hardhatConfig.scan
   },
   gasReporter: {
     enabled: !!(process.env.REPORT_GAS)
