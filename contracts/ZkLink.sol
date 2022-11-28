@@ -345,9 +345,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // Check timestamp of the new block
         {
             require(_newBlock.timestamp >= _previousBlock.timestamp, "g2");
-            // MUST be in a range of [block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER, block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA]
-            require(block.timestamp.sub(COMMIT_TIMESTAMP_NOT_OLDER) <= _newBlock.timestamp &&
-                _newBlock.timestamp <= block.timestamp.add(COMMIT_TIMESTAMP_APPROXIMATION_DELTA), "g3");
         }
 
         // Check onchain operations

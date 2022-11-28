@@ -17,8 +17,6 @@ const { deploy,
     MIN_CHAIN_ID,
     MAX_CHAIN_ID,
     CHAIN_ID,
-    COMMIT_TIMESTAMP_NOT_OLDER,
-    COMMIT_TIMESTAMP_APPROXIMATION_DELTA,
     ZERO_BYTES32,
     EMPTY_STRING_KECCAK
 } = require('./utils');
@@ -375,16 +373,6 @@ describe('Block commit unit tests', function () {
             commitBlock.timestamp = preBlock.timestamp - 1;
             await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
                 .to.be.revertedWith("g2");
-
-            commitBlock.timestamp = l1Block.timestamp - COMMIT_TIMESTAMP_NOT_OLDER - 1;
-            preBlock.timestamp = commitBlock.timestamp - 1;
-            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("g3");
-
-            commitBlock.timestamp = l1Block.timestamp + COMMIT_TIMESTAMP_APPROXIMATION_DELTA + 1;
-            preBlock.timestamp = commitBlock.timestamp - 1;
-            await expect(zkLink.testCommitOneBlock(preBlock, commitBlock, false, extraBlock))
-                .to.be.revertedWith("g3");
         });
 
         it('commit compressed block should return a result same as full block', async () => {

@@ -59,13 +59,6 @@ contract Config {
             : MASS_FULL_EXIT_PERIOD + PRIORITY_EXPIRATION_PERIOD + TIME_TO_WITHDRAW_FUNDS_FROM_FULL_EXIT
         );
 
-    /// @dev Timestamp - seconds since unix epoch
-    uint256 internal constant COMMIT_TIMESTAMP_NOT_OLDER = 24 hours;
-
-    /// @dev Maximum available error between real commit block timestamp and analog used in the verifier (in seconds)
-    /// @dev Must be used cause miner's `block.timestamp` value can differ on some small value (as we know - 15 seconds)
-    uint256 internal constant COMMIT_TIMESTAMP_APPROXIMATION_DELTA = 15 minutes;
-
     /// @dev Bit mask to apply for verifier public input before verifying.
     uint256 internal constant INPUT_MASK = $$(~uint256(0) >> 3);
 
