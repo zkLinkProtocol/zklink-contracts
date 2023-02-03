@@ -59,6 +59,9 @@ contract Config {
             : MASS_FULL_EXIT_PERIOD + PRIORITY_EXPIRATION_PERIOD + TIME_TO_WITHDRAW_FUNDS_FROM_FULL_EXIT
         );
 
+    /// @dev Max commitment produced in zk proof where highest 3 bits is 0
+    uint256 internal constant MAX_PROOF_COMMITMENT = 0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
     /// @dev Bit mask to apply for verifier public input before verifying.
     uint256 internal constant INPUT_MASK = $$(~uint256(0) >> 3);
 

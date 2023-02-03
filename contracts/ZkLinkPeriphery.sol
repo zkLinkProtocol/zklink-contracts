@@ -317,7 +317,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             currentTotalBlocksProven = currentTotalBlocksProven.add(1);
             require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven], "x0");
 
-            require(_proof.commitments[i] & INPUT_MASK == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+            // commitment of proof produced by zk has only 253 significant bits
+            // 'commitment & INPUT_MASK' is used to set the highest 3 bits to 0 and leave the rest unchanged
+            require(_proof.commitments[i] <= MAX_PROOF_COMMITMENT
+                && _proof.commitments[i] == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
         }
 
         // ===Effects===
