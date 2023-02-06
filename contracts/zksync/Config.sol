@@ -23,7 +23,7 @@ contract Config {
     uint32 internal constant MAX_ACCOUNT_ID = $$((2**24) - 1);
 
     /// @dev Max sub account id that could be bound to account id
-    uint8 internal constant MAX_SUB_ACCOUNT_ID = $$((2**3) - 1);
+    uint8 internal constant MAX_SUB_ACCOUNT_ID = $$((2**5) - 1);
 
     /// @dev Expected average period of block creation
     uint256 internal constant BLOCK_PERIOD = $(BLOCK_PERIOD);
