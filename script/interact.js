@@ -19,7 +19,7 @@ task("addToken", "Adds a new token with a given address for testnet")
     .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
     .addParam("tokenId", "The token id")
     .addParam("tokenAddress", "The token address")
-    .addParam("tokenDecimals", "The token decimals")
+    .addParam("tokenDecimals", "The token decimals", 18, types.int, true)
     .addParam("standard", "If the token is a standard erc20", true, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [governor] = await hardhat.ethers.getSigners();
