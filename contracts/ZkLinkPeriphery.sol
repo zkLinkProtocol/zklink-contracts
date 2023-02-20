@@ -379,14 +379,20 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
     /// @notice Get synchronized progress of current chain known
     function getSynchronizedProgress(StoredBlockInfo memory _block) public view returns (uint256 progress) {
-        progress = synchronizedChains[_block.syncHash];
-        // combine the current chain if it has proven this block
-        if (_block.blockNumber <= totalBlocksProven &&
-            hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
-            progress |= CHAIN_INDEX;
+        // `ALL_CHAINS` will be upgraded when we add a new chain
+        // and all blocks that confirm synchronized will return the latest progress flag
+        if (_block.blockNumber <= totalBlocksSynchronized) {
+            progress = ALL_CHAINS;
         } else {
-            // to prevent bridge from delivering a wrong progress
-            progress &= ~CHAIN_INDEX;
+            progress = synchronizedChains[_block.syncHash];
+            // combine the current chain if it has proven this block
+            if (_block.blockNumber <= totalBlocksProven &&
+                hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
+                progress |= CHAIN_INDEX;
+            } else {
+                // to prevent bridge from delivering a wrong progress
+                progress &= ~CHAIN_INDEX;
+            }
         }
     }
 
