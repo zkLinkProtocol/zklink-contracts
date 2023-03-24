@@ -12,6 +12,8 @@ const OP_CHANGE_PUBKEY = 6;
 const OP_FORCE_EXIT = 7;
 const OP_ORDER_MATCHING = 11;
 const CHUNK_BYTES = 19;
+const MAX_ACCOUNT_ID = 16777215;
+const MAX_SUB_ACCOUNT_ID = 31;
 const MIN_CHAIN_ID = 1;
 const MAX_CHAIN_ID = 4;
 const CHAIN_ID = 1; // chain id of UnitTest env
@@ -276,6 +278,8 @@ module.exports = {
     OP_TRANSFER_TO_NEW,
     OP_ORDER_MATCHING,
     CHUNK_BYTES,
+    MAX_ACCOUNT_ID,
+    MAX_SUB_ACCOUNT_ID,
     MIN_CHAIN_ID,
     MAX_CHAIN_ID,
     CHAIN_ID,

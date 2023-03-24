@@ -1,6 +1,8 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
-const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, USD_TOKEN_ID} = require('./utils');
+const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID,
+    MAX_ACCOUNT_ID
+} = require('./utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
@@ -60,7 +62,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         await expect(zkLink.connect(defaultSender).depositETH(hardhat.ethers.constants.AddressZero, subAccountId, {value: amount})).to.be.revertedWith("e1");
 
         // subAccountId too large
-        const tooLargeSubId = 8; // 2**3
+        const tooLargeSubId = MAX_SUB_ACCOUNT_ID + 1; // 2**5
         await expect(zkLink.connect(defaultSender).depositETH(to, tooLargeSubId, {value: amount})).to.be.revertedWith("e2");
     });
 
@@ -158,11 +160,11 @@ describe('ZkLink priority queue ops unit tests', function () {
         await zkLink.setExodus(false);
 
         // accountId too large
-        const tooLargeAccountId = 16777216; // 2**24
+        const tooLargeAccountId = MAX_ACCOUNT_ID + 1; // 2**24
         await expect(zkLink.connect(defaultSender).requestFullExit(tooLargeAccountId, subAccountId, ethId, false)).to.be.revertedWith("a0");
 
         // subAccountId too large
-        const tooLargeSubId = 8; // 2**3
+        const tooLargeSubId = MAX_SUB_ACCOUNT_ID + 1; // 2**5
         await expect(zkLink.connect(defaultSender).requestFullExit(accountId, tooLargeSubId, ethId, false)).to.be.revertedWith("a1");
 
         // tokenId not registered
