@@ -1,20 +1,18 @@
 const { ethers, upgrades } = require("hardhat");
 const { expect } = require('chai');
-const {parseEther} = require("ethers/lib/utils");
 
 describe('LayerZero bridge unit tests', function () {
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
-    let deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH;
+    let deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH,mockLzInETH;
     let lzInETH, lzBridgeInETH;
     before(async () => {
-        [deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH] = await ethers.getSigners();
+        [deployer,networkGovernor,alice,lzBridgeInBSC,zklInETH,mockLzInETH] = await ethers.getSigners();
 
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
-        await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
 
-        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
+        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
         lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
     });
 
@@ -41,7 +39,9 @@ describe('LayerZero bridge unit tests', function () {
     });
 
     it('if lzReceive failed, message must be stored', async () => {
-        await expect(lzInETH.lzReceiveTest(lzChainIdInBSC, lzBridgeInBSC.address, lzBridgeInETH.address, 1, "0x02"))
+        await lzBridgeInETH.connect(networkGovernor).setEndpoint(mockLzInETH.address);
+        const srcPath = ethers.utils.solidityPack(["address","address"],[lzBridgeInBSC.address,lzBridgeInETH.address]);
+        await expect(lzBridgeInETH.connect(mockLzInETH).lzReceive(lzChainIdInBSC, srcPath, 1, "0x02"))
             .to.be.emit(lzBridgeInETH, "MessageFailed")
             .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase(), 1, "0x02");
 

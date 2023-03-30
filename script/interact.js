@@ -81,7 +81,20 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
     });
 
 task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
+    .addParam("dest", "The destination net env name")
     .setAction(async (taskArgs, hardhat) => {
+        const dest = taskArgs.dest;
+        console.log('dest env', dest);
+        if (process.env.NET === dest) {
+            console.log('dest env must not be the same with current env net')
+            return;
+        }
+        const lzInfo = layerZero[dest];
+        if (lzInfo === undefined) {
+            console.log('invalid dest env')
+            return;
+        }
+
         const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
         const governor = await hardhat.ethers.getSigner(governorAddress);
@@ -95,26 +108,17 @@ task("setDestinations", "Set layerzero bridge destinations (only support testnet
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
 
-        // fixme dstChains should not be constant
-        const dstChains = ['RINKEBY','BSCTEST','AVAXTEST','POLYGONTEST'];
-        for (let i = 0; i < dstChains.length; i++) {
-            const dstChain = dstChains[i];
-            if (process.env.NET === dstChain) {
-                continue;
-            }
-            console.log('Set destination %s...', dstChain);
-            const lzInfo = layerZero[dstChain];
-            try {
-                const dstBridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy', dstChain);
-                const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
-                console.log('tx', tx.hash);
-            } catch (error) {
-                console.log('Set bridge destination failed: ' + error);
-            }
+        console.log('Set destination %s for %s...', dest, process.env.NET);
+        try {
+            const dstBridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy', dest);
+            const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
+            console.log('tx', tx.hash);
+        } catch (error) {
+            console.log('Set bridge destination failed: ' + error);
         }
     });
 
-task("setApp", "Set layerzero supported app")
+task("setApp", "Set layerzero supported app (only support testnet)")
     .setAction(async (taskArgs, hardhat) => {
         const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
         const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
@@ -203,7 +207,7 @@ task("mintFaucetToken", "Mint faucet token for testnet")
 
 task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
     .addParam("bridge", "The src lz bridge contract address (default get from deploy log)", undefined, types.string, true)
-    .addParam("dst", "The target destination network name: 'RINKEBY','GOERLI','AVAXTEST','POLYGONTEST'")
+    .addParam("dst", "The target destination network name: 'GOERLI','AVAXTEST','POLYGONTEST','BSCTEST'")
     .addParam("amount", "Amount to send")
     .setAction(async (taskArgs, hardhat) => {
         let bridgeAddr = taskArgs.bridge;
@@ -297,5 +301,41 @@ task("zkLinkStatus", "Query zkLink status")
         const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
         const zkLink = zkLinkFactory.attach(zkLinkProxy);
         const result = await zkLink[property]();
+        console.log('result:%s', result);
+    });
+
+task("estimateZkLinkBlockBridgeFees", "Get fee for bridge block")
+    .addParam("lzBridge", "The layerzero bridge contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("dest", "The dest net env name")
+    .addParam("syncHash", "The block sync hash")
+    .addParam("progress", "The sync progress of current chain")
+    .addParam("useZro", "True if use zro to pay fee", false, types.boolean, true)
+    .addParam("adapterParams", "Adapter params for relayer", "0x", types.string, true)
+    .setAction(async (taskArgs, hardhat) => {
+        let lzBridge = taskArgs.lzBridge;
+        let dest = taskArgs.dest;
+        let syncHash = taskArgs.syncHash;
+        let progress = taskArgs.progress;
+        let useZro = taskArgs.useZro;
+        let adapterParams = taskArgs.adapterParams;
+        if (lzBridge === undefined) {
+            lzBridge = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+        }
+        const lzInfo = layerZero[dest];
+        if (lzInfo === undefined) {
+            console.log('%s layerzero not support', dest);
+            return;
+        }
+        console.log('lzBridge', lzBridge);
+        console.log('dest', dest);
+        console.log('syncHash', syncHash);
+        console.log('progress', progress);
+        console.log('useZro', useZro);
+        console.log('adapterParams', adapterParams);
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeContract = bridgeFactory.attach(lzBridge);
+
+        const result = await bridgeContract.estimateZkLinkBlockBridgeFees(lzInfo.chainId, syncHash, progress, useZro, adapterParams);
         console.log('result:%s', result);
     });

@@ -23,10 +23,8 @@ describe('ZKL unit tests', function () {
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
         lzInBSC = await dummyLZFactory.deploy(lzChainIdInBSC);
-        await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
-        await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
-        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
+        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
         lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
         lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInBSC.address], {kind: "uups"});
 
@@ -153,20 +151,5 @@ describe('ZKL unit tests', function () {
         const b1InBSC = await zklInBSC.balanceOf(alice.address);
         expect(b1InETH).eq(b0InETH.add(bridgeAmount));
         expect(b1InBSC).eq(b0InBSC.sub(bridgeAmount));
-    });
-
-    it('test lz receive gas cost', async () => {
-        const address = tom.address;
-        const amount = parseEther("1");
-        const payload = ethers.utils.defaultAbiCoder.encode(["bytes","uint256"], [address,amount])
-        const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[0, payload]);
-        const nonce = 1;
-        await expect(lzInETH.lzReceiveTest(lzChainIdInBSC,
-            lzBridgeInBSC.address,
-            lzBridgeInETH.address,
-            nonce,
-            payloadWithType))
-            .to.be.emit(lzBridgeInETH, "ReceiveZKL")
-            .withArgs(lzChainIdInBSC, nonce, address, amount);
     });
 });

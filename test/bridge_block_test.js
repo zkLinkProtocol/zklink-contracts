@@ -1,7 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 const { expect } = require('chai');
-const {parseEther} = require("ethers/lib/utils");
 const {CHAIN_ID_INDEX,ALL_CHAINS} = require("./utils");
+const {BigNumber} = require("ethers");
 
 describe('Bridge ZkLink block unit tests', function () {
     let deployer,networkGovernor,alice,bob,evilBridge;
@@ -20,10 +20,8 @@ describe('Bridge ZkLink block unit tests', function () {
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
         lzInBSC = await dummyLZFactory.deploy(lzChainIdInBSC);
-        await lzInETH.setEstimatedFees(parseEther("0.001"), 0);
-        await lzInBSC.setEstimatedFees(parseEther("0.001"), 0);
 
-        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridge');
+        const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
         lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
         lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInBSC.address], {kind: "uups"});
 
@@ -66,14 +64,13 @@ describe('Bridge ZkLink block unit tests', function () {
         await zklinkInETH.mockProveBlock(storedBlock);
 
         const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, syncHash, 1, false, "0x");
-        const lzParams = {
-            "dstChainId": lzChainIdInBSC,
-            "refundAddress": alice.address,
-            "zroPaymentAddress": ethers.constants.AddressZero,
-            "adapterParams": "0x"
-        }
-        await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(storedBlock,
-            lzParams, {value: fees.nativeFee}))
+        await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(
+            storedBlock,
+            [lzChainIdInBSC],
+            alice.address,
+            ethers.constants.AddressZero,
+            "0x",
+            {value: fees.nativeFee}))
             .to.be.emit(lzBridgeInBSC, "ReceiveSynchronizationProgress")
             .withArgs(lzChainIdInETH, 1, syncHash, 1);
     });
@@ -97,19 +94,37 @@ describe('Bridge ZkLink block unit tests', function () {
         expect(await zklinkInETH.getSynchronizedProgress(storedBlock)).to.be.eq(progress);
     });
 
-    it('test lz receive gas cost', async () => {
+    it('multiple bridge ZkLink block should success', async () => {
         const syncHash = '0x00000000000000000000000000000000000000000000000000000000000000aa';
-        const syncProgress = 15;
-        const payload = ethers.utils.defaultAbiCoder.encode(["uint32","uint256"], [syncHash,syncProgress])
-        const payloadWithType = ethers.utils.solidityPack(["uint8", "bytes"],[1, payload]);
-        const nonce = 1;
+        const storedBlock = {
+            "blockNumber":11,
+            "priorityOperations":7,
+            "pendingOnchainOperationsHash":"0xcf2ef9f8da5935a514cc25835ea39be68777a2674197105ca904600f26547ad2",
+            "timestamp":1652422395,
+            "stateHash":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "commitment":"0xff04d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
+            "syncHash":syncHash,
+        };
+        await zklinkInETH.mockProveBlock(storedBlock);
 
-        await expect(lzInETH.lzReceiveTest(lzChainIdInBSC,
-            lzBridgeInBSC.address,
-            lzBridgeInETH.address,
-            nonce,
-            payloadWithType))
-            .to.be.emit(lzBridgeInETH, "ReceiveSynchronizationProgress")
-            .withArgs(lzChainIdInBSC, nonce, syncHash, syncProgress);
+        const fees = await lzBridgeInETH.estimateZkLinkBlockBridgeFees(lzChainIdInBSC, syncHash, 1, false, "0x");
+        await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(
+            storedBlock,
+            [lzChainIdInBSC, lzChainIdInBSC], // mock duplicate bridge
+            alice.address,
+            ethers.constants.AddressZero,
+            "0x",
+            {value: fees.nativeFee})) // fee is not enough
+            .to.be.revertedWith("Msg value is not enough for the last send");
+
+        await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(
+            storedBlock,
+            [lzChainIdInBSC, lzChainIdInBSC], // mock duplicate bridge
+            alice.address,
+            ethers.constants.AddressZero,
+            "0x",
+            {value: fees.nativeFee.mul(BigNumber.from("2"))})) // fee is enough
+            .to.be.emit(lzBridgeInBSC, "ReceiveSynchronizationProgress")
+            .withArgs(lzChainIdInETH, 3, syncHash, 1); // lz outbound nonce increase from 1 to 3
     });
 });

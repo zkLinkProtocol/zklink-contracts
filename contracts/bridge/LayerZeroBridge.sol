@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./ILayerZeroReceiver.sol";
 import "./ILayerZeroEndpoint.sol";
+import "./ILayerZeroUserApplicationConfig.sol";
 import "./LayerZeroStorage.sol";
 import "../token/IZKL.sol";
 
@@ -15,14 +16,13 @@ import "../token/IZKL.sol";
 /// * `_dstAddress` is not deployed to dst chain, and we can deploy LayerZeroBridge to dst chain to fix it.
 /// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
 /// * lzReceive reverted unexpected, and we can fix bug and upgrade contract to fix it.
-/// ILayerZeroUserApplicationConfig does not need to be implemented for now
 /// @author zk.link
-contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver {
+contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
 
     // to avoid stack too deep
     struct LzBridgeParams {
         uint16 dstChainId; // the destination chainId
-        address payable refundAddress; // native fees(collected by oracle and relayer) refund address if msg.value is too large
+        address payable refundAddress; // native fees refund address if msg.value is too large
         address zroPaymentAddress; // if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
         bytes adapterParams; // see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
     }
@@ -36,6 +36,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         require(msg.sender == networkGovernor, "Caller is not governor");
         _;
     }
+
+    receive() external payable {}
 
     /// @dev Put `initializer` modifier here to prevent anyone call this function from proxy after we initialized
     /// No delegatecall exist in this contract, so it's ok to expose this function in logic
@@ -56,6 +58,23 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernor {
         // nothing to do here, we check authority by onlyGovernor modifier
+    }
+
+    //---------------------------UserApplication config----------------------------------------
+    function setConfig(uint16 _version, uint16 _chainId, uint _configType, bytes calldata _config) external override onlyGovernor {
+        endpoint.setConfig(_version, _chainId, _configType, _config);
+    }
+
+    function setSendVersion(uint16 _version) external override onlyGovernor {
+        endpoint.setSendVersion(_version);
+    }
+
+    function setReceiveVersion(uint16 _version) external override onlyGovernor {
+        endpoint.setReceiveVersion(_version);
+    }
+
+    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override onlyGovernor {
+        endpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
     /// @notice Set bridge destination
@@ -139,9 +158,10 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         // ===Interactions===
         // send LayerZero message
         {
+            bytes memory path = abi.encodePacked(trustedRemote, address(this));
             bytes memory payload = buildZKLBridgePayload(receiver, amount);
             // solhint-disable-next-line check-send-result
-            endpoint.send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
+            endpoint.send{value:msg.value}(_dstChainId, path, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
         }
 
         // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
@@ -150,38 +170,72 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
     /// @notice Bridge ZkLink block to other chain
     /// @param storedBlockInfo the block proved but not executed at the current chain
-    /// @param params lz params
+    /// @param dstChainIds dst chains to bridge, empty array will be reverted
+    /// @param refundAddress native fees refund address if msg.value is too large
+    /// @param zroPaymentAddress if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
+    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
     function bridgeZkLinkBlock(
         IZkLink.StoredBlockInfo calldata storedBlockInfo,
-        LzBridgeParams calldata params
+        uint16[] memory dstChainIds,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams
     ) external nonReentrant payable {
-        uint16 _dstChainId = params.dstChainId;
         // ===Checks===
-        bytes memory trustedRemote = checkDstChainId(_dstChainId);
+        require(dstChainIds.length > 0, "No dst chain");
 
         address zklink = apps[APP.ZKLINK];
         require(zklink != address(0), "ZKLINK not support");
 
+        // ===Interactions===
+        bytes32 syncHash = storedBlockInfo.syncHash;
+        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
+
+        uint256 originBalance = address(this).balance - msg.value; // overflow is impossible
+        // before the last send, we send all balance of this contract and set refund address to this contract
+        for (uint i = 0; i < dstChainIds.length - 1; ++i) { // overflow is impossible
+            _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[i], payable(address(this)), zroPaymentAddress, adapterParams, address(this).balance);
+        }
+        // for the last send, we send all left value exclude the origin balance of this contract and set refund address to `refundAddress`
+        require(address(this).balance > originBalance, "Msg value is not enough for the last send");
+        uint256 leftMsgValue = address(this).balance - originBalance; // overflow is impossible
+        _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[dstChainIds.length - 1], refundAddress, zroPaymentAddress, adapterParams, leftMsgValue);
+    }
+
+    function _bridgeZkLinkBlockProgress(
+        bytes32 syncHash,
+        uint256 progress,
+        uint16 dstChainId,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams,
+        uint256 bridgeFee
+    ) internal {
+        // ===Checks===
+        bytes memory trustedRemote = checkDstChainId(dstChainId);
+
         // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
 
         // ===Effects===
-        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
-        uint64 nonce = endpoint.getOutboundNonce(_dstChainId, address(this));
-        emit SendSynchronizationProgress(_dstChainId, nonce + 1, storedBlockInfo.syncHash, progress);
+        uint64 nonce = endpoint.getOutboundNonce(dstChainId, address(this));
+        emit SendSynchronizationProgress(dstChainId, nonce + 1, syncHash, progress);
 
         // ===Interactions===
         // send LayerZero message
-        bytes memory payload = buildZkLinkBlockBridgePayload(storedBlockInfo.syncHash, progress);
+        bytes memory path = abi.encodePacked(trustedRemote, address(this));
+        bytes memory payload = buildZkLinkBlockBridgePayload(syncHash, progress);
         // solhint-disable-next-line check-send-result
-        endpoint.send{value:msg.value}(_dstChainId, trustedRemote, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
+        endpoint.send{value:bridgeFee}(dstChainId, path, payload, refundAddress, zroPaymentAddress, adapterParams);
     }
 
     /// @notice Receive the bytes payload from the source chain via LayerZero
     /// @dev lzReceive can only be called by endpoint
-    function lzReceive(uint16 srcChainId, bytes calldata srcAddress, uint64 nonce, bytes calldata payload) external override onlyEndpoint nonReentrant {
+    /// @dev srcPath(in UltraLightNodeV2) = abi.encodePacked(srcAddress, dstAddress);
+    function lzReceive(uint16 srcChainId, bytes calldata srcPath, uint64 nonce, bytes calldata payload) external override onlyEndpoint nonReentrant {
         // reject invalid src contract address
-        bytes memory trustedRemote = destinations[srcChainId];
-        require(keccak256(trustedRemote) == keccak256(srcAddress), "Invalid src");
+        bytes memory srcAddress = destinations[srcChainId];
+        bytes memory path = abi.encodePacked(srcAddress, address(this));
+        require(path.length == srcPath.length && keccak256(path) == keccak256(srcPath), "Invalid src");
 
         // try-catch all errors/exceptions
         // solhint-disable-next-line no-empty-blocks
