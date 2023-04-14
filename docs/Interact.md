@@ -1,4 +1,4 @@
-Here are some usefull commands that can help you to interact with zkLink contract when development.
+Here are some useful commands that can help you to interact with zkLink contract when development.
 
 ## Deploy faucet token
 
