@@ -330,6 +330,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
 
         totalBlocksCommitted = totalBlocksCommitted.add(SafeCast.toUint32(_newBlocksData.length));
+        // If enable compressed commit then we can ignore prove and ensure that block is correct by sync
+        if (ENABLE_COMMIT_COMPRESSED_BLOCK) {
+            totalBlocksProven = totalBlocksCommitted;
+        }
 
         // log the last new committed block number
         emit BlockCommit(_lastCommittedBlockData.blockNumber);
@@ -367,7 +371,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 }
             }
         }
-        bytes32 syncHash = createSyncHash(commitment, onchainOperationPubdataHashs);
+        bytes32 syncHash = createSyncHash(_previousBlock.syncHash, commitment, onchainOperationPubdataHashs);
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
@@ -506,8 +510,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(bytes32 commitment, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (bytes32 syncHash) {
-        syncHash = commitment;
+    function createSyncHash(bytes32 preBlockSyncHash, bytes32 commitment, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (bytes32 syncHash) {
+        syncHash = Utils.concatTwoHash(preBlockSyncHash, commitment);
         for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
             uint256 chainIndex = 1 << i - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
             if (chainIndex & ALL_CHAINS == chainIndex) {
