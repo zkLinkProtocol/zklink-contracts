@@ -125,15 +125,16 @@ NET=ETH npx hardhat deployZkLink --governor GOVERNOR_ADDRESS --validator VALIDAT
 
 ```bash
 $ npx hardhat help deployLZBridge
-Hardhat version 2.10.1
+Hardhat version 2.13.1
 
-Usage: hardhat [GLOBAL OPTIONS] deployLZBridge --force <BOOLEAN> --governor <STRING> --skip-verify <BOOLEAN>
+Usage: hardhat [GLOBAL OPTIONS] deployLZBridge [--force <BOOLEAN>] [--governor <STRING>] [--skip-verify <BOOLEAN>] [--zklink <STRING>]
 
 OPTIONS:
 
-  --force       Fore redeploy all contracts, default is false 
-  --governor    The governor address (default read from zkLink deploy log) 
-  --skip-verify Skip verify, default is false 
+  --force       Fore redeploy all contracts (default: false)
+  --governor    The governor address (default get from zkLink deploy log) 
+  --skip-verify Skip verify (default: false)
+  --zklink      The zklink address (default get from zkLink deploy log) 
 
 deployLZBridge: Deploy LayerZeroBridge
 ```
@@ -146,12 +147,11 @@ After the deployment is complete, a log file with a name of `deploy_lz_bridge_${
 {
   "deployer": "0x7032F91C4734c3091289E153f23bf430b8bEBd8C",
   "governor": "0x7032F91C4734c3091289E153f23bf430b8bEBd8C",
-  "lzBridgeProxy": "0xd3e0024e84BB9631C314AF0a20A96ae3Bc64abe9",
-  "lzBridgeTarget": "0x96CeaF288e289cDa49E457CAAB8976F10e263b10"
+  "lzBridge": "0xd3e0024e84BB9631C314AF0a20A96ae3Bc64abe9"
 }
 ```
 
-The `lzBridgeProxy` is the address that used to `addBridge` .
+The `lzBridge` is the address that used to `addBridge` .
 
 For example:
 
@@ -174,16 +174,14 @@ log/
 
 > No deploy_lz_bridge log exist in devnet.
 
-We need to connect zkLink with lzBridge for cross chain block verify. Each chain will need to execute `addBridge`, `setDestinations` and `setApp` , which means if we deploy on AVAXTEST and POLYGONTEST, the commands that need to be executed are:
+We need to connect zkLink with lzBridge for cross chain block verify. Each chain will need to execute `addBridge`, `setDestinations`  , which means if we deploy on AVAXTEST and POLYGONTEST, the commands that need to be executed are:
 
 ```bash
 NET=AVAXTEST npx hardhat addBridge [command options]
 NET=AVAXTEST npx hardhat setDestinations [command options]
-NET=AVAXTEST npx hardhat setApp [command options]
 
 NET=POLYGONTEST npx hardhat addBridge [command options]
 NET=POLYGONTEST npx hardhat setDestinations [command options]
-NET=POLYGONTEST npx hardhat setApp [command options]
 ```
 
 > Only addBridge need to execute in devnet.
@@ -194,7 +192,7 @@ NET=POLYGONTEST npx hardhat setApp [command options]
 
 ```bash
 $ npx hardhat help addBridge
-Hardhat version 2.10.1
+Hardhat version 2.13.1
 
 Usage: hardhat [GLOBAL OPTIONS] addBridge [--bridge <STRING>]
 
@@ -223,36 +221,21 @@ NET=LOCAL1 npx hardhat addBridge --bridge EOA_ADDRESS
 
 ```bash
 $ npx hardhat help setDestinations
-Hardhat version 2.10.1
+Hardhat version 2.13.1
 
-Usage: hardhat [GLOBAL OPTIONS] setDestinations
+Usage: hardhat [GLOBAL OPTIONS] setDestinations --dest <STRING>
+
+OPTIONS:
+
+  --dest        The destination net env name 
 
 setDestinations: Set layerzero bridge destinations (only support testnet)
 ```
 
-This command will search the `deloy_lz_bridge` logs in the log directory, and set lzBridge gates of all other chains.
+This command will search the `deloy_lz_bridge_${dest}` log in the log directory, and set lzBridge gate of `dest` chain.
 
 For example:
 
 ```shell
-NET=AVAXTEST npx hardhat setDestinations
-```
-
-### Set bridge supported app
-
-```bash
-$ npx hardhat help setApp
-Hardhat version 2.10.1
-
-Usage: hardhat [GLOBAL OPTIONS] setApp
-
-setApp: Set layerzero supported app
-```
-
-LayerZeroBridge support both zkl bridge and zkLink bridge, this command will read `deploy_zkl` log and if `ZKL` is deployed it will set support zkl to true. Also it will read `deploy` log and if `ZkLink` is deployed it will set support zkLink to true.
-
-For example:
-
-```shell
-NET=AVAXTEST npx hardhat setApp
+NET=AVAXTEST npx hardhat setDestinations --dest POLYGONTEST
 ```

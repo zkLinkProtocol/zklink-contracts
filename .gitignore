@@ -12,6 +12,3 @@ cache
 cache-zk
 artifacts
 artifacts-zk
-
-# OpenZeppelin
-.openzeppelin/unknown-*.json
