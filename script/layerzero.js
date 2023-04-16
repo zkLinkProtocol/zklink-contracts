@@ -18,6 +18,18 @@ const layerZero = {
         chainId: 109,
         address: '0x3c2269811836af69497E5F486A85D7316753cf62'
     },
+    ARBITRUM: {
+        chainId: 110,
+        address: '0x3c2269811836af69497E5F486A85D7316753cf62'
+    },
+    OPTIMISM: {
+        chainId: 111,
+        address: '0x3c2269811836af69497E5F486A85D7316753cf62'
+    },
+    ZKSYNC: {
+        chainId: 165,
+        address: '0x9b896c0e23220469C7AE69cb4BbAE391eAa4C8da'
+    },
     GEORLI: {
         chainId: 10121,
         address: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23'
@@ -33,6 +45,18 @@ const layerZero = {
     POLYGONTEST: {
         chainId: 10109,
         address: '0xf69186dfBa60DdB133E91E9A4B5673624293d8F8'
+    },
+    OPTIMISMTEST: {
+        chainId: 10132,
+        address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
+    },
+    ARBITRUMTEST: {
+        chainId: 10143,
+        address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
+    },
+    ZKSYNCTEST: {
+        chainId: 10165,
+        address: '0x093D2CF57f764f09C3c2Ac58a42A2601B8C79281'
     }
 }
 

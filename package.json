@@ -6,8 +6,7 @@
   "keywords": [
     "zklink",
     "zk-rollup",
-    "cross chain",
-    "amm"
+    "cross chain"
   ],
   "devDependencies": {
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
@@ -15,13 +14,11 @@
     "@matterlabs/hardhat-zksync-verify": "^0.1.5",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomiclabs/hardhat-solpp": "^2.0.1",
-    "@openzeppelin/hardhat-upgrades": "^1.20.0",
     "hardhat": "^2.13.1",
     "zksync-web3": "^0.14.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.8.2",
-    "@openzeppelin/contracts-upgradeable": "^4.8.2"
+    "@openzeppelin/contracts": "^4.8.2"
   },
   "scripts": {
     "compile": "npx hardhat compile",
