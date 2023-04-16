@@ -90,7 +90,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_peripheryAddress != address(0), "i1");
         require(_networkGovernor != address(0), "i2");
 
-        verifier = Verifier(_verifierAddress);
+        verifier = IVerifier(_verifierAddress);
         periphery = _peripheryAddress;
         networkGovernor = _networkGovernor;
 

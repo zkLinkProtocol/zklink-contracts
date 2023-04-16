@@ -8,7 +8,7 @@ import "./zksync/Operations.sol";
 import "./zksync/SafeMath.sol";
 import "./zksync/SafeMathUInt128.sol";
 import "./zksync/Config.sol";
-import "./zksync/Verifier.sol";
+import "./interfaces/IVerifier.sol";
 import "./zksync/IERC20.sol";
 import "./zksync/SafeCast.sol";
 
@@ -22,7 +22,7 @@ contract Storage is Config {
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
-    Verifier public verifier;
+    IVerifier public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
