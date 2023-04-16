@@ -36,8 +36,6 @@ contract DeployFactory {
         deployProxyContracts(verifier, _zkLinkTarget, _peripheryTarget,
             _blockNumber, _timestamp, _stateHash, _commitment, _syncHash,
             _firstValidator, _governor);
-
-        selfdestruct(msg.sender);
     }
 
     event Addresses(Proxy verifier, Proxy zkLink, UpgradeGatekeeper gatekeeper);
