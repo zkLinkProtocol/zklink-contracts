@@ -1,16 +1,31 @@
 const fs = require('fs');
 const { verifyWithErrorHandle,getDeployLog } = require('./utils');
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 task("upgradeZkLink", "Upgrade zkLink on testnet")
     .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
     .addParam("upgradeZkLink", "Upgrade zkLink", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
-        const [deployer] = await hardhat.ethers.getSigners();
+        const network = hardhat.network;
+        const isZksync = network.zksync !== undefined && network.zksync;
+        console.log('is zksync?', isZksync);
+        // use the first account of accounts in the hardhat network config as the deployer
+        const deployerKey = hardhat.network.config.accounts[0];
+        let deployerWallet;
+        let zkSyncDeployer;
+        if (isZksync) {
+            const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
+            deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
+            zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);
+        } else {
+            [deployerWallet] = await hardhat.ethers.getSigners();
+        }
         let upgradeVerifier = taskArgs.upgradeVerifier;
         let upgradeZkLink = taskArgs.upgradeZkLink;
         let skipVerify = taskArgs.skipVerify;
-        console.log('deployer', deployer.address);
+        console.log('deployer', deployerWallet.address);
         console.log('upgrade verifier?', upgradeVerifier);
         console.log('upgrade zkLink?', upgradeZkLink);
         console.log('skip verify contracts?', skipVerify);
@@ -30,7 +45,7 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         }
         const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
         let zkLinkProxy = await zkLinkFactory.attach(zkLinkProxyAddr);
-        const noticePeriod = await zkLinkProxy.connect(deployer).getNoticePeriod();
+        const noticePeriod = await zkLinkProxy.connect(deployerWallet).getNoticePeriod();
         if (noticePeriod > 0) {
             console.log('Notice period is not zero, can not exec this task in main net');
             return;
@@ -46,7 +61,7 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
 
         // log deployer balance
-        const balance = await deployer.getBalance();
+        const balance = await deployerWallet.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
         const upgradeTargets = [hardhat.ethers.constants.AddressZero,
@@ -56,8 +71,14 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         // verifier
         if (upgradeVerifier) {
             console.log('deploy verifier target...');
-            const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-            const verifier = await verifierFactory.connect(deployer).deploy();
+            let verifier;
+            if (isZksync) {
+                const verifierArtifact = await zkSyncDeployer.loadArtifact('EmptyVerifier');
+                verifier = await zkSyncDeployer.deploy(verifierArtifact);
+            } else {
+                const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+                verifier = await verifierFactory.connect(deployerWallet).deploy();
+            }
             await verifier.deployed();
             deployLog.verifierTarget = verifier.address;
             upgradeTargets[0] = deployLog.verifierTarget;
@@ -78,8 +99,14 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         // zkLink
         if (upgradeZkLink) {
             console.log('deploy periphery target...');
-            const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-            const periphery = await peripheryFactory.connect(deployer).deploy();
+            let periphery;
+            if (isZksync) {
+                const peripheryArtifact = await zkSyncDeployer.loadArtifact('ZkLinkPeriphery');
+                periphery = await zkSyncDeployer.deploy(peripheryArtifact);
+            } else {
+                const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+                periphery = await peripheryFactory.connect(deployerWallet).deploy();
+            }
             await periphery.deployed();
             deployLog.peripheryTarget = periphery.address;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -97,8 +124,14 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
             }
 
             console.log('deploy zkLink target...');
-            const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-            const zkLink = await zkLinkFactory.connect(deployer).deploy();
+            let zkLink;
+            if (isZksync) {
+                const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
+                zkLink = await zkSyncDeployer.deploy(zkLinkArtifact);
+            } else {
+                const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+                zkLink = await zkLinkFactory.connect(deployerWallet).deploy();
+            }
             await zkLink.deployed();
             deployLog.zkLinkTarget = zkLink.address;
             upgradeTargets[1] = deployLog.zkLinkTarget;
@@ -119,16 +152,16 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         }
 
         console.log('start upgrade...');
-        const startUpgradeTx = await gatekeeper.connect(deployer).startUpgrade(upgradeTargets);
+        const startUpgradeTx = await gatekeeper.connect(deployerWallet).startUpgrade(upgradeTargets);
         console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
         await startUpgradeTx.wait();
 
         console.log('start preparation...');
-        const startPreparationUpgradeTx = await gatekeeper.connect(deployer).startPreparation();
+        const startPreparationUpgradeTx = await gatekeeper.connect(deployerWallet).startPreparation();
         console.info(`upgrade preparation tx: ${startPreparationUpgradeTx.hash}`);
         await startPreparationUpgradeTx.wait();
 
-        const finishUpgradeTx = await gatekeeper.connect(deployer).finishUpgrade(upgradeParameters);
+        const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade(upgradeParameters);
         console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
         await finishUpgradeTx.wait();
 

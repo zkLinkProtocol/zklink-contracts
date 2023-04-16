@@ -3,7 +3,9 @@
     "url": "https://matic-mumbai.chainstacklabs.com",
     "accounts": ["YOUR_DEPLOYER_KEY", "YOUR_GOVERNOR_KEY"]
   },
-  "scan": "YOUR_ETHERSCAN_KEY",
+  "etherscan": {
+    "apiKey": "YOUR_ETHERSCAN_KEY"
+  },
   "macro":{
     "BLOCK_PERIOD": "1 seconds",
     "UPGRADE_NOTICE_PERIOD": 0,
