@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./zksync/ReentrancyGuard.sol";
 import "./Storage.sol";
 import "./zksync/Events.sol";
 import "./zksync/UpgradeableMaster.sol";
-import "./zksync/SafeMath.sol";
-import "./zksync/SafeMathUInt128.sol";
 import "./zksync/Utils.sol";
-import "./zksync/SafeMathUInt32.sol";
-import "./zksync/SafeMathUInt64.sol";
 
 /// @title ZkLink contract
 /// @dev Be carefully to use delegate to split contract(when the code size is too big) code to different files
@@ -20,11 +14,6 @@ import "./zksync/SafeMathUInt64.sol";
 /// @dev add `nonReentrant` to all user external interfaces to avoid a closed loop reentrant attack
 /// @author zk.link
 contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
-    using SafeMath for uint256;
-    using SafeMathUInt128 for uint128;
-    using SafeMathUInt32 for uint32;
-    using SafeMathUInt64 for uint64;
-
     enum ChangePubkeyType {ECRECOVER, CREATE2}
 
     /// @notice Data needed to process onchain operation from block public data.
@@ -90,7 +79,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_peripheryAddress != address(0), "i1");
         require(_networkGovernor != address(0), "i2");
 
-        verifier = Verifier(_verifierAddress);
+        verifier = IVerifier(_verifierAddress);
         periphery = _peripheryAddress;
         networkGovernor = _networkGovernor;
 
@@ -208,19 +197,19 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint32 nBlocks = uint32(_blocksData.length);
         require(nBlocks > 0, "d0");
 
-        require(totalBlocksExecuted.add(nBlocks) <= totalBlocksSynchronized, "d1");
+        require(totalBlocksExecuted + nBlocks <= totalBlocksSynchronized, "d1");
 
         uint64 priorityRequestsExecuted = 0;
         for (uint32 i = 0; i < nBlocks; ++i) {
             executeOneBlock(_blocksData[i], i);
-            priorityRequestsExecuted = priorityRequestsExecuted.add(_blocksData[i].storedBlock.priorityOperations);
+            priorityRequestsExecuted = priorityRequestsExecuted + _blocksData[i].storedBlock.priorityOperations;
         }
 
-        firstPriorityRequestId = firstPriorityRequestId.add(priorityRequestsExecuted);
-        totalCommittedPriorityRequests = totalCommittedPriorityRequests.sub(priorityRequestsExecuted);
-        totalOpenPriorityRequests = totalOpenPriorityRequests.sub(priorityRequestsExecuted);
+        firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
+        totalCommittedPriorityRequests = totalCommittedPriorityRequests - priorityRequestsExecuted;
+        totalOpenPriorityRequests = totalOpenPriorityRequests - priorityRequestsExecuted;
 
-        totalBlocksExecuted = totalBlocksExecuted.add(nBlocks);
+        totalBlocksExecuted = totalBlocksExecuted + nBlocks;
 
         emit BlockExecuted(_blocksData[nBlocks-1].storedBlock.blockNumber);
     }
@@ -254,7 +243,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 IERC20(_tokenAddress).transferFrom(msg.sender, address(this), _amount);
                 uint256 balanceAfter = IERC20(_tokenAddress).balanceOf(address(this));
                 // use the balance diff as real amount deposited
-                _amount = SafeCast.toUint128(balanceAfter.sub(balanceBefore));
+                _amount = SafeCast.toUint128(balanceAfter - balanceBefore);
             }
         }
 
@@ -296,9 +285,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _pubData Operation pubdata
     function addPriorityRequest(Operations.OpType _opType, bytes memory _pubData) internal {
         // Expiration block is: current block number + priority expiration delta
-        uint64 expirationBlock = SafeCast.toUint64(block.number.add(PRIORITY_EXPIRATION));
+        uint64 expirationBlock = SafeCast.toUint64(block.number + PRIORITY_EXPIRATION);
 
-        uint64 nextPriorityRequestId = firstPriorityRequestId.add(totalOpenPriorityRequests);
+        uint64 nextPriorityRequestId = firstPriorityRequestId + totalOpenPriorityRequests;
 
         bytes20 hashedPubData = Utils.hashBytesToBytes20(_pubData);
 
@@ -310,7 +299,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         emit NewPriorityRequest(msg.sender, nextPriorityRequestId, _opType, _pubData, uint256(expirationBlock));
 
-        totalOpenPriorityRequests = totalOpenPriorityRequests.add(1);
+        totalOpenPriorityRequests = totalOpenPriorityRequests + 1;
     }
 
     function _commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, bool compressed, CompressedBlockExtraInfo[] memory _newBlocksExtraData) internal active onlyValidator nonReentrant {
@@ -324,14 +313,14 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i], compressed, _newBlocksExtraData[i]);
 
             // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
-            totalCommittedPriorityRequests = totalCommittedPriorityRequests.add(_lastCommittedBlockData.priorityOperations);
+            totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
             storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
         }
         require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
 
-        totalBlocksCommitted = totalBlocksCommitted.add(SafeCast.toUint32(_newBlocksData.length));
+        totalBlocksCommitted = totalBlocksCommitted + SafeCast.toUint32(_newBlocksData.length);
         // If enable compressed commit then we can ignore prove and ensure that block is correct by sync
-        if (ENABLE_COMMIT_COMPRESSED_BLOCK) {
+        if (compressed && ENABLE_COMMIT_COMPRESSED_BLOCK) {
             totalBlocksProven = totalBlocksCommitted;
         }
 
@@ -397,7 +386,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(pubData.length % CHUNK_BYTES == 0, "h0");
         offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
 
-        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId.add(totalCommittedPriorityRequests);
+        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
         priorityOperationsProcessed = 0;
         onchainOperationPubdataHashs = initOnchainOperationPubdataHashs();
 
@@ -409,7 +398,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             uint256 pubdataOffset = onchainOpData.publicDataOffset;
             // uint256 chainIdOffset = pubdataOffset.add(1);
             // comment this value to resolve stack too deep error
-            require(pubdataOffset.add(1) < pubData.length, "h1");
+            require(pubdataOffset + 1 < pubData.length, "h1");
             require(pubdataOffset % CHUNK_BYTES == 0, "h2");
 
             {
@@ -419,12 +408,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             }
 
             // check chain id
-            uint8 chainId = uint8(pubData[pubdataOffset.add(1)]);
+            uint8 chainId = uint8(pubData[pubdataOffset + 1]);
             checkChainId(chainId);
 
             Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
 
-            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset.add(priorityOperationsProcessed);
+            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
             (uint64 newPriorityProceeded, bytes memory opPubData, bytes memory processablePubData) = checkOnchainOp(
                 opType,
                 chainId,
@@ -432,7 +421,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 pubdataOffset,
                 nextPriorityOpIndex,
                 onchainOpData.ethWitness);
-            priorityOperationsProcessed = priorityOperationsProcessed.add(newPriorityProceeded);
+            priorityOperationsProcessed = priorityOperationsProcessed + newPriorityProceeded;
             // group onchain operations pubdata hash by chain id
             onchainOperationPubdataHashs[chainId] = Utils.concatHash(onchainOperationPubdataHashs[chainId], opPubData);
             if (processablePubData.length > 0) {
@@ -630,7 +619,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         if (op.nonce > 0) {
             // recover withdraw amount
             uint128 acceptAmount = recoveryDecimals(op.amount, rt.decimals);
-            uint128 dustAmount = op.amount.sub(improveDecimals(acceptAmount, rt.decimals));
+            uint128 dustAmount = op.amount - improveDecimals(acceptAmount, rt.decimals);
             bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, acceptAmount, op.fastWithdrawFeeRate, op.nonce));
             address accepter = accepts[op.accountId][fwHash];
             if (accepter == address(0)) {
@@ -676,10 +665,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         }
         // recover withdraw amount and add dust to pending balance
         uint128 withdrawAmount = recoveryDecimals(_amount, _decimals);
-        uint128 dustAmount = _amount.sub(improveDecimals(withdrawAmount, _decimals));
+        uint128 dustAmount = _amount - improveDecimals(withdrawAmount, _decimals);
         bool sent = false;
         if (_tokenAddress == ETH_ADDRESS) {
-            address payable toPayable = address(uint160(_recipient));
+            address payable toPayable = payable(_recipient);
             sent = sendETHNoRevert(toPayable, withdrawAmount);
         } else {
             // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`

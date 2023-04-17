@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "./SafeMath.sol";
 import "./Events.sol";
 import "./Ownable.sol";
 import "./Upgradeable.sol";
@@ -12,8 +10,6 @@ import "./UpgradeableMaster.sol";
 /// @title Upgrade Gatekeeper Contract
 /// @author Matter Labs
 contract UpgradeGatekeeper is UpgradeEvents, Ownable {
-    using SafeMath for uint256;
-
     /// @notice Array of addresses of upgradeable contracts managed by the gatekeeper
     Upgradeable[] public managedContracts;
 
@@ -63,7 +59,7 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
 
         uint256 noticePeriod = mainContract.getNoticePeriod();
         upgradeStatus = UpgradeStatus.NoticePeriod;
-        noticePeriodFinishTimestamp = block.timestamp.add(noticePeriod);
+        noticePeriodFinishTimestamp = block.timestamp + noticePeriod;
         nextTargets = newTargets;
         emit NoticePeriodStart(versionId, newTargets, noticePeriod);
     }

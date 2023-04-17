@@ -34,6 +34,7 @@ const GENESIS_BLOCK = {
 const USD_TOKEN_ID = 1;
 const MIN_USD_STABLE_TOKEN_ID = 17;
 const MAX_USD_STABLE_TOKEN_ID = 31;
+const MAX_PROOF_COMMITMENT = "0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
     return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
@@ -291,5 +292,6 @@ module.exports = {
     GENESIS_BLOCK,
     USD_TOKEN_ID,
     MIN_USD_STABLE_TOKEN_ID,
-    MAX_USD_STABLE_TOKEN_ID
+    MAX_USD_STABLE_TOKEN_ID,
+    MAX_PROOF_COMMITMENT
 };

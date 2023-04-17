@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 /// @title Interface of the upgradeable master contract (defines notice period duration and allows finish upgrade during preparation of it)
 /// @author Matter Labs

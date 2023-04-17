@@ -1,4 +1,4 @@
-const { ethers, upgrades } = require("hardhat");
+const { ethers } = require("hardhat");
 const { expect } = require('chai');
 const {CHAIN_ID_INDEX,ALL_CHAINS} = require("./utils");
 const {BigNumber} = require("ethers");
@@ -22,8 +22,8 @@ describe('Bridge ZkLink block unit tests', function () {
         lzInBSC = await dummyLZFactory.deploy(lzChainIdInBSC);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
-        lzBridgeInETH = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInETH.address], {kind: "uups"});
-        lzBridgeInBSC = await upgrades.deployProxy(lzBridgeFactory, [networkGovernor.address, lzInBSC.address], {kind: "uups"});
+        lzBridgeInETH = await lzBridgeFactory.deploy(networkGovernor.address, zklinkInETH.address, lzInETH.address);
+        lzBridgeInBSC = await lzBridgeFactory.deploy(networkGovernor.address, zklinkInBSC.address, lzInBSC.address);
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
@@ -33,14 +33,11 @@ describe('Bridge ZkLink block unit tests', function () {
 
         lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address);
         lzBridgeInBSC.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInETH.address);
-
-        lzBridgeInETH.connect(networkGovernor).setApp(1, zklinkInETH.address);
-        lzBridgeInBSC.connect(networkGovernor).setApp(1, zklinkInBSC.address);
     });
 
     it('only bridge can call receiveSynchronizationProgress', async () => {
         await expect(zklinkInETH.connect(alice).receiveSynchronizationProgress('0xaabb000000000000000000000000000000000000000000000000000000000000', 1))
-            .to.be.revertedWith("v");
+            .to.be.revertedWithPanic(0x11);
     });
 
     it('estimateZkLinkBlockBridgeFees should success', async () => {

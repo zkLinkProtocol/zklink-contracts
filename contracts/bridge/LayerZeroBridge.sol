@@ -2,22 +2,20 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "./ILayerZeroReceiver.sol";
 import "./ILayerZeroEndpoint.sol";
 import "./ILayerZeroUserApplicationConfig.sol";
 import "./LayerZeroStorage.sol";
-import "../token/IZKL.sol";
+import "../zksync/ReentrancyGuard.sol";
 
 /// @title LayerZero bridge implementation of non-blocking model
 /// @dev if message is blocking we should call `retryPayload` of endpoint to retry
 /// the reasons for message blocking may be:
 /// * `_dstAddress` is not deployed to dst chain, and we can deploy LayerZeroBridge to dst chain to fix it.
 /// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
-/// * lzReceive reverted unexpected, and we can fix bug and upgrade contract to fix it.
+/// * lzReceive reverted unexpected, and we can fix bug and deploy a new contract to fix it.
 /// @author zk.link
-contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZeroStorage, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
+contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
 
     // to avoid stack too deep
     struct LzBridgeParams {
@@ -39,25 +37,19 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
     receive() external payable {}
 
-    /// @dev Put `initializer` modifier here to prevent anyone call this function from proxy after we initialized
-    /// No delegatecall exist in this contract, so it's ok to expose this function in logic
     /// @param _governor The network governor of zkLink protocol
+    /// @param _zklink The zklink contract address
     /// @param _endpoint The LayerZero endpoint
-    function initialize(address _governor, ILayerZeroEndpoint _endpoint) public initializer {
+    constructor(address _governor, address _zklink, ILayerZeroEndpoint _endpoint) {
         require(_governor != address(0), "Governor not set");
+        require(_zklink != address(0), "ZkLink not set");
         require(address(_endpoint) != address(0), "Endpoint not set");
 
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
+        initializeReentrancyGuard();
 
         networkGovernor = _governor;
+        zklink = _zklink;
         endpoint = _endpoint;
-    }
-
-    /// @dev Only owner can upgrade logic contract
-    // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyGovernor {
-        // nothing to do here, we check authority by onlyGovernor modifier
     }
 
     //---------------------------UserApplication config----------------------------------------
@@ -86,30 +78,6 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         emit UpdateDestination(dstChainId, contractAddr);
     }
 
-    /// @notice Set app contract address
-    /// @param app The app type
-    /// @param contractAddress The app contract address
-    function setApp(APP app, address contractAddress) external onlyGovernor {
-        apps[app] = contractAddress;
-        emit UpdateAPP(app, contractAddress);
-    }
-
-    /// @notice Estimate bridge zkl fees
-    /// @param lzChainId the destination chainId
-    /// @param receiver the destination receiver address
-    /// @param amount the token amount to bridge
-    /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
-    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function estimateZKLBridgeFees(uint16 lzChainId,
-        bytes calldata receiver,
-        uint256 amount,
-        bool useZro,
-        bytes calldata adapterParams
-    ) external view returns (uint nativeFee, uint zroFee) {
-        bytes memory payload = buildZKLBridgePayload(receiver, amount);
-        return endpoint.estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
-    }
-
     /// @notice Estimate bridge ZkLink Block fees
     /// @param lzChainId the destination chainId
     /// @param syncHash the sync hash of stored block
@@ -127,47 +95,6 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         return endpoint.estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
     }
 
-    /// @notice Bridge zkl to other chain
-    /// @param from the account burned from
-    /// @param receiver the destination receiver address
-    /// @param amount the amount to bridge
-    /// @param params lz params
-    function bridgeZKL(
-        address from,
-        bytes calldata receiver,
-        uint256 amount,
-        LzBridgeParams calldata params
-    ) external nonReentrant payable {
-        uint16 _dstChainId = params.dstChainId;
-        // ===Checks===
-        bytes memory trustedRemote = checkDstChainId(_dstChainId);
-        // the length of receiver MUST be same with the length of contract address deployed in dest chain
-        require(receiver.length == trustedRemote.length, "Invalid receiver");
-
-        require(amount > 0, "Amount not set");
-
-        address zkl = apps[APP.ZKL];
-        require(zkl != address(0), "ZKL not support");
-
-        // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
-
-        // ===Effects===
-        uint64 nonce = endpoint.getOutboundNonce(_dstChainId, address(this));
-        emit SendZKL(_dstChainId, nonce + 1, from, receiver, amount);
-
-        // ===Interactions===
-        // send LayerZero message
-        {
-            bytes memory path = abi.encodePacked(trustedRemote, address(this));
-            bytes memory payload = buildZKLBridgePayload(receiver, amount);
-            // solhint-disable-next-line check-send-result
-            endpoint.send{value:msg.value}(_dstChainId, path, payload, params.refundAddress, params.zroPaymentAddress, params.adapterParams);
-        }
-
-        // burn token of `from`, it will be reverted if `amount` is over the balance of `from`
-        IZKL(zkl).bridgeTo(msg.sender, from, amount);
-    }
-
     /// @notice Bridge ZkLink block to other chain
     /// @param storedBlockInfo the block proved but not executed at the current chain
     /// @param dstChainIds dst chains to bridge, empty array will be reverted
@@ -183,9 +110,6 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
     ) external nonReentrant payable {
         // ===Checks===
         require(dstChainIds.length > 0, "No dst chain");
-
-        address zklink = apps[APP.ZKLINK];
-        require(zklink != address(0), "ZKLINK not support");
 
         // ===Interactions===
         bytes32 syncHash = storedBlockInfo.syncHash;
@@ -268,27 +192,9 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
 
     function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 nonce, bytes calldata payload) internal {
         // unpack payload
-        APP app = APP(uint8(payload[0]));
-        if (app == APP.ZKL) {
-            address zkl = apps[APP.ZKL];
-
-            (bytes memory receiverBytes, uint256 amount) = abi.decode(payload[1:], (bytes, uint256));
-            address receiver;
-            assembly {
-                receiver := mload(add(receiverBytes, EVM_ADDRESS_LENGTH))
-            }
-            emit ReceiveZKL(srcChainId, nonce, receiver, amount);
-            // mint token to receiver
-            IZKL(zkl).bridgeFrom(receiver, amount);
-        } else if (app == APP.ZKLINK) {
-            address zklink = apps[APP.ZKLINK];
-
-            (bytes32 syncHash, uint256 progress) = abi.decode(payload[1:], (bytes32, uint256));
-            emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
-            IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
-        } else {
-            revert("APP not support");
-        }
+        (bytes32 syncHash, uint256 progress) = abi.decode(payload, (bytes32, uint256));
+        emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
+        IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
     }
 
     function checkDstChainId(uint16 dstChainId) internal view returns (bytes memory trustedRemote) {
@@ -296,12 +202,8 @@ contract LayerZeroBridge is ReentrancyGuardUpgradeable, UUPSUpgradeable, LayerZe
         require(trustedRemote.length > 0, "Trust remote not exist");
     }
 
-    function buildZKLBridgePayload(bytes memory receiver, uint256 amount) internal pure returns (bytes memory payload) {
-        payload = abi.encodePacked(APP.ZKL, abi.encode(receiver, amount));
-    }
-
     function buildZkLinkBlockBridgePayload(bytes32 syncHash, uint256 progress) internal pure returns (bytes memory payload) {
-        payload = abi.encodePacked(APP.ZKLINK, abi.encode(syncHash, progress));
+        payload = abi.encode(syncHash, progress);
     }
 }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 // Functions named bytesToX, except bytesToBytes20, where X is some type of size N < 32 (size of one word)
 // implements the following algorithm:
@@ -46,7 +46,7 @@ library Bytes {
     // Copies 'self' into a new 'bytes memory'.
     // Returns the newly created 'bytes memory'. The returned bytes will be of length '20'.
     function toBytesFromAddress(address self) internal pure returns (bytes memory bts) {
-        bts = toBytesFromUIntTruncated(uint256(self), 20);
+        bts = toBytesFromUIntTruncated(uint256(uint160(self)), 20);
     }
 
     // See comment at the top of this file for explanation of how this function works.

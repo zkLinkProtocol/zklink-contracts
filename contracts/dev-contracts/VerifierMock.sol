@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
-contract VerifierMock {
+import "../interfaces/IVerifier.sol";
+
+contract VerifierMock is IVerifier {
 
     // solhint-disable-next-line no-empty-blocks
     function initialize(bytes calldata) external {}
@@ -24,7 +26,7 @@ contract VerifierMock {
         uint8[] memory,
         uint256[] memory,
         uint256[16] memory
-    ) external view returns (bool) {
+    ) external override view returns (bool) {
         return verifyResult;
     }
 
@@ -38,7 +40,7 @@ contract VerifierMock {
         uint16,
         uint128,
         uint256[] calldata
-    ) external view returns (bool) {
+    ) external override view returns (bool) {
         return verifyResult;
     }
 }

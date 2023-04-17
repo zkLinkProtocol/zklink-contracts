@@ -5,12 +5,10 @@ contracts/zksync/KeysWithPlonkVerifier.sol
 log
 
 etc/*
-!etc/DEFAULT.json
 !etc/EXAMPLE.json
 
 #Hardhat files
 cache
+cache-zk
 artifacts
-
-# OpenZeppelin
-.openzeppelin/unknown-*.json
+artifacts-zk

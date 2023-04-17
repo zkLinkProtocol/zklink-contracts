@@ -205,6 +205,29 @@ task("mintFaucetToken", "Mint faucet token for testnet")
         console.log('tx', tx.hash);
     });
 
+task("transferOwnership", "Transfer faucet token ownership")
+    .addParam("token", "The token contract address", undefined, types.string, false)
+    .addParam("to", "The account address", undefined, types.string, false)
+    .setAction(async (taskArgs, hardhat) => {
+        let tokenAddr = taskArgs.token;
+        const accountAddr = taskArgs.to;
+        console.log('token', tokenAddr);
+        console.log('to', accountAddr);
+
+        const [governor] = await hardhat.ethers.getSigners();
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
+        const tokenContract = tokenFactory.attach(tokenAddr);
+
+        console.log('Transfer ownership...')
+        const tx = await tokenContract.connect(governor).transferOwnership(accountAddr);
+        console.log('tx', tx.hash);
+    });
+
 task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
     .addParam("bridge", "The src lz bridge contract address (default get from deploy log)", undefined, types.string, true)
     .addParam("dst", "The target destination network name: 'GOERLI','AVAXTEST','POLYGONTEST','BSCTEST'")

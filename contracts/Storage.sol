@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./zksync/Operations.sol";
-import "./zksync/SafeMath.sol";
-import "./zksync/SafeMathUInt128.sol";
 import "./zksync/Config.sol";
-import "./zksync/Verifier.sol";
+import "./interfaces/IVerifier.sol";
 import "./zksync/IERC20.sol";
 import "./zksync/SafeCast.sol";
 
@@ -16,13 +12,10 @@ import "./zksync/SafeCast.sol";
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
 contract Storage is Config {
-    using SafeMath for uint256;
-    using SafeMathUInt128 for uint128;
-
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
-    Verifier public verifier;
+    IVerifier public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
@@ -187,12 +180,12 @@ contract Storage is Config {
     /// @param _amount pending amount that need to recovery decimals when withdraw
     function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
         uint128 balance = pendingBalances[_packedBalanceKey];
-        pendingBalances[_packedBalanceKey] = balance.add(_amount);
+        pendingBalances[_packedBalanceKey] = balance + _amount;
     }
 
     /// @notice Packs address and token id into single word to use as a key in balances mapping
     function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
-        return bytes22((uint176(_address) | (uint176(_tokenId) << 160)));
+        return bytes22((uint176(uint160(_address)) | (uint176(_tokenId) << 160)));
     }
 
     /// @notice Sends tokens
@@ -215,7 +208,7 @@ contract Storage is Config {
             uint256 balanceBefore = _token.balanceOf(address(this));
             _token.transfer(_to, _amount);
             uint256 balanceAfter = _token.balanceOf(address(this));
-            uint256 balanceDiff = balanceBefore.sub(balanceAfter);
+            uint256 balanceDiff = balanceBefore - balanceAfter;
             require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
             require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
 
@@ -230,13 +223,13 @@ contract Storage is Config {
     /// so the `_amount` in deposit pubdata should be 2 * 10^6 * 10^(18 - 6) = 2 * 10^18
     function improveDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
         // overflow is impossible,  `_decimals` has been checked when register token
-        return _amount.mul(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
+        return _amount * SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals));
     }
 
     /// @dev recover decimals when withdraw, this is the opposite of improve decimals
     function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
         // overflow is impossible,  `_decimals` has been checked when register token
-        return _amount.div(SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals)));
+        return _amount / SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals));
     }
 
     /// @notice Performs a delegatecall to the contract implementation

@@ -28,6 +28,7 @@ const { deploy,
     CHAIN_ID,
     ZERO_BYTES32,
     GENESIS_BLOCK,
+    MAX_PROOF_COMMITMENT,
 } = require('../test/utils');
 const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
 const {BigNumber, constants} = require("ethers");
@@ -107,7 +108,9 @@ class TestSetUp {
         for (let i = 1; i <= nBlocks; i++) {
             const sb = this.storedBlock[this.totalProven + i];
             committedBlocks.push(sb);
-            proofInput.commitments.push(BigNumber.from(sb.commitment));
+            // proof commitment need to set highest 3 bits to zero
+            const commitment = BigNumber.from(sb.commitment).and(BigNumber.from(MAX_PROOF_COMMITMENT));
+            proofInput.commitments.push(commitment);
         }
         // SERIALIZED_PROOF_LENGTH defined in PlonkCore.sol
         for (let i = 0; i < 34; i++) {

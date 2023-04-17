@@ -1,73 +1,75 @@
-require("@nomicfoundation/hardhat-chai-matchers");
-require("@nomiclabs/hardhat-ethers");
+require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-solpp");
-require('@openzeppelin/hardhat-upgrades');
-require("hardhat-gas-reporter");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
-require("./script/deploy_zkl");
 require("./script/deploy_lz_bridge");
-require("./script/upgrade_lz_bridge");
 require("./script/deploy_faucet");
 require("./script/deploy_account_mock");
 require("./script/interact");
 
-const defaultNet = "DEFAULT";
-// load config file by env 'NET'
-const netName = process.env.NET === undefined ? defaultNet : process.env.NET;
-const hardhatConfig = require(`./etc/${netName}.json`);
-
-// custom network for example:
-// {
-//   url: "http://localhost:8545",
-//   accounts: [deployerKey, governorKey]
-// }
-const defaultNetwork = netName === defaultNet ? "hardhat": "custom";
-
-const networks = {
-  hardhat: {
-    allowUnlimitedContractSize: true,
-  }
-};
-if (netName !== defaultNet) {
-  networks.custom = hardhatConfig.network;
-}
-
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-module.exports = {
+const hardhatUserConfig = {
   solidity: {
     compilers:[
       {
-        version: "0.7.6",
+        version: "0.8.18",
         settings: {
           optimizer: {
             enabled: true,
-            runs: 800
-          }
-        }
-      },
-      {
-        version: "0.8.9",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200
+            runs: 100
           }
         }
       }
     ]
   },
-  defaultNetwork: defaultNetwork,
-  networks: networks,
-  solpp: {
-    defs: hardhatConfig.macro
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true
+    }
   },
-  etherscan: {
-    apiKey: hardhatConfig.scan
+  solpp: {
+    defs: {
+      BLOCK_PERIOD: "1 seconds",
+      UPGRADE_NOTICE_PERIOD: 0,
+      PRIORITY_EXPIRATION: 0,
+      CHAIN_ID: 1,
+      ENABLE_COMMIT_COMPRESSED_BLOCK: true,
+      MIN_CHAIN_ID: 1,
+      MAX_CHAIN_ID: 4,
+      ALL_CHAINS: 15
+    }
   },
   gasReporter: {
     enabled: !!(process.env.REPORT_GAS)
   }
 };
+
+// custom hardhat user config for different net
+if (process.env.NET !== undefined) {
+  const netName = process.env.NET;
+  hardhatUserConfig.defaultNetwork = netName;
+
+  const netConfig = require(`./etc/${netName}.json`);
+  hardhatUserConfig.networks[netName] = netConfig.network;
+
+  // config contract verify key if exist
+  if (netConfig.etherscan !== undefined) {
+    hardhatUserConfig.etherscan = netConfig.etherscan;
+  }
+
+  // import these packages if network is zksync
+  if (netConfig.network.zksync !== undefined && netConfig.network.zksync) {
+    require("@matterlabs/hardhat-zksync-solc");
+    require("@matterlabs/hardhat-zksync-verify");
+
+    hardhatUserConfig.zksolc = {
+      version: "1.3.8",
+      compilerSource: "binary",
+      settings: {}
+    };
+  }
+}
+
+module.exports = hardhatUserConfig;

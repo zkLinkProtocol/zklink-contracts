@@ -1,27 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-pragma solidity ^0.7.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./zksync/ReentrancyGuard.sol";
 import "./zksync/Events.sol";
 import "./Storage.sol";
 import "./zksync/Bytes.sol";
 import "./zksync/Utils.sol";
-import "./zksync/SafeMath.sol";
-import "./zksync/SafeMathUInt128.sol";
-import "./zksync/SafeMathUInt64.sol";
-import "./zksync/SafeMathUInt32.sol";
 
 /// @title ZkLink periphery contract
 /// @author zk.link
 contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
-    using SafeMath for uint256;
-    using SafeMathUInt128 for uint128;
-    using SafeMathUInt64 for uint64;
-    using SafeMathUInt32 for uint32;
-
     // =================User interface=================
 
     /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
@@ -117,7 +106,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 authFactsResetTimer[msg.sender][_nonce] = block.timestamp;
                 emit FactAuthResetTime(msg.sender, _nonce, block.timestamp);
             } else {
-                require(block.timestamp.sub(currentResetTimer) >= AUTH_FACT_RESET_TIMELOCK, "B1"); // too early to reset auth
+                require(block.timestamp - currentResetTimer >= AUTH_FACT_RESET_TIMELOCK, "B1"); // too early to reset auth
                 authFactsResetTimer[msg.sender][_nonce] = 0;
                 authFacts[msg.sender][_nonce] = keccak256(_pubkeyHash);
                 emit FactAuth(msg.sender, _nonce, _pubkeyHash);
@@ -160,7 +149,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
 
         // improve withdrawn amount decimals
-        pendingBalances[packedBalanceKey] = balance.sub(improveDecimals(amount, rt.decimals));
+        pendingBalances[packedBalanceKey] = balance - improveDecimals(amount, rt.decimals);
         emit Withdrawal(_tokenId, amount);
 
         return amount;
@@ -288,12 +277,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     function isBridgeToEnabled(address bridge) external view returns (bool) {
-        uint256 index = bridgeIndex[bridge].sub(1);
+        uint256 index = bridgeIndex[bridge] - 1;
         return bridges[index].enableBridgeTo;
     }
 
     function isBridgeFromEnabled(address bridge) public view returns (bool) {
-        uint256 index = bridgeIndex[bridge].sub(1);
+        uint256 index = bridgeIndex[bridge] - 1;
         return bridges[index].enableBridgeFrom;
     }
 
@@ -314,7 +303,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Checks===
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
-            currentTotalBlocksProven = currentTotalBlocksProven.add(1);
+            currentTotalBlocksProven = currentTotalBlocksProven + 1;
             require(hashStoredBlockInfo(_committedBlocks[i]) == storedBlockHashes[currentTotalBlocksProven], "x0");
 
             // commitment of proof produced by zk has only 253 significant bits
@@ -343,7 +332,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Reverts unExecuted blocks
     function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
         uint32 blocksCommitted = totalBlocksCommitted;
-        uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted.sub(totalBlocksExecuted));
+        uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted - totalBlocksExecuted);
         uint64 revertedPriorityRequests = 0;
 
         for (uint32 i = 0; i < blocksToRevert; ++i) {
@@ -353,11 +342,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             delete storedBlockHashes[blocksCommitted];
 
             --blocksCommitted;
-            revertedPriorityRequests = revertedPriorityRequests.add(storedBlockInfo.priorityOperations);
+            revertedPriorityRequests = revertedPriorityRequests + storedBlockInfo.priorityOperations;
         }
 
         totalBlocksCommitted = blocksCommitted;
-        totalCommittedPriorityRequests = totalCommittedPriorityRequests.sub(revertedPriorityRequests);
+        totalCommittedPriorityRequests = totalCommittedPriorityRequests - revertedPriorityRequests;
         if (totalBlocksCommitted < totalBlocksProven) {
             totalBlocksProven = totalBlocksCommitted;
         }
@@ -427,7 +416,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Interactions===
         // make sure msg value >= amountReceive
-        uint256 amountReturn = msg.value.sub(amountReceive);
+        uint256 amountReturn = msg.value - amountReceive;
         // add gas limit to prevent gas minting attack
         // solhint-disable-next-line avoid-low-level-calls
         bool success;
@@ -474,11 +463,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             IERC20(tokenAddress).transferFrom(_accepter, _receiver, amountTransfer);
             uint256 receiverBalanceAfter = IERC20(tokenAddress).balanceOf(_receiver);
             uint256 accepterBalanceAfter = IERC20(tokenAddress).balanceOf(_accepter);
-            uint128 receiverBalanceDiff = SafeCast.toUint128(receiverBalanceAfter.sub(receiverBalanceBefore));
+            uint128 receiverBalanceDiff = SafeCast.toUint128(receiverBalanceAfter - receiverBalanceBefore);
             require(receiverBalanceDiff >= amountReceive, "F0");
             amountReceive = receiverBalanceDiff;
             // amountSent may be larger than amountReceive when the token is a non standard erc20 token
-            amountSent = SafeCast.toUint128(accepterBalanceBefore.sub(accepterBalanceAfter));
+            amountSent = SafeCast.toUint128(accepterBalanceBefore - accepterBalanceAfter);
         }
         if (msg.sender != accepter) {
             require(brokerAllowance(tokenId, accepter, msg.sender) >= amountSent, "F1");
@@ -514,7 +503,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         tokenAddress = rt.tokenAddress;
         // feeRate MUST be valid and MUST not be 100%
         require(withdrawFeeRate < MAX_ACCEPT_FEE_RATE, "H4");
-        amountReceive = amount.mul(MAX_ACCEPT_FEE_RATE - withdrawFeeRate).div(MAX_ACCEPT_FEE_RATE);
+        amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
         // nonce MUST not be zero
         require(nonce > 0, "H5");
 
