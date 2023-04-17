@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // solhint-disable
 
-pragma solidity >=0.5.0 <0.8.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 library PairingsBn254 {
     uint256 constant q_mod = 21888242871839275222246405745257275088696311157297823662689037894645226208583;

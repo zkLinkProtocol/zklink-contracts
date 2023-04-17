@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./ILayerZeroReceiver.sol";
 import "./ILayerZeroEndpoint.sol";
 import "./ILayerZeroUserApplicationConfig.sol";
 import "./LayerZeroStorage.sol";
+import "../zksync/ReentrancyGuard.sol";
 
 /// @title LayerZero bridge implementation of non-blocking model
 /// @dev if message is blocking we should call `retryPayload` of endpoint to retry
@@ -44,6 +44,8 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         require(_governor != address(0), "Governor not set");
         require(_zklink != address(0), "ZkLink not set");
         require(address(_endpoint) != address(0), "Endpoint not set");
+
+        initializeReentrancyGuard();
 
         networkGovernor = _governor;
         zklink = _zklink;
