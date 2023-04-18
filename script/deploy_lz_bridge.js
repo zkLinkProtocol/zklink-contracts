@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { verifyWithErrorHandle, createOrGetDeployLog, readDeployLogField } = require('./utils');
+const logName = require('./deploy_log_name');
 const {layerZero} = require("./layerzero");
 const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
@@ -26,11 +27,11 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         }
         let governor = taskArgs.governor;
         if (governor === undefined) {
-            governor = readDeployLogField('deploy', 'governor');
+            governor = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         }
         let zklink = taskArgs.zklink;
         if (zklink === undefined) {
-            zklink = readDeployLogField('deploy', 'zkLinkProxy');
+            zklink = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
         }
         let force = taskArgs.force;
         let skipVerify = taskArgs.skipVerify;
@@ -50,16 +51,16 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
             return;
         }
 
-        const {deployLogPath,deployLog} = createOrGetDeployLog('deploy_lz_bridge');
+        const {deployLogPath,deployLog} = createOrGetDeployLog(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX);
 
-        deployLog.deployer = deployerWallet.address;
-        deployLog.governor = governor;
+        deployLog[logName.DEPLOY_LOG_DEPLOYER] = deployerWallet.address;
+        deployLog[logName.DEPLOY_LOG_GOVERNOR] = governor;
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
         // deploy lz bridge
         let args = [governor, zklink, lzInfo.address];
         let lzBridge;
-        if (!('lzBridge' in deployLog) || force) {
+        if (!(logName.DEPLOY_LOG_LZ_BRIDGE in deployLog) || force) {
             console.log('deploy layerzero bridge...');
             let lzBridgeContract;
             if (isZksync) {
@@ -71,13 +72,13 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
             }
             await lzBridgeContract.deployed();
             lzBridge = lzBridgeContract.address;
-            deployLog.lzBridge = lzBridge;
+            deployLog[logName.DEPLOY_LOG_LZ_BRIDGE] = lzBridge;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         } else {
-            lzBridge = deployLog.lzBridge;
+            lzBridge = deployLog[logName.DEPLOY_LOG_LZ_BRIDGE];
         }
         console.log('lzBridge', lzBridge);
-        if ((!('lzBridgeVerified' in deployLog) || force) && !skipVerify) {
+        if ((!(logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED in deployLog) || force) && !skipVerify) {
             console.log('verify lzBridge...');
             await verifyWithErrorHandle(async () => {
                 await hardhat.run("verify:verify", {
@@ -85,7 +86,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
                     constructorArguments: args
                 });
             }, () => {
-                deployLog.lzBridgeVerified = true;
+                deployLog[logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED] = true;
             })
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }

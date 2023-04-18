@@ -1,4 +1,5 @@
 const { readDeployContract, readDeployLogField} = require('./utils');
+const logName = require('./deploy_log_name');
 const { layerZero } = require('./layerzero');
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard) {
@@ -25,7 +26,7 @@ task("addToken", "Adds a new token with a given address for testnet")
         const [governor] = await hardhat.ethers.getSigners();
         let governanceAddr = taskArgs.zkLink;
         if (governanceAddr === undefined) {
-            governanceAddr = readDeployContract('deploy', 'zkLinkProxy');
+            governanceAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
         }
         const tokenId = taskArgs.tokenId;
         const tokenAddr = taskArgs.tokenAddress;
@@ -95,8 +96,8 @@ task("setDestinations", "Set layerzero bridge destinations (only support testnet
             return;
         }
 
-        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
-        const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
+        const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
+        const governorAddress = readDeployLogField(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
         console.log('bridge', bridgeAddr);
@@ -110,45 +111,11 @@ task("setDestinations", "Set layerzero bridge destinations (only support testnet
 
         console.log('Set destination %s for %s...', dest, process.env.NET);
         try {
-            const dstBridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy', dest);
+            const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, dest);
             const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
             console.log('tx', tx.hash);
         } catch (error) {
             console.log('Set bridge destination failed: ' + error);
-        }
-    });
-
-task("setApp", "Set layerzero supported app (only support testnet)")
-    .setAction(async (taskArgs, hardhat) => {
-        const bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
-        const governorAddress = readDeployLogField('deploy_lz_bridge', 'governor');
-        const governor = await hardhat.ethers.getSigner(governorAddress);
-
-        console.log('bridge', bridgeAddr);
-        console.log('governor', governor.address);
-
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
-
-        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
-        try {
-            const zklAddr = readDeployContract('deploy_zkl', 'zkl');
-            console.log('Set zkl %s...', zklAddr);
-            const tx = await bridgeContract.connect(governor).setApp(0, zklAddr);
-            console.log('tx', tx.hash);
-        } catch (error) {
-            console.log('Set zkl failed: ' + error);
-        }
-
-        try {
-            const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
-            console.log('Set zkLink %s...', zkLinkProxyAddr);
-            const tx = await bridgeContract.connect(governor).setApp(1, zkLinkProxyAddr);
-            console.log('tx', tx.hash);
-        } catch (error) {
-            console.log('Set zkLink failed: ' + error);
         }
     });
 
@@ -157,13 +124,13 @@ task("addBridge", "Add bridge to zkLink")
     .setAction(async (taskArgs, hardhat) => {
         let bridgeAddr = taskArgs.bridge;
         if (bridgeAddr === undefined) {
-            bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+            bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
         }
 
-        const governorAddress = readDeployLogField('deploy', 'governor');
+        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
-        const zkLinkProxyAddr = readDeployContract('deploy', 'zkLinkProxy');
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
 
         console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
@@ -228,58 +195,6 @@ task("transferOwnership", "Transfer faucet token ownership")
         console.log('tx', tx.hash);
     });
 
-task("bridgeZKL", "Send zkl of deployer to another chain on testnet")
-    .addParam("bridge", "The src lz bridge contract address (default get from deploy log)", undefined, types.string, true)
-    .addParam("dst", "The target destination network name: 'GOERLI','AVAXTEST','POLYGONTEST','BSCTEST'")
-    .addParam("amount", "Amount to send")
-    .setAction(async (taskArgs, hardhat) => {
-        let bridgeAddr = taskArgs.bridge;
-        if (bridgeAddr === undefined) {
-            bridgeAddr = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
-        }
-        const dstChain = taskArgs.dst;
-        // layerzero must support dst chain
-        const lzInfo = layerZero[dstChain];
-        if (lzInfo === undefined) {
-            console.log('%s layerzero not support', dstChain);
-            return;
-        }
-        const amount = hardhat.ethers.utils.parseEther(taskArgs.amount);
-
-        const curChain = process.env.NET;
-        if (curChain === dstChain) {
-            console.log('invalid dst');
-            return;
-        }
-
-        const [deployer] = await hardhat.ethers.getSigners();
-        console.log('deployer', deployer.address);
-
-        const balance = await deployer.getBalance();
-        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
-
-        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
-        const feeInfo = await bridgeContract.connect(deployer)
-            .estimateZKLBridgeFees(lzInfo.chainId, deployer.address, amount, false, "0x");
-        const nativeFee = feeInfo.nativeFee;
-        console.log('nativeFee', hardhat.ethers.utils.formatEther(nativeFee));
-        const lzParams = {
-            "dstChainId": lzInfo.chainId,
-            "refundAddress": deployer.address,
-            "zroPaymentAddress": ethers.constants.AddressZero,
-            "adapterParams": "0x"
-        }
-        const tx = await bridgeContract.connect(deployer)
-            .bridgeZKL(deployer.address,
-                deployer.address,
-                amount,
-                lzParams,
-                {value:nativeFee});
-        console.log('tx', tx.hash);
-    });
-
 task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or testnet")
     .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
     .addParam("address", "The account address")
@@ -288,7 +203,7 @@ task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or te
     .setAction(async (taskArgs, hardhat) => {
         let zkLinkProxy = taskArgs.zkLink;
         if (zkLinkProxy === undefined) {
-            zkLinkProxy = readDeployContract('deploy', 'zkLinkProxy');
+            zkLinkProxy = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
         }
         const address = taskArgs.address;
         const pubkeyHash = taskArgs.pubkeyHash;
@@ -316,7 +231,7 @@ task("zkLinkStatus", "Query zkLink status")
         let zkLinkProxy = taskArgs.zkLink;
         let property = taskArgs.property;
         if (zkLinkProxy === undefined) {
-            zkLinkProxy = readDeployContract('deploy', 'zkLinkProxy');
+            zkLinkProxy = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
         }
         console.log('zkLink', zkLinkProxy);
         console.log('property', property);
@@ -342,7 +257,7 @@ task("estimateZkLinkBlockBridgeFees", "Get fee for bridge block")
         let useZro = taskArgs.useZro;
         let adapterParams = taskArgs.adapterParams;
         if (lzBridge === undefined) {
-            lzBridge = readDeployContract('deploy_lz_bridge', 'lzBridgeProxy');
+            lzBridge = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
         }
         const lzInfo = layerZero[dest];
         if (lzInfo === undefined) {
