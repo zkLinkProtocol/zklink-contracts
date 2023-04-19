@@ -26,6 +26,10 @@ const layerZero = {
         chainId: 111,
         address: '0x3c2269811836af69497E5F486A85D7316753cf62'
     },
+    ZKPOLYGON: {
+        chainId: 158,
+        address: '0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4'
+    },
     ZKSYNC: {
         chainId: 165,
         address: '0x9b896c0e23220469C7AE69cb4BbAE391eAa4C8da'
@@ -57,6 +61,14 @@ const layerZero = {
     ZKSYNCTEST: {
         chainId: 10165,
         address: '0x093D2CF57f764f09C3c2Ac58a42A2601B8C79281'
+    },
+    LINEATEST: {
+        chainId: 10157,
+        address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
+    },
+    ZKPOLYGONTEST: {
+        chainId: 10158,
+        address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
     }
 }
 
