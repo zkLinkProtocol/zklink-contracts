@@ -54,6 +54,10 @@ if (process.env.NET !== undefined) {
   const netConfig = require(`./etc/${netName}.json`);
   hardhatUserConfig.networks[netName] = netConfig.network;
 
+  if (netConfig.macro !== undefined) {
+    hardhatUserConfig.solpp.defs = netConfig.macro;
+  }
+
   // config contract verify key if exist
   if (netConfig.etherscan !== undefined) {
     hardhatUserConfig.etherscan = netConfig.etherscan;
