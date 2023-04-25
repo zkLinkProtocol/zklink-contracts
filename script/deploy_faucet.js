@@ -1,3 +1,6 @@
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
+
 task("deployFaucetToken", "Deploy faucet token for testnet")
     .addParam("name", "The token name", undefined, types.string, false)
     .addParam("symbol", "The token symbol", undefined, types.string, false)
@@ -5,27 +8,49 @@ task("deployFaucetToken", "Deploy faucet token for testnet")
     .addParam("fromTransferFeeRatio", "The fee ratio taken of from address when transfer", 0, types.int, true)
     .addParam("toTransferFeeRatio", "The fee ratio taken of to address when transfer", 0, types.int, true)
     .setAction(async (taskArgs, hardhat) => {
-        const [deployer] = await hardhat.ethers.getSigners();
+        const network = hardhat.network;
+        const isZksync = network.zksync !== undefined && network.zksync;
+        console.log('is zksync?', isZksync);
+        // use the first account of accounts in the hardhat network config as the deployer
+        const deployerKey = hardhat.network.config.accounts[0];
+        let deployerWallet;
+        let zkSyncDeployer;
+        if (isZksync) {
+            const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
+            deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
+            zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);
+        } else {
+            [deployerWallet] = await hardhat.ethers.getSigners();
+        }
+
         let name = taskArgs.name;
         let symbol = taskArgs.symbol;
         let decimals = taskArgs.decimals;
         let fromTransferFeeRatio = taskArgs.fromTransferFeeRatio === undefined ? 0 : taskArgs.fromTransferFeeRatio;
         let toTransferFeeRatio = taskArgs.toTransferFeeRatio === undefined ? 0 : taskArgs.toTransferFeeRatio;
 
-        console.log('deployer', deployer.address);
+        console.log('deployer', deployerWallet.address);
         console.log('name', name);
         console.log('symbol', symbol);
         console.log('decimals', decimals);
         console.log('fromTransferFeeRatio', fromTransferFeeRatio);
         console.log('toTransferFeeRatio', toTransferFeeRatio);
 
-        const balance = await deployer.getBalance();
+        const balance = await deployerWallet.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
         // deploy erc20 token
         console.log('deploy faucet token...');
-        const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
-        const tokenContract = await tokenFactory.connect(deployer).deploy(name, symbol, decimals, fromTransferFeeRatio, toTransferFeeRatio);
+        const deployArgs = [name, symbol, decimals, fromTransferFeeRatio, toTransferFeeRatio];
+        let tokenContract;
+        if (isZksync) {
+            const tokenArtifact = await zkSyncDeployer.loadArtifact('FaucetToken');
+            tokenContract = await zkSyncDeployer.deploy(tokenArtifact, deployArgs);
+        } else {
+            const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
+            tokenContract = await tokenFactory.connect(deployerWallet).deploy(...deployArgs);
+        }
+
         await tokenContract.deployed();
         console.log('token deploy success: ', tokenContract.address);
 });
