@@ -1,8 +1,6 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, createOrGetDeployLog } = require('./utils');
+const { verifyWithErrorHandle, createOrGetDeployLog, ChainContractDeployer} = require('./utils');
 const logName = require('./deploy_log_name');
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
-const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 task("deployZkLink", "Deploy zklink contracts")
     .addParam("governor", "The governor address (default is same as deployer)", undefined, types.string, true)
@@ -16,20 +14,10 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
-        const network = hardhat.network;
-        const isZksync = network.zksync !== undefined && network.zksync;
-        console.log('is zksync?', isZksync);
-        // use the first account of accounts in the hardhat network config as the deployer
-        const deployerKey = hardhat.network.config.accounts[0];
-        let deployerWallet;
-        let zkSyncDeployer;
-        if (isZksync) {
-            const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
-            deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
-            zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);
-        } else {
-            [deployerWallet] = await hardhat.ethers.getSigners();
-        }
+        const contractDeployer = new ChainContractDeployer(hardhat);
+        await contractDeployer.init();
+        const deployerWallet = contractDeployer.deployerWallet;
+
         let governor = taskArgs.governor;
         if (governor === undefined) {
             governor = deployerWallet.address;
@@ -49,7 +37,6 @@ task("deployZkLink", "Deploy zklink contracts")
         const genesisRoot = taskArgs.genesisRoot;
         const commitment = taskArgs.commitment;
         const syncHash = taskArgs.syncHash;
-        console.log('deployer', deployerWallet.address);
         console.log('governor', governor);
         console.log('validator', validator);
         console.log('feeAccount', feeAccount);
@@ -60,9 +47,6 @@ task("deployZkLink", "Deploy zklink contracts")
         console.log('syncHash', syncHash);
         console.log('force redeploy all contracts?', force);
         console.log('skip verify contracts?', skipVerify);
-
-        const balance = await deployerWallet.getBalance();
-        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
         const {deployLogPath,deployLog} = createOrGetDeployLog(logName.DEPLOY_ZKLINK_LOG_PREFIX);
 
@@ -75,14 +59,11 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_VERIFIER_TARGET in deployLog) || force) {
             console.log('deploy verifier target...');
             let verifier;
-            if (isZksync) {
-                const verifierArtifact = await zkSyncDeployer.loadArtifact('EmptyVerifier');
-                verifier = await zkSyncDeployer.deploy(verifierArtifact);
+            if (contractDeployer.zksync) {
+                verifier = await contractDeployer.deployContract('EmptyVerifier', []);
             } else {
-                const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-                verifier = await verifierFactory.connect(deployerWallet).deploy();
+                verifier = await contractDeployer.deployContract('Verifier', []);
             }
-            await verifier.deployed();
             verifierTarget = verifier.address;
             deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifierTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -106,15 +87,7 @@ task("deployZkLink", "Deploy zklink contracts")
         let peripheryTarget;
         if (!(logName.DEPLOY_LOG_PERIPHERY_TARGET in deployLog) || force) {
             console.log('deploy periphery target...');
-            let periphery;
-            if (isZksync) {
-                const peripheryArtifact = await zkSyncDeployer.loadArtifact('ZkLinkPeriphery');
-                periphery = await zkSyncDeployer.deploy(peripheryArtifact);
-            } else {
-                const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-                periphery = await peripheryFactory.connect(deployerWallet).deploy();
-            }
-            await periphery.deployed();
+            let periphery = await contractDeployer.deployContract('ZkLinkPeriphery', []);
             peripheryTarget = periphery.address;
             deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = peripheryTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -138,15 +111,7 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkTarget;
         if (!(logName.DEPLOY_LOG_ZKLINK_TARGET in deployLog) || force) {
             console.log('deploy zkLink target...');
-            let zkLink;
-            if (isZksync) {
-                const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
-                zkLink = await zkSyncDeployer.deploy(zkLinkArtifact);
-            } else {
-                const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-                zkLink = await zkLinkFactory.connect(deployerWallet).deploy();
-            }
-            await zkLink.deployed();
+            let zkLink = await contractDeployer.deployContract('ZkLink', []);
             zkLinkTarget = zkLink.address;
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -186,15 +151,7 @@ task("deployZkLink", "Deploy zklink contracts")
                 governor,
                 feeAccount
             ];
-            let deployFactory;
-            if (isZksync) {
-                const deployFactoryArtifact = await zkSyncDeployer.loadArtifact('DeployFactory');
-                deployFactory = await zkSyncDeployer.deploy(deployFactoryArtifact, deployArgs);
-            } else {
-                const deployFactoryFactory = await hardhat.ethers.getContractFactory('DeployFactory');
-                deployFactory = await deployFactoryFactory.connect(deployerWallet).deploy(...deployArgs);
-            }
-            await deployFactory.deployed();
+            let deployFactory = await contractDeployer.deployContract('DeployFactory', deployArgs);
             deployFactoryAddr = deployFactory.address;
             const deployTxReceipt = await deployFactory.deployTransaction.wait();
             const deployBlockNumber = deployTxReceipt.blockNumber;
@@ -236,7 +193,7 @@ task("deployZkLink", "Deploy zklink contracts")
         console.log('gatekeeper', gatekeeperAddr);
 
         // zksync verify contract where created in contract not support now
-        if (!isZksync) {
+        if (!contractDeployer.zksync) {
             if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
                 console.log('verify zkLink proxy...');
                 await verifyWithErrorHandle(async () => {

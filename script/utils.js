@@ -1,4 +1,7 @@
 const fs = require("fs");
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
+
 const verifyWithErrorHandle = async (verify, successCallBack) => {
     try {
         await verify();
@@ -60,10 +63,51 @@ function readDeployLogField(logName, fieldName, env = process.env.NET) {
     return fieldValue;
 }
 
+class ChainContractDeployer {
+
+    constructor(hardhat) {
+        this.hardhat = hardhat;
+    }
+
+    async init() {
+        console.log('init contract deployer...');
+        const network = this.hardhat.network;
+        // a flag to identify if chain is zksync
+        this.zksync = network.zksync !== undefined && network.zksync;
+        console.log('deploy on zksync?', this.zksync);
+        // use the first account of accounts in the hardhat network config as the deployer
+        const deployerKey = network.config.accounts[0];
+        if (this.zksync) {
+            this.zkSyncProvider = new ZkSyncProvider(network.config.url);
+            this.deployerWallet = new ZkSyncWallet(deployerKey, this.zkSyncProvider);
+            this.zkSyncDeployer = new ZkSyncDeployer(this.hardhat, this.deployerWallet);
+        } else {
+            [this.deployerWallet] = await this.hardhat.ethers.getSigners();
+        }
+        console.log('deployer', this.deployerWallet.address);
+        const balance = await this.deployerWallet.getBalance();
+        console.log('deployer balance', this.hardhat.ethers.utils.formatEther(balance));
+    }
+
+    async deployContract(contractName, deployArgs) {
+        let contract;
+        if (this.zksync) {
+            const artifact = await this.zkSyncDeployer.loadArtifact(contractName);
+            contract = await this.zkSyncDeployer.deploy(artifact, deployArgs);
+        } else {
+            const factory = await this.hardhat.ethers.getContractFactory(contractName);
+            contract = await factory.connect(this.deployerWallet).deploy(...deployArgs);
+        }
+        await contract.deployed();
+        return contract;
+    }
+}
+
 module.exports = {
     verifyWithErrorHandle,
     createOrGetDeployLog,
     getDeployLog,
     readDeployContract,
-    readDeployLogField
+    readDeployLogField,
+    ChainContractDeployer
 };
