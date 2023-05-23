@@ -354,6 +354,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         // Create synchronization hash for cross chain block verify
         if (_compressed) {
+            require(_newBlockExtra.onchainOperationPubdataHashs.length == MAX_CHAIN_ID + 1, "g3");
             for(uint i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
                 if (i != CHAIN_ID) {
                     onchainOperationPubdataHashs[i] = _newBlockExtra.onchainOperationPubdataHashs[i];
