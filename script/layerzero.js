@@ -69,6 +69,10 @@ const layerZero = {
     ZKPOLYGONTEST: {
         chainId: 10158,
         address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
+    },
+    SCROLLTEST: {
+        chainId: 10170,
+        address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
     }
 }
 
