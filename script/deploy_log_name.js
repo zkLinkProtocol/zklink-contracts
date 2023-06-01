@@ -2,6 +2,7 @@
 const DEPLOY_ZKLINK_LOG_PREFIX = 'deploy';
 const DEPLOY_LOG_DEPLOYER = "deployer";
 const DEPLOY_LOG_GOVERNOR = "governor";
+const DEPLOY_LOG_VALIDATOR = "validator";
 const DEPLOY_LOG_VERIFIER_TARGET = "verifierTarget";
 const DEPLOY_LOG_VERIFIER_TARGET_VERIFIED = "verifierTargetVerified";
 const DEPLOY_LOG_PERIPHERY_TARGET = "peripheryTarget";
@@ -24,10 +25,16 @@ const DEPLOY_LZ_BRIDGE_LOG_PREFIX = 'deploy_lz_bridge';
 const DEPLOY_LOG_LZ_BRIDGE = "lzBridge";
 const DEPLOY_LOG_LZ_BRIDGE_VERIFIED = "lzBridgeVerified";
 
+// consumed in gas_estimate.js
+const DEPLOY_GAS_ESTIMATE_LOG_PREFIX = 'deploy_gas_estimate';
+const DEPLOY_LOG_ADD_ETH = 'addETH';
+const DEPLOY_LOG_TOKEN2 = 'token2';
+
 module.exports = {
     DEPLOY_ZKLINK_LOG_PREFIX,
     DEPLOY_LOG_DEPLOYER,
     DEPLOY_LOG_GOVERNOR,
+    DEPLOY_LOG_VALIDATOR,
     DEPLOY_LOG_VERIFIER_TARGET,
     DEPLOY_LOG_VERIFIER_TARGET_VERIFIED,
     DEPLOY_LOG_PERIPHERY_TARGET,
@@ -46,5 +53,8 @@ module.exports = {
     DEPLOY_LOG_GATEKEEPER_VERIFIED,
     DEPLOY_LZ_BRIDGE_LOG_PREFIX,
     DEPLOY_LOG_LZ_BRIDGE,
-    DEPLOY_LOG_LZ_BRIDGE_VERIFIED
+    DEPLOY_LOG_LZ_BRIDGE_VERIFIED,
+    DEPLOY_GAS_ESTIMATE_LOG_PREFIX,
+    DEPLOY_LOG_ADD_ETH,
+    DEPLOY_LOG_TOKEN2
 };
