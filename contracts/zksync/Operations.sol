@@ -38,6 +38,9 @@ library Operations {
     /// @dev address is 20 bytes length
     uint8 internal constant ADDRESS_BYTES = 20;
 
+    /// @dev address prefix zero bytes length
+    uint8 internal constant ADDRESS_PREFIX_ZERO_BYTES = 12;
+
     /// @dev fee is uint16
     uint8 internal constant FEE_BYTES = 2;
 
@@ -65,8 +68,9 @@ library Operations {
         uint16 tokenId; // the token that registered to l2
         uint16 targetTokenId; // the token that user increased in l2
         uint128 amount; // the token amount deposited to l2
+        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address owner; // the address that receive deposited token at l2
-    } // 47
+    } // 59
 
     /// @dev Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
@@ -78,6 +82,7 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.targetTokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
     }
 
@@ -91,6 +96,7 @@ library Operations {
             op.tokenId,
             op.targetTokenId,
             op.amount,
+            bytes12(0), // append 12 zero bytes
             op.owner
         );
     }
@@ -106,11 +112,12 @@ library Operations {
         uint8 chainId; // withdraw to which chain that identified by l2 chain id
         uint32 accountId; // the account id to withdraw from
         uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
+        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address owner; // the address that own the account at l2
         uint16 tokenId; // the token that withdraw to l1
         uint16 srcTokenId; // the token that deducted in l2
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
-    } // 47
+    } // 59
 
     /// @dev Deserialize fullExit pubdata
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
@@ -119,6 +126,7 @@ library Operations {
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
         (offset, parsed.subAccountId) = Bytes.readUint8(_data, offset);
+        offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.srcTokenId) = Bytes.readUInt16(_data, offset);
@@ -132,6 +140,7 @@ library Operations {
             op.chainId,
             op.accountId,
             op.subAccountId,
+            bytes12(0), // append 12 zero bytes
             op.owner,
             op.tokenId,
             op.srcTokenId,
@@ -154,10 +163,11 @@ library Operations {
         //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
+        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address owner; // the address to receive token
         uint32 nonce; // zero means normal withdraw, not zero means fast withdraw and the value is the account nonce
         uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by accepter
-    } // 55
+    } // 67
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -169,6 +179,7 @@ library Operations {
         offset += TOKEN_BYTES;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         offset += FEE_BYTES;
+        offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
@@ -186,8 +197,9 @@ library Operations {
         //uint16 feeTokenId; -- the token payed by initiator account in l2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
+        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address target; // the address to receive token
-    } // 56 bytes
+    } // 68 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -198,6 +210,7 @@ library Operations {
         offset += TOKEN_BYTES * 2;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         offset += FEE_BYTES;
+        offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.target) = Bytes.readAddress(_data, offset);
     }
 
@@ -208,11 +221,12 @@ library Operations {
         uint32 accountId; // the account that to change pubkey
         //uint8 subAccountId; -- present in pubdata, ignored at serialization
         bytes20 pubKeyHash; // hash of the new rollup pubkey
+        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address owner; // the owner that own this account
         uint32 nonce; // the account nonce
         //uint16 tokenId; -- present in pubdata, ignored at serialization
         //uint16 fee; -- present in pubdata, ignored at serialization
-    } // 55 bytes
+    } // 67 bytes
 
     function readChangePubKeyPubdata(bytes memory _data) internal pure returns (ChangePubKey memory parsed) {
         uint256 offset = OP_TYPE_BYTES;
@@ -220,6 +234,7 @@ library Operations {
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
         offset += SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.pubKeyHash) = Bytes.readBytes20(_data, offset);
+        offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
     }

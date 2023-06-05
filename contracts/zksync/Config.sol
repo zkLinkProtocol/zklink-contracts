@@ -11,7 +11,7 @@ contract Config {
     uint256 internal constant WITHDRAWAL_GAS_LIMIT = 100000;
 
     /// @dev Bytes in one chunk
-    uint8 internal constant CHUNK_BYTES = 19;
+    uint8 internal constant CHUNK_BYTES = 23;
 
     /// @dev Bytes of L2 PubKey hash
     uint8 internal constant PUBKEY_HASH_BYTES = 20;
