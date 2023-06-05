@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "./ILayerZeroEndpoint.sol";
+import "../interfaces/IZkLink.sol";
 
 /// @title LayerZero bridge storage
 /// @author zk.link
@@ -12,7 +13,7 @@ contract LayerZeroStorage {
     /// @notice ZkLink network governor
     address public networkGovernor;
     /// @notice zklink contract address
-    address public zklink;
+    IZkLink public zklink;
     /// @notice LayerZero endpoint that used to send and receive message
     ILayerZeroEndpoint public endpoint;
     /// @notice bridge contract address on other chains
