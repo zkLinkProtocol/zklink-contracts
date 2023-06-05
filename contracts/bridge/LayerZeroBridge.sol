@@ -35,16 +35,14 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         _;
     }
 
-    receive() external payable {}
+    receive() external payable {
+        // receive the refund eth from layerzero endpoint when send msg
+    }
 
     /// @param _governor The network governor of zkLink protocol
     /// @param _zklink The zklink contract address
     /// @param _endpoint The LayerZero endpoint
-    constructor(address _governor, address _zklink, ILayerZeroEndpoint _endpoint) {
-        require(_governor != address(0), "Governor not set");
-        require(_zklink != address(0), "ZkLink not set");
-        require(address(_endpoint) != address(0), "Endpoint not set");
-
+    constructor(address _governor, IZkLink _zklink, ILayerZeroEndpoint _endpoint) {
         initializeReentrancyGuard();
 
         networkGovernor = _governor;
@@ -113,16 +111,16 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
 
         // ===Interactions===
         bytes32 syncHash = storedBlockInfo.syncHash;
-        uint256 progress = IZkLink(zklink).getSynchronizedProgress(storedBlockInfo);
+        uint256 progress = zklink.getSynchronizedProgress(storedBlockInfo);
 
-        uint256 originBalance = address(this).balance - msg.value; // overflow is impossible
+        uint256 originBalance = address(this).balance - msg.value; // underflow is impossible
         // before the last send, we send all balance of this contract and set refund address to this contract
         for (uint i = 0; i < dstChainIds.length - 1; ++i) { // overflow is impossible
             _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[i], payable(address(this)), zroPaymentAddress, adapterParams, address(this).balance);
         }
         // for the last send, we send all left value exclude the origin balance of this contract and set refund address to `refundAddress`
         require(address(this).balance > originBalance, "Msg value is not enough for the last send");
-        uint256 leftMsgValue = address(this).balance - originBalance; // overflow is impossible
+        uint256 leftMsgValue = address(this).balance - originBalance; // underflow is impossible
         _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[dstChainIds.length - 1], refundAddress, zroPaymentAddress, adapterParams, leftMsgValue);
     }
 
@@ -159,7 +157,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         // reject invalid src contract address
         bytes memory srcAddress = destinations[srcChainId];
         bytes memory path = abi.encodePacked(srcAddress, address(this));
-        require(path.length == srcPath.length && keccak256(path) == keccak256(srcPath), "Invalid src");
+        require(keccak256(path) == keccak256(srcPath), "Invalid src");
 
         // try-catch all errors/exceptions
         // solhint-disable-next-line no-empty-blocks
@@ -194,7 +192,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         // unpack payload
         (bytes32 syncHash, uint256 progress) = abi.decode(payload, (bytes32, uint256));
         emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
-        IZkLink(zklink).receiveSynchronizationProgress(syncHash, progress);
+        zklink.receiveSynchronizationProgress(syncHash, progress);
     }
 
     function checkDstChainId(uint16 dstChainId) internal view returns (bytes memory trustedRemote) {
@@ -205,23 +203,4 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
     function buildZkLinkBlockBridgePayload(bytes32 syncHash, uint256 progress) internal pure returns (bytes memory payload) {
         payload = abi.encode(syncHash, progress);
     }
-}
-
-interface IZkLink {
-    // stored block info of ZkLink
-    struct StoredBlockInfo {
-        uint32 blockNumber;
-        uint64 priorityOperations;
-        bytes32 pendingOnchainOperationsHash;
-        uint256 timestamp;
-        bytes32 stateHash;
-        bytes32 commitment;
-        bytes32 syncHash;
-    }
-
-    /// @notice Get synchronized progress of zkLink contract known on deployed chain
-    function getSynchronizedProgress(StoredBlockInfo memory block) external view returns (uint256 progress);
-
-    /// @notice Combine the `progress` of the other chains of a `syncHash` with self
-    function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external;
 }
