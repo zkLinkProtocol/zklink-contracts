@@ -111,7 +111,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
-    function depositETH(address _zkLinkAddress, uint8 _subAccountId) external payable nonReentrant {
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable nonReentrant {
         // ETH is not a mapping token in zkLink
         deposit(ETH_ADDRESS, SafeCast.toUint128(msg.value), _zkLinkAddress, _subAccountId, false);
     }
@@ -124,7 +124,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
     /// @param _mapping If true and token has a mapping token, user will receive mapping token at l2
-    function depositERC20(IERC20 _token, uint104 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
+    function depositERC20(IERC20 _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
         // erc20 token address MUST NOT be ETH_ADDRESS which represent deposit eth
         // it's nearly impossible to create an erc20 token which address is the ETH_ADDRESS
         // add check to avoid this extreme case
@@ -216,10 +216,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     // =================Internal functions=================
 
-    function deposit(address _tokenAddress, uint128 _amount, address _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal active {
+    function deposit(address _tokenAddress, uint128 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal active {
         // ===Checks===
         // disable deposit to zero address or global asset account
-        require(_zkLinkAddress != address(0) && _zkLinkAddress != GLOBAL_ASSET_ACCOUNT_ADDRESS, "e1");
+        require(_zkLinkAddress != bytes32(0) && _zkLinkAddress != GLOBAL_ASSET_ACCOUNT_ADDRESS, "e1");
         // subAccountId MUST be valid
         require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "e2");
         // token MUST be registered to ZkLink and deposit MUST be enabled
@@ -694,9 +694,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Increase `_recipient` balance to withdraw
     /// @param _amount amount that need to recovery decimals when withdraw
     function increasePendingBalance(uint16 _tokenId, address _recipient, uint128 _amount) internal {
-        bytes22 packedBalanceKey = packAddressAndTokenId(_recipient, _tokenId);
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
-        emit WithdrawalPending(_tokenId, _recipient, _amount);
+        bytes32 recipient = extendAddress(_recipient);
+        increaseBalanceToWithdraw(recipient, _tokenId, _amount);
+        emit WithdrawalPending(_tokenId, recipient, _amount);
     }
 
     /// @notice Sends ETH

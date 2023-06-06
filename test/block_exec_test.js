@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy} = require('./utils');
+const { deploy, extendAddress} = require('./utils');
 const {parseEther} = require("ethers/lib/utils");
 
 describe('Block exec unit tests', function () {
@@ -23,7 +23,7 @@ describe('Block exec unit tests', function () {
     it('send eth no revert should be success', async () => {
         const b0 = await alice.getBalance();
         const amount = parseEther("1");
-        await zkLink.connect(defaultSender).depositETH(defaultSender.address, 0, {value: amount});
+        await zkLink.connect(defaultSender).depositETH(extendAddress(defaultSender.address), 0, {value: amount});
         await zkLink.connect(defaultSender).testSendETHNoRevert(alice.address, amount);
         const b1 = await alice.getBalance();
         expect(b1).to.be.eq(b0.add(amount));

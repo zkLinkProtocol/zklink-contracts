@@ -11,7 +11,24 @@ const OP_FULL_EXIT = 5;
 const OP_CHANGE_PUBKEY = 6;
 const OP_FORCE_EXIT = 7;
 const OP_ORDER_MATCHING = 11;
-const CHUNK_BYTES = 19;
+const CHUNK_BYTES = 23;
+const OP_NOOP_CHUNKS = 1;
+const OP_DEPOSIT_CHUNKS = 3;
+const OP_TRANSFER_TO_NEW_CHUNKS = 3;
+const OP_WITHDRAW_CHUNKS = 3;
+const OP_TRANSFER_CHUNKS = 2;
+const OP_FULL_EXIT_CHUNKS = 3;
+const OP_CHANGE_PUBKEY_CHUNKS = 3;
+const OP_FORCE_EXIT_CHUNKS = 3;
+const OP_ORDER_MATCHING_CHUNKS = 4;
+const OP_DEPOSIT_SIZE = 59;
+const OP_TRANSFER_TO_NEW_SIZE = 52;
+const OP_WITHDRAW_SIZE = 67;
+const OP_TRANSFER_SIZE = 20;
+const OP_FULL_EXIT_SIZE = 59;
+const OP_CHANGE_PUBKEY_SIZE = 67;
+const OP_FORCE_EXIT_SIZE = 68;
+const OP_ORDER_MATCHING_SIZE = 77;
 const MAX_ACCOUNT_ID = 16777215;
 const MAX_SUB_ACCOUNT_ID = 31;
 const MIN_CHAIN_ID = 1;
@@ -36,76 +53,121 @@ const USD_TOKEN_ID = 1;
 const MIN_USD_STABLE_TOKEN_ID = 17;
 const MAX_USD_STABLE_TOKEN_ID = 31;
 const MAX_PROOF_COMMITMENT = "0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+const ADDRESS_PREFIX_ZERO_BYTES = "0x000000000000000000000000";
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","bytes32"],
         [OP_DEPOSIT,chainId,accountId,subAccountId,tokenId,targetTokenId,amount,owner]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_DEPOSIT_SIZE, "wrong deposit pubdata");
+    return pubdata;
 }
 
 function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","address"],
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","bytes32"],
         [OP_DEPOSIT,chainId,0,subAccountId,tokenId,targetTokenId,amount,owner]);
 }
 
 function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","address","uint32","uint16"],
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16"],
         [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_WITHDRAW_SIZE, "wrong withdraw pubdata");
+    return pubdata;
 }
 
 function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId, amount}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint16","uint128"],
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,amount]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_FULL_EXIT_SIZE, "wrong fullexit pubdata");
+    return pubdata;
 }
 
 function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","address","uint16","uint16","uint128"],
+    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
 function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, feeTokenId, amount, fee, target }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint8","uint16","uint16","uint16","uint128","uint16","address"],
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint8","uint16","uint16","uint16","uint128","uint16","bytes32"],
         [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,feeTokenId,amount,fee,target]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_FORCE_EXIT_SIZE, "wrong forcedexit pubdata");
+    return pubdata;
 }
 
 function getChangePubkeyPubdata({ chainId, accountId, subAccountId, pubKeyHash, owner, nonce, tokenId, fee}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes20","address","uint32","uint16","uint16"],
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes20","bytes32","uint32","uint16","uint16"],
         [OP_CHANGE_PUBKEY,chainId,accountId,subAccountId,pubKeyHash,owner,nonce,tokenId,fee]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_CHANGE_PUBKEY_SIZE, "wrong changepubkey pubdata");
+    return pubdata;
 }
 
 function getTransferPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, fee}) {
-    // transfer need 3 chunks
-    return ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","uint16","bytes14"],
-        [OP_TRANSFER,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,fee,"0x0000000000000000000000000000"]);
+    const pubdata = ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","uint16"],
+        [OP_TRANSFER,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,fee]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_TRANSFER_SIZE, "wrong transfer pubdata");
+    return pubdata;
 }
 
 function getTransferToNewPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, to, fee}) {
-    return ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","address","uint16"],
-        [OP_TRANSFER_TO_NEW,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,to,fee]);
+    const pubdata = ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","bytes32","uint32","uint8","uint16"],
+        [OP_TRANSFER_TO_NEW,fromAccountId,fromSubAccountId,tokenId,amount,to,toAccountId,toSubAccountId,fee]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_TRANSFER_TO_NEW_SIZE, "wrong transfertonew pubdata");
+    return pubdata;
 }
 
 function getOrderMatchingPubdata({submitterAccountId, taker, maker, feeTokenId, fee, baseAmount, quoteAmount}) {
-    // subAccountId of taker and maker must be the same
-    // taker bytes length = 17
-    const takerBytes = ethers.utils.solidityPack(["uint32","uint8","uint16","uint32","uint40","uint8"],
-        [taker.accountId,taker.slotId,taker.tokenId,taker.nonce,taker.amount,taker.feeRatio]);
-    // maker bytes length = 18
-    const makerBytes = ethers.utils.solidityPack(["uint32","uint8","uint8","uint16","uint32","uint40","uint8"],
-        [maker.accountId,maker.subAccountId,maker.slotId,maker.tokenId,maker.nonce,maker.amount,maker.feeRatio]);
-    // total length = 1 + 4 + 18 + 17 + 2 + 2 + 16 + 16 = 76
-    return ethers.utils.solidityPack(["uint8","uint32","bytes","bytes","uint16","uint16","uint128","uint128"],
-        [OP_ORDER_MATCHING,submitterAccountId,makerBytes,takerBytes,feeTokenId,fee,baseAmount,quoteAmount]);
+    const pubdata =  ethers.utils.solidityPack(["uint8",
+            "uint8",
+            "uint32","uint32","uint32",
+            "uint16","uint16",
+            "uint16","uint16","uint16",
+            "uint40","uint40",
+            "uint16",
+            "uint8","uint8",
+            "uint128","uint128",
+            "uint24","uint24",
+            "uint8"
+        ],
+        [OP_ORDER_MATCHING,
+            maker.subAccountId,
+            maker.accountId,taker.accountId,submitterAccountId,
+            maker.slotId,taker.slotId,
+            maker.tokenId,taker.tokenId,feeTokenId,
+            maker.amount,taker.amount,
+            fee,
+            maker.feeRatio,taker.feeRatio,
+            baseAmount,quoteAmount,
+            maker.nonce,taker.nonce,
+            maker.is_sell
+        ]);
+    const pubdataArray = ethers.utils.arrayify(pubdata);
+    console.assert(pubdataArray.length === OP_ORDER_MATCHING_SIZE, "wrong ordermatching pubdata");
+    return pubdata;
 }
 
 function mockNoopPubdata() {
     return ethers.utils.solidityPack(["uint8"], [OP_NOOP]);
 }
 
-function paddingChunk(pubdata) {
+function paddingChunk(pubdata, chunks) {
     const pubdataArray = ethers.utils.arrayify(pubdata);
-    const zeroPaddingNum = CHUNK_BYTES - pubdataArray.length % CHUNK_BYTES;
+    const zeroPaddingNum = CHUNK_BYTES * chunks - pubdataArray.length;
     const zeroArray = new Uint8Array(zeroPaddingNum);
     const pubdataPaddingArray = ethers.utils.concat([pubdataArray, zeroArray]);
     return ethers.utils.hexlify(pubdataPaddingArray);
+}
+
+function extendAddress(address) {
+    const addrBytes = ethers.utils.arrayify(address);
+    const zeroBytes = ethers.utils.arrayify(ADDRESS_PREFIX_ZERO_BYTES);
+    const extendAddrArray = ethers.utils.concat([zeroBytes, addrBytes]);
+    return ethers.utils.hexlify(extendAddrArray);
 }
 
 async function calFee(tx) {
@@ -264,6 +326,7 @@ module.exports = {
     getOrderMatchingPubdata,
     mockNoopPubdata,
     paddingChunk,
+    extendAddress,
     calFee,
     deploy,
     hashBytesToBytes20,
@@ -280,6 +343,15 @@ module.exports = {
     OP_TRANSFER_TO_NEW,
     OP_ORDER_MATCHING,
     CHUNK_BYTES,
+    OP_NOOP_CHUNKS,
+    OP_DEPOSIT_CHUNKS,
+    OP_TRANSFER_TO_NEW_CHUNKS,
+    OP_WITHDRAW_CHUNKS,
+    OP_TRANSFER_CHUNKS,
+    OP_FULL_EXIT_CHUNKS,
+    OP_CHANGE_PUBKEY_CHUNKS,
+    OP_FORCE_EXIT_CHUNKS,
+    OP_ORDER_MATCHING_CHUNKS,
     MAX_ACCOUNT_ID,
     MAX_SUB_ACCOUNT_ID,
     MIN_CHAIN_ID,

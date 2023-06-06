@@ -35,7 +35,7 @@ contract VerifierMock is IVerifier {
         uint8,
         uint32,
         uint8,
-        address,
+        bytes32,
         uint16,
         uint16,
         uint128,
