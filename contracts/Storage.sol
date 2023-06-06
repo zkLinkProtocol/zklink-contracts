@@ -58,9 +58,12 @@ contract Storage is Config {
     /// @notice Once it was raised, it can not be cleared again, and all users must exit
     bool public exodusMode;
 
-    /// @dev Root-chain balances (per owner and token id, see packAddressAndTokenId) to withdraw
+    /// @dev Root-chain balances (per owner and token id) to withdraw
     /// @dev the amount of pending balance need to recovery decimals when withdraw
-    mapping(bytes22 => uint128) internal pendingBalances;
+    /// @dev The struct of this map is (owner => tokenId => balance)
+    /// @dev The type of owner is bytes32, when storing evm address, 12 bytes of prefix zero will be appended
+    /// @dev for example: 0x000000000000000000000000A1a547358A9Ca8E7b320d7742729e3334Ad96546
+    mapping(bytes32 => mapping(uint16 => uint128)) internal pendingBalances;
 
     /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
     /// @dev The struct of this map is (accountId => subAccountId => withdrawTokenId => deductTokenId => performed)
@@ -176,16 +179,18 @@ contract Storage is Config {
     }
 
     /// @notice Increase pending balance to withdraw
-    /// @param _packedBalanceKey address tokenId packed key
+    /// @param _address the pending balance owner
+    /// @param _tokenId token id
     /// @param _amount pending amount that need to recovery decimals when withdraw
-    function increaseBalanceToWithdraw(bytes22 _packedBalanceKey, uint128 _amount) internal {
-        uint128 balance = pendingBalances[_packedBalanceKey];
-        pendingBalances[_packedBalanceKey] = balance + _amount;
+    function increaseBalanceToWithdraw(bytes32 _address, uint16 _tokenId, uint128 _amount) internal {
+        uint128 balance = pendingBalances[_address][_tokenId];
+        pendingBalances[_address][_tokenId] = balance + _amount;
     }
 
-    /// @notice Packs address and token id into single word to use as a key in balances mapping
-    function packAddressAndTokenId(address _address, uint16 _tokenId) internal pure returns (bytes22) {
-        return bytes22((uint176(uint160(_address)) | (uint176(_tokenId) << 160)));
+    /// @notice Extend address to bytes32
+    /// @dev for example: extend 0xA1a547358A9Ca8E7b320d7742729e3334Ad96546 and the result is 0x000000000000000000000000a1a547358a9ca8e7b320d7742729e3334ad96546
+    function extendAddress(address _address) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(_address)));
     }
 
     /// @notice Sends tokens

@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy, writeDepositPubdata } = require('./utils');
+const { deploy, writeDepositPubdata, extendAddress} = require('./utils');
 const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink withdraw pending balance unit tests', function () {
@@ -32,12 +32,12 @@ describe('ZkLink withdraw pending balance unit tests', function () {
     it('withdraw pending eth balance should success', async () => {
         // increase pending balance
         const depositAmount = parseEther("1.0");
-        await zkLink.connect(defaultSender).depositETH(alice.address, 0, {value: depositAmount});
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:ethId, targetTokenId:ethId, amount:depositAmount, owner:alice.address });
+        await zkLink.connect(defaultSender).depositETH(extendAddress(alice.address), 0, {value: depositAmount});
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:ethId, targetTokenId:ethId, amount:depositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
-        expect(await periphery.getPendingBalance(alice.address, ethId)).to.be.eq(depositAmount);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount);
 
         const b0 = await alice.getBalance();
         const amount0 = parseEther("0.5");
@@ -45,7 +45,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
             .emit(periphery, "Withdrawal")
             .withArgs(ethId, amount0);
         expect(await alice.getBalance()).to.be.eq(b0.add(amount0));
-        expect(await periphery.getPendingBalance(alice.address, ethId)).to.be.eq(depositAmount.sub(amount0));
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount.sub(amount0));
 
         const leftAmount = depositAmount.sub(amount0);
         const amount1 = parseEther("0.6");
@@ -53,7 +53,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
             .emit(periphery, "Withdrawal")
             .withArgs(ethId, leftAmount);
         expect(await alice.getBalance()).to.be.eq(b0.add(depositAmount));
-        expect(await periphery.getPendingBalance(alice.address, ethId)).to.be.eq(0);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(0);
     });
 
     it('withdraw pending standard erc20 token balance should success', async () => {
@@ -61,12 +61,12 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         const depositAmount = parseEther("1.0");
         await token2.connect(defaultSender).mint(depositAmount);
         await token2.connect(defaultSender).approve(zkLink.address, depositAmount);
-        await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, alice.address, 0, false);
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:alice.address });
+        await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, extendAddress(alice.address), 0, false);
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
-        expect(await periphery.getPendingBalance(alice.address, token2Id)).to.be.eq(depositAmount);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(depositAmount);
 
         const b0 = await token2.balanceOf(alice.address);
         const amount0 = parseEther("0.5");
@@ -74,7 +74,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
             .emit(periphery, "Withdrawal")
             .withArgs(token2Id, amount0);
         expect(await token2.balanceOf(alice.address)).to.be.eq(b0.add(amount0));
-        expect(await periphery.getPendingBalance(alice.address, token2Id)).to.be.eq(depositAmount.sub(amount0));
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(depositAmount.sub(amount0));
 
         const leftAmount = depositAmount.sub(amount0);
         const amount1 = parseEther("0.6");
@@ -82,7 +82,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
             .emit(periphery, "Withdrawal")
             .withArgs(token2Id, leftAmount);
         expect(await token2.balanceOf(alice.address)).to.be.eq(b0.add(depositAmount));
-        expect(await periphery.getPendingBalance(alice.address, token2Id)).to.be.eq(0);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(0);
     });
 
     it('withdraw pending non-standard erc20 token balance should success', async () => {
@@ -90,13 +90,13 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         const depositAmount = parseEther("1.0");
         await token3.connect(defaultSender).mint(parseEther("2.0"));
         await token3.connect(defaultSender).approve(zkLink.address, depositAmount);
-        await zkLink.connect(defaultSender).depositERC20(token3.address, depositAmount, alice.address, 0, false);
+        await zkLink.connect(defaultSender).depositERC20(token3.address, depositAmount, extendAddress(alice.address), 0, false);
         const reallyDepositAmount = parseEther("0.8"); // take 20% fee
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token3Id, targetTokenId:token3Id, amount:reallyDepositAmount, owner:alice.address });
+        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token3Id, targetTokenId:token3Id, amount:reallyDepositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
-        expect(await periphery.getPendingBalance(alice.address, token3Id)).to.be.eq(reallyDepositAmount);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token3Id)).to.be.eq(reallyDepositAmount);
 
         const b0 = await token3.balanceOf(alice.address);
         const amount0 = parseEther("0.5");
@@ -106,7 +106,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
             .emit(periphery, "Withdrawal")
             .withArgs(token3Id, reallyAmount0);
         expect(await token3.balanceOf(alice.address)).to.be.eq(b0.add(reallyReceive0));
-        expect(await periphery.getPendingBalance(alice.address, token3Id))
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token3Id))
             .to.be.eq(reallyDepositAmount.sub(reallyAmount0));
     });
 });

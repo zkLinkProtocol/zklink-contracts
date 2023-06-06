@@ -25,10 +25,19 @@ const { deploy,
     OP_ORDER_MATCHING,
     OP_CHANGE_PUBKEY,
     OP_WITHDRAW,
+    OP_NOOP_CHUNKS,
+    OP_DEPOSIT_CHUNKS,
+    OP_TRANSFER_TO_NEW_CHUNKS,
+    OP_WITHDRAW_CHUNKS,
+    OP_TRANSFER_CHUNKS,
+    OP_FULL_EXIT_CHUNKS,
+    OP_CHANGE_PUBKEY_CHUNKS,
+    OP_FORCE_EXIT_CHUNKS,
+    OP_ORDER_MATCHING_CHUNKS,
     CHAIN_ID,
     ZERO_BYTES32,
     GENESIS_BLOCK,
-    MAX_PROOF_COMMITMENT,
+    MAX_PROOF_COMMITMENT, extendAddress,
 } = require('../test/utils');
 const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
 const {BigNumber, constants} = require("ethers");
@@ -152,23 +161,25 @@ class TestSetUp {
     async buildOpEstimateData(params) {
         const chainId = params.chainId;
         const opType = params.opType;
-        let op, opPubdata, ethWitness = "0x", processable = false, isOnchainOp = true;
+        let opPubdata, ethWitness = "0x", processable = false, isOnchainOp = true;
         if (opType === OP_DEPOSIT) {
-            const opParams = {chainId:chainId,accountId:1,subAccountId:0,tokenId:this.token2Id,targetTokenId:this.token2Id,amount:parseEther("1"),owner:this.alice.address};
-            op = getDepositPubdata(opParams);
+            const opParams = {chainId:chainId,accountId:1,subAccountId:0,tokenId:this.token2Id,targetTokenId:this.token2Id,amount:parseEther("1"),owner:extendAddress(this.alice.address)};
+            const op = getDepositPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 await this.zkLink.testAddPriorityRequest(opType, writeDepositPubdata(opParams));
             }
+            opPubdata = paddingChunk(op, OP_DEPOSIT_CHUNKS);
         } else if (opType === OP_FULL_EXIT) {
             const amount = params.amount;
             const owner = params.owner;
             const tokenId = params.tokenId;
-            const opParams = {chainId:chainId,accountId:1,subAccountId:0,owner,tokenId,srcTokenId:tokenId,amount};
-            op = getFullExitPubdata(opParams);
+            const opParams = {chainId:chainId,accountId:1,subAccountId:0,owner:extendAddress(owner),tokenId,srcTokenId:tokenId,amount};
+            const op = getFullExitPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 await this.zkLink.testAddPriorityRequest(opType, writeFullExitPubdata(opParams));
                 processable = true;
             }
+            opPubdata = paddingChunk(op, OP_FULL_EXIT_CHUNKS);
         } else if (opType === OP_CHANGE_PUBKEY) {
             const accountId = 1;
             const subAccountId = 0;
@@ -190,8 +201,9 @@ class TestSetUp {
                 owner = params.owner;
                 nonce = params.nonce;
             }
-            const opParams = {chainId:chainId,accountId,subAccountId,pubKeyHash,owner,nonce,tokenId:this.token2Id,fee:0};
-            op = getChangePubkeyPubdata(opParams);
+            const opParams = {chainId:chainId,accountId,subAccountId,pubKeyHash,owner:extendAddress(owner),nonce,tokenId:this.token2Id,fee:0};
+            const op = getChangePubkeyPubdata(opParams);
+            opPubdata = paddingChunk(op, OP_CHANGE_PUBKEY_CHUNKS);
         } else if (opType === OP_WITHDRAW) {
             const accountId = 1;
             const amount = params.amount;
@@ -205,26 +217,29 @@ class TestSetUp {
                 const accepter = params.accepter;
                 await this.periphery.setAccepter(accountId,hash,accepter);
             }
-            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner,nonce,fastWithdrawFeeRate};
-            op = getWithdrawPubdata(opParams);
+            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner:extendAddress(owner),nonce,fastWithdrawFeeRate};
+            const op = getWithdrawPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 processable = true;
             }
+            opPubdata = paddingChunk(op, OP_WITHDRAW_CHUNKS);
         } else if (opType === OP_TRANSFER) {
-            op = getTransferPubdata({fromAccountId:1,fromSubAccountId:0,tokenId:this.token2Id,amount:456,toAccountId:4,toSubAccountId:3,fee:34});
+            const op = getTransferPubdata({fromAccountId:1,fromSubAccountId:0,tokenId:this.token2Id,amount:456,toAccountId:4,toSubAccountId:3,fee:34});
             isOnchainOp = false;
+            opPubdata = paddingChunk(op, OP_TRANSFER_CHUNKS);
         } else if (opType === OP_TRANSFER_TO_NEW) {
-            op = getTransferToNewPubdata({fromAccountId:1,fromSubAccountId:0,tokenId:this.token2Id,amount:456,toAccountId:4,toSubAccountId:3,to:this.alice.address,fee:34});
+            const op = getTransferToNewPubdata({fromAccountId:1,fromSubAccountId:0,tokenId:this.token2Id,amount:456,toAccountId:4,toSubAccountId:3,to:extendAddress(this.alice.address),fee:34});
             isOnchainOp = false;
+            opPubdata = paddingChunk(op, OP_TRANSFER_TO_NEW_CHUNKS);
         } else if (opType === OP_ORDER_MATCHING) {
-            op = getOrderMatchingPubdata({submitterAccountId:1,taker:{
+            const op = getOrderMatchingPubdata({submitterAccountId:1,taker:{
                     accountId:1,subAccountId:1,slotId:4,tokenId:this.token2Id,nonce:14,amount:4242,feeRatio:34
                 },maker:{
-                    accountId:2,subAccountId:1,slotId:2,tokenId:this.token2Id,nonce:1345,amount:14242,feeRatio:134
+                    accountId:2,subAccountId:1,slotId:2,tokenId:this.token2Id,nonce:1345,amount:14242,feeRatio:134,is_sell:1
                 },feeTokenId:this.token2Id,fee:456,baseAmount:4003,quoteAmount:31231});
             isOnchainOp = false;
+            opPubdata = paddingChunk(op, OP_ORDER_MATCHING_CHUNKS);
         }
-        opPubdata = paddingChunk(op);
         return {opPubdata, ethWitness, processable, isOnchainOp};
     }
 
@@ -450,11 +465,11 @@ async function main() {
     tokenId = testSetUp.token2Id;
     let accepter = testSetUp.bob.address;
     params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, nonce:1, fastWithdrawFeeRate:50, accepter};
-    b0 = await testSetUp.periphery.getPendingBalance(accepter, tokenId);
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(accepter), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurFastWithdrawCommitCost: " + opCost.commitCost);
     console.log("CurFastWithdrawExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.periphery.getPendingBalance(accepter, tokenId);
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(accepter), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'Fast withdraw failed';

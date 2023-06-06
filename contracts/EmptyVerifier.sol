@@ -23,7 +23,7 @@ contract EmptyVerifier is IVerifier {
         return false;
     }
 
-    function verifyExitProof(bytes32, uint8, uint32, uint8, address, uint16, uint16, uint128, uint256[] calldata) external override pure returns (bool) {
+    function verifyExitProof(bytes32, uint8, uint32, uint8, bytes32, uint16, uint16, uint128, uint256[] calldata) external override pure returns (bool) {
         return false;
     }
 }

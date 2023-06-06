@@ -1,6 +1,8 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
-const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2 } = require('./utils');
+const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2,
+    OP_CHANGE_PUBKEY_CHUNKS, extendAddress
+} = require('./utils');
 
 describe('ZkLink change pubkey unit tests', function () {
     let zkLink, periphery, alice;
@@ -47,8 +49,8 @@ describe('ZkLink change pubkey unit tests', function () {
 
     it('verify onchain pubkey should be success', async () => {
         const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId:1, subAccountId:4, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata);
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId:1, subAccountId:4, pubKeyHash, owner:extendAddress(alice.address), nonce, tokenId:0, fee:0});
+        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
         const onchainOperations = [{
             "ethWitness":"0x",
             "publicDataOffset":0
@@ -70,8 +72,8 @@ describe('ZkLink change pubkey unit tests', function () {
     it('verify ECRECOVER should be success', async () => {
         const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         const accountId = 15;
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:5, pubKeyHash, owner:alice.address, nonce, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata);
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:5, pubKeyHash, owner:extendAddress(alice.address), nonce, tokenId:0, fee:0});
+        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
         const ethWitness = createEthWitnessOfECRECOVER(zkLink.address,pubKeyHash,nonce,accountId,alice);
         const onchainOperations = [{
             "ethWitness":ethWitness,
@@ -98,8 +100,8 @@ describe('ZkLink change pubkey unit tests', function () {
         const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
         const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";
         const {ethWitness, owner} = createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash);
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:0, pubKeyHash, owner, nonce:0, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata);
+        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:0, pubKeyHash, owner:extendAddress(owner), nonce:0, tokenId:0, fee:0});
+        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
 
         const onchainOperations = [{
             "ethWitness":ethWitness,

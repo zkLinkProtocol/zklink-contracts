@@ -107,7 +107,7 @@ contract Config {
     /// @dev Global asset account in the network
     /// @dev Can not deposit to or full exit this account
     uint32 internal constant GLOBAL_ASSET_ACCOUNT_ID = 1;
-    address internal constant GLOBAL_ASSET_ACCOUNT_ADDRESS = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+    bytes32 internal constant GLOBAL_ASSET_ACCOUNT_ADDRESS = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     /// @dev USD and USD stable tokens defined by zkLink
     /// @dev User can deposit USD stable token(eg. USDC, BUSD) to get USD in layer two

@@ -1,6 +1,7 @@
 const { readDeployContract, readDeployLogField} = require('./utils');
 const logName = require('./deploy_log_name');
 const { layerZero } = require('./layerzero');
+const {extendAddress} = require("../test/utils");
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
@@ -77,7 +78,7 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
                     const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
                     console.log('approve tx hash', tx.hash);
             }
-            const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, sender.address, 0, false);
+            const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
             console.log('tx', tx.hash);
     });
 

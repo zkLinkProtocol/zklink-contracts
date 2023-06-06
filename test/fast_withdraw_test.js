@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy, calAcceptHash } = require('./utils');
+const { deploy, calAcceptHash, extendAddress} = require('./utils');
 const {parseEther} = require("ethers/lib/utils");
 const {BigNumber} = require("ethers");
 
@@ -61,7 +61,7 @@ describe('Fast withdraw unit tests', function () {
         const MAX_WITHDRAW_FEE_RATE = 10000;
 
         const bobBalance0 = await token2.balanceOf(bob.address);
-        const bobPendingBalance0 = await periphery.getPendingBalance(bob.address, token2Id);
+        const bobPendingBalance0 = await periphery.getPendingBalance(extendAddress(bob.address), token2Id);
         const aliceBalance0 = await token2.balanceOf(alice.address);
 
         await token2.mintTo(bob.address, amount);
@@ -87,7 +87,7 @@ describe('Fast withdraw unit tests', function () {
 
         const aliceBalance1 = await token2.balanceOf(alice.address);
         const bobBalance1 = await token2.balanceOf(bob.address);
-        const bobPendingBalance1 = await periphery.getPendingBalance(bob.address, token2Id);
+        const bobPendingBalance1 = await periphery.getPendingBalance(extendAddress(bob.address), token2Id);
         expect(aliceBalance1.sub(aliceBalance0)).to.eq(amountTransfer);
         expect(bobBalance1.sub(bobBalance0)).to.eq(amount.sub(amountTransfer)); // amount - amountTransfer is the profit of accept
         expect(bobPendingBalance1.sub(bobPendingBalance0)).to.eq(amount); // accepter pending balance increase

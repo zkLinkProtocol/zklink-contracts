@@ -68,8 +68,7 @@ library Operations {
         uint16 tokenId; // the token that registered to l2
         uint16 targetTokenId; // the token that user increased in l2
         uint128 amount; // the token amount deposited to l2
-        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
-        address owner; // the address that receive deposited token at l2
+        bytes32 owner; // the address that receive deposited token at l2
     } // 59
 
     /// @dev Deserialize deposit pubdata
@@ -82,8 +81,7 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.targetTokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-        offset += ADDRESS_PREFIX_ZERO_BYTES;
-        (offset, parsed.owner) = Bytes.readAddress(_data, offset);
+        (offset, parsed.owner) = Bytes.readBytes32(_data, offset);
     }
 
     /// @dev Serialize deposit pubdata
@@ -96,7 +94,6 @@ library Operations {
             op.tokenId,
             op.targetTokenId,
             op.amount,
-            bytes12(0), // append 12 zero bytes
             op.owner
         );
     }

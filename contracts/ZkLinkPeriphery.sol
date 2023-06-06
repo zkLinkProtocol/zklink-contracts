@@ -35,7 +35,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _withdrawTokenId The token want to withdraw in l1
     /// @param _deductTokenId The token deducted in l2
     /// @param _amount Amount for owner (must be total amount, not part of it) in l2
-    function performExodus(StoredBlockInfo calldata _storedBlockInfo, address _owner, uint32 _accountId, uint8 _subAccountId, uint16 _withdrawTokenId, uint16 _deductTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
+    function performExodus(StoredBlockInfo calldata _storedBlockInfo, bytes32 _owner, uint32 _accountId, uint8 _subAccountId, uint16 _withdrawTokenId, uint16 _deductTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
         require(!performedExodus[_accountId][_subAccountId][_withdrawTokenId][_deductTokenId], "y0");
@@ -47,8 +47,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Effects===
         performedExodus[_accountId][_subAccountId][_withdrawTokenId][_deductTokenId] = true;
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _withdrawTokenId);
-        increaseBalanceToWithdraw(packedBalanceKey, _amount);
+        increaseBalanceToWithdraw(_owner, _withdrawTokenId, _amount);
         emit WithdrawalPending(_withdrawTokenId, _owner, _amount);
     }
 
@@ -74,9 +73,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 ++currentDepositIdx;
 
                 Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
-                bytes22 packedBalanceKey = packAddressAndTokenId(op.owner, op.tokenId);
                 // amount of Deposit has already improve decimals
-                increaseBalanceToWithdraw(packedBalanceKey, op.amount);
+                increaseBalanceToWithdraw(op.owner, op.tokenId, op.amount);
             }
             // after return back deposited token to user, delete the priorityRequest to avoid redundant cancel
             // other priority requests(ie. FullExit) are also be deleted because they are no used anymore
@@ -128,9 +126,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(rt.registered, "b0");
 
         // Set the available amount to withdraw
-        bytes22 packedBalanceKey = packAddressAndTokenId(_owner, _tokenId);
         // balance need to be recovery decimals
-        uint128 balance = pendingBalances[packedBalanceKey];
+        bytes32 owner = extendAddress(_owner);
+        uint128 balance = pendingBalances[owner][_tokenId];
         uint128 withdrawBalance = recoveryDecimals(balance, rt.decimals);
         uint128 amount = Utils.minU128(withdrawBalance, _amount);
         require(amount > 0, "b1");
@@ -149,7 +147,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
 
         // improve withdrawn amount decimals
-        pendingBalances[packedBalanceKey] = balance - improveDecimals(amount, rt.decimals);
+        pendingBalances[owner][_tokenId] = balance - improveDecimals(amount, rt.decimals);
         emit Withdrawal(_tokenId, amount);
 
         return amount;
@@ -159,10 +157,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _address Address of the tokens owner
     /// @param _tokenId Token id
     /// @return The pending balance(without recovery decimals) can be withdrawn
-    function getPendingBalance(address _address, uint16 _tokenId) external view returns (uint128) {
-        return pendingBalances[packAddressAndTokenId(_address, _tokenId)];
+    function getPendingBalance(bytes32 _address, uint16 _tokenId) external view returns (uint128) {
+        return pendingBalances[_address][_tokenId];
     }
-
     // =======================Governance interface======================
 
     /// @notice Change current governor
