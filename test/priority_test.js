@@ -1,8 +1,7 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
-const { deploy, hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID,
-    MAX_ACCOUNT_ID, extendAddress
-} = require('./utils');
+const { deploy, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID, MAX_ACCOUNT_ID} = require('./utils');
+const { hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, extendAddress} = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {

@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const { deploy, extendAddress} = require('./utils');
+const { deploy} = require('./utils');
+const { extendAddress} = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
 
 describe('Block exec unit tests', function () {

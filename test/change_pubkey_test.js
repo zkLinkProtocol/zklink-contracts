@@ -1,8 +1,9 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
-const { deploy, getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2,
+const { deploy } = require('./utils');
+const { getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2,
     OP_CHANGE_PUBKEY_CHUNKS, extendAddress
-} = require('./utils');
+} = require('../script/op_utils');
 
 describe('ZkLink change pubkey unit tests', function () {
     let zkLink, periphery, alice;

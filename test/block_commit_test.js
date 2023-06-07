@@ -1,5 +1,12 @@
 const { expect } = require('chai');
 const { deploy,
+    MIN_CHAIN_ID,
+    MAX_CHAIN_ID,
+    CHAIN_ID,
+    ZERO_BYTES32,
+    EMPTY_STRING_KECCAK
+} = require('./utils');
+const {
     paddingChunk,
     getDepositPubdata,
     writeDepositPubdata,
@@ -21,12 +28,8 @@ const { deploy,
     OP_FULL_EXIT_CHUNKS,
     OP_CHANGE_PUBKEY_CHUNKS,
     OP_FORCE_EXIT_CHUNKS,
-    MIN_CHAIN_ID,
-    MAX_CHAIN_ID,
-    CHAIN_ID,
-    ZERO_BYTES32,
-    EMPTY_STRING_KECCAK, extendAddress
-} = require('./utils');
+    extendAddress
+} = require('../script/op_utils');
 const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("ethers/lib/utils");
 
 describe('Block commit unit tests', function () {

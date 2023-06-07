@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const { deploy, calAcceptHash, extendAddress} = require('./utils');
+const { deploy} = require('./utils');
+const { calAcceptHash, extendAddress} = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
 const {BigNumber} = require("ethers");
 
