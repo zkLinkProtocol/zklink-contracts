@@ -1,6 +1,7 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
-const { deploy, calAcceptHash } = require('./utils');
+const { deploy } = require('./utils');
+const { calAcceptHash } = require('../script/op_utils');
 const {parseEther, keccak256, solidityPack} = require("ethers/lib/utils");
 
 describe('Accept unit tests', function () {

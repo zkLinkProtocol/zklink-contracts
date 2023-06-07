@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const { deploy, extendAddress} = require('./utils');
+const { deploy } = require('./utils');
+const { extendAddress } = require('../script/op_utils');
 
 describe('DeployFactory unit tests', function () {
     it('deposit erc20 should success', async () => {

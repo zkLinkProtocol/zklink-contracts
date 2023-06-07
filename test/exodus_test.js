@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const { deploy, writeDepositPubdata, extendAddress} = require('./utils');
+const { deploy} = require('./utils');
+const { writeDepositPubdata, extendAddress} = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
 
 describe('ZkLink exodus unit tests', function () {

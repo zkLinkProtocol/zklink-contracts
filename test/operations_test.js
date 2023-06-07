@@ -4,7 +4,7 @@ const {getDepositPubdata,
     getFullExitPubdata,
     getForcedExitPubdata,
     getChangePubkeyPubdata, extendAddress
-} = require('./utils');
+} = require('../script/op_utils');
 
 describe('Operations unit tests', function () {
     let testContract;

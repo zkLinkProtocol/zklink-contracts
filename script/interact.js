@@ -1,7 +1,7 @@
 const { readDeployContract, readDeployLogField} = require('./utils');
 const logName = require('./deploy_log_name');
 const { layerZero } = require('./layerzero');
-const {extendAddress} = require("../test/utils");
+const {extendAddress} = require("./op_utils");
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);

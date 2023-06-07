@@ -5,6 +5,12 @@
 // Runtime Environment's members available in the global scope.
 
 const { deploy,
+    CHAIN_ID,
+    ZERO_BYTES32,
+    GENESIS_BLOCK,
+    MAX_PROOF_COMMITMENT,
+} = require('../test/utils');
+const {
     paddingChunk,
     getDepositPubdata,
     writeDepositPubdata,
@@ -34,11 +40,8 @@ const { deploy,
     OP_CHANGE_PUBKEY_CHUNKS,
     OP_FORCE_EXIT_CHUNKS,
     OP_ORDER_MATCHING_CHUNKS,
-    CHAIN_ID,
-    ZERO_BYTES32,
-    GENESIS_BLOCK,
-    MAX_PROOF_COMMITMENT, extendAddress,
-} = require('../test/utils');
+    extendAddress,
+} = require('./op_utils');
 const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
 const {BigNumber, constants} = require("ethers");
 const hardhat = require("hardhat");
