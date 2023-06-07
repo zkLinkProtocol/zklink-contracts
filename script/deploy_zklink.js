@@ -52,7 +52,7 @@ task("deployZkLink", "Deploy zklink contracts")
 
         deployLog[logName.DEPLOY_LOG_DEPLOYER] = deployerWallet.address;
         deployLog[logName.DEPLOY_LOG_GOVERNOR] = governor;
-        deployLog[logName.DEPLOY_LOG_GOVERNOR] = validator;
+        deployLog[logName.DEPLOY_LOG_VALIDATOR] = validator;
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
         // verifier
