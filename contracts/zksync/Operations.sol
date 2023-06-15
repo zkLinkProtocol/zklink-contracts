@@ -155,7 +155,7 @@ library Operations {
         //uint8 opType; -- present in pubdata, ignored at serialization
         uint8 chainId; // which chain the withdraw happened
         uint32 accountId; // the account id to withdraw from
-        //uint8 subAccountId; -- present in pubdata, ignored at serialization
+        uint8 subAccountId; // the sub account id to withdraw from
         uint16 tokenId; // the token that to withdraw
         //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
@@ -171,7 +171,7 @@ library Operations {
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
         (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
-        offset += SUB_ACCOUNT_ID_BYTES;
+        (offset, parsed.subAccountId) = Bytes.readUint8(_data, offset);
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         offset += TOKEN_BYTES;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
@@ -185,15 +185,14 @@ library Operations {
     struct ForcedExit {
         //uint8 opType; -- present in pubdata, ignored at serialization
         uint8 chainId; // which chain the force exit happened
-        //uint32 initiatorAccountId; -- present in pubdata, ignored at serialization
-        //uint8 initiatorSubAccountId; -- present in pubdata, ignored at serialization
-        //uint32 targetAccountId; -- present in pubdata, ignored at serialization
+        uint32 initiatorAccountId; // the account id of initiator
+        uint8 initiatorSubAccountId; // the sub account id of initiator
+        uint32 initiatorNonce; // the nonce of initiator,  zero means normal withdraw, not zero means fast withdraw
+        uint32 targetAccountId; // the account id of target
         //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw
         //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
-        //uint16 feeTokenId; -- the token payed by initiator account in l2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
-        //uint16 fee; -- present in pubdata, ignored at serialization
         //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address target; // the address to receive token
     } // 68 bytes
@@ -202,11 +201,14 @@ library Operations {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
-        offset += ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES + ACCOUNT_ID_BYTES + SUB_ACCOUNT_ID_BYTES;
+        (offset, parsed.initiatorAccountId) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.initiatorSubAccountId) = Bytes.readUint8(_data, offset);
+        (offset, parsed.initiatorNonce) = Bytes.readUInt32(_data, offset);
+        (offset, parsed.targetAccountId) = Bytes.readUInt32(_data, offset);
+        offset += SUB_ACCOUNT_ID_BYTES;
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
-        offset += TOKEN_BYTES * 2;
+        offset += TOKEN_BYTES;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-        offset += FEE_BYTES;
         offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.target) = Bytes.readAddress(_data, offset);
     }

@@ -49,7 +49,7 @@ describe('Fast withdraw unit tests', function () {
         expect(b1.sub(b0)).to.eq(amount);
     });
 
-    it('fast withdraw and accept finish, token should be sent to accepter', async () => {
+    it('fast withdraw and accept finish, token should be sent to acceptor', async () => {
         const chainId = 1;
         const accountId = 1;
         const subAccountId = 1;
@@ -68,7 +68,7 @@ describe('Fast withdraw unit tests', function () {
         await token2.mintTo(bob.address, amount);
         const amountTransfer = amount.mul(BigNumber.from(MAX_WITHDRAW_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_WITHDRAW_FEE_RATE));
         await token2.connect(bob).approve(periphery.address, amountTransfer);
-        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, amount, fastWithdrawFeeRate, nonce, amountTransfer);
+        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce, amountTransfer);
 
         const op = {
             "chainId": chainId,
@@ -124,7 +124,7 @@ describe('Fast withdraw unit tests', function () {
         await zkLink.testExecuteWithdraw(op);
         const aliceBalance1 = await token2.balanceOf(alice.address);
         expect(aliceBalance1.sub(aliceBalance0)).to.eq(amount);
-        const hash = calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, nonce);
-        expect(await periphery.getAccepter(accountId, hash)).to.eq(owner);
+        const hash = calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+        expect(await periphery.getAcceptor(accountId, hash)).to.eq(owner);
     });
 });

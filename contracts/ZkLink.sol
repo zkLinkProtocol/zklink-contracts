@@ -612,41 +612,15 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @dev Execute withdraw operation
     function executeWithdraw(Operations.Withdraw memory op) internal {
-        // token MUST be registered
-        RegisteredToken storage rt = tokens[op.tokenId];
-        require(rt.registered, "o0");
-
-        // nonce > 0 means fast withdraw
-        if (op.nonce > 0) {
-            // recover withdraw amount
-            uint128 acceptAmount = recoveryDecimals(op.amount, rt.decimals);
-            uint128 dustAmount = op.amount - improveDecimals(acceptAmount, rt.decimals);
-            bytes32 fwHash = keccak256(abi.encodePacked(op.owner, op.tokenId, acceptAmount, op.fastWithdrawFeeRate, op.nonce));
-            address accepter = accepts[op.accountId][fwHash];
-            if (accepter == address(0)) {
-                // receiver act as a accepter
-                accepts[op.accountId][fwHash] = op.owner;
-                withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
-            } else {
-                // just increase the pending balance of accepter
-                increasePendingBalance(op.tokenId, accepter, op.amount);
-                // add dust to owner
-                if (dustAmount > 0) {
-                    increasePendingBalance(op.tokenId, op.owner, dustAmount);
-                }
-            }
-        } else {
-            withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
-        }
+        // account request fast withdraw and account supply nonce
+        executeFastWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
     }
 
     /// @dev Execute force exit operation
     function executeForcedExit(Operations.ForcedExit memory op) internal {
-        // token MUST be registered
-        RegisteredToken storage rt = tokens[op.tokenId];
-        require(rt.registered, "p0");
-
-        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.target, op.amount);
+        // request forced exit for target account but initiator account supply nonce
+        // forced exit take no fee for fast withdraw
+        executeFastWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
     }
 
     /// @dev Execute full exit operation
@@ -656,6 +630,36 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(rt.registered, "r0");
 
         withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
+    }
+
+    /// @dev Execute fast withdraw or normal withdraw according by nonce
+    function executeFastWithdraw(uint32 accountId, uint32 nonceFromAccountId, uint8 nonceFromSubAccountId, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal {
+        // token MUST be registered
+        RegisteredToken storage rt = tokens[tokenId];
+        require(rt.registered, "o0");
+
+        // nonce > 0 means fast withdraw
+        if (nonce > 0) {
+            // recover withdraw amount
+            uint128 acceptAmount = recoveryDecimals(amount, rt.decimals);
+            uint128 dustAmount = amount - improveDecimals(acceptAmount, rt.decimals);
+            bytes32 fwHash = getFastWithdrawHash(nonceFromAccountId, nonceFromSubAccountId, nonce, owner, tokenId, acceptAmount, fastWithdrawFeeRate);
+            address acceptor = accepts[accountId][fwHash];
+            if (acceptor == address(0)) {
+                // receiver act as a acceptor
+                accepts[accountId][fwHash] = owner;
+                withdrawOrStore(tokenId, rt.tokenAddress, rt.standard, rt.decimals, owner, amount);
+            } else {
+                // just increase the pending balance of acceptor
+                increasePendingBalance(tokenId, acceptor, amount);
+                // add dust to owner
+                if (dustAmount > 0) {
+                    increasePendingBalance(tokenId, owner, dustAmount);
+                }
+            }
+        } else {
+            withdrawOrStore(tokenId, rt.tokenAddress, rt.standard, rt.decimals, owner, amount);
+        }
     }
 
     /// @dev 1. Try to send token to _recipients
