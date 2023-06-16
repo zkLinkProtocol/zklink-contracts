@@ -209,6 +209,7 @@ class TestSetUp {
             opPubdata = paddingChunk(op, OP_CHANGE_PUBKEY_CHUNKS);
         } else if (opType === OP_WITHDRAW) {
             const accountId = 1;
+            const subAccountId = 0;
             const amount = params.amount;
             const owner = params.owner;
             const tokenId = params.tokenId;
@@ -216,9 +217,9 @@ class TestSetUp {
             const fastWithdrawFeeRate = params.fastWithdrawFeeRate;
             if (nonce > 0 && chainId === CHAIN_ID) {
                 nonce = nonce + params.i;
-                const hash = calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, nonce);
-                const accepter = params.accepter;
-                await this.periphery.setAccepter(accountId,hash,accepter);
+                const hash = calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+                const acceptor = params.acceptor;
+                await this.periphery.setAcceptor(accountId,hash,acceptor);
             }
             const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner:extendAddress(owner),nonce,fastWithdrawFeeRate};
             const op = getWithdrawPubdata(opParams);
@@ -466,13 +467,13 @@ async function main() {
     amount = parseEther("2");
     owner = testSetUp.alice.address;
     tokenId = testSetUp.token2Id;
-    let accepter = testSetUp.bob.address;
-    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, nonce:1, fastWithdrawFeeRate:50, accepter};
-    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(accepter), tokenId);
+    let acceptor = testSetUp.bob.address;
+    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, nonce:1, fastWithdrawFeeRate:50, acceptor: acceptor};
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(acceptor), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurFastWithdrawCommitCost: " + opCost.commitCost);
     console.log("CurFastWithdrawExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(accepter), tokenId);
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(acceptor), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'Fast withdraw failed';

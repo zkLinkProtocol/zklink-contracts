@@ -63,9 +63,9 @@ function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
-function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, targetAccountId, targetSubAccountId, tokenId, srcTokenId, feeTokenId, amount, fee, target }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint8","uint16","uint16","uint16","uint128","uint16","bytes32"],
-        [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,targetAccountId,targetSubAccountId,tokenId,srcTokenId,feeTokenId,amount,fee,target]);
+function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, initiatorNonce, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, target }) {
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint32","uint8","uint16","uint16","uint128","bytes32"],
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,initiatorNonce,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,target]);
     const pubdataArray = ethers.utils.arrayify(pubdata);
     console.assert(pubdataArray.length === OP_FORCE_EXIT_SIZE, "wrong forcedexit pubdata");
     return pubdata;
@@ -181,8 +181,8 @@ function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,c
     return {ethWitness, owner};
 }
 
-function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonce) {
-    return  ethers.utils.keccak256(ethers.utils.solidityPack(["address","uint16","uint128","uint16","uint32"], [receiver, tokenId, amount, withdrawFeeRate, nonce]));
+function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
+    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","uint16","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate]));
 }
 
 function getRandomInt(max) {
