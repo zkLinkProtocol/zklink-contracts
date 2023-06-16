@@ -613,14 +613,14 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Execute withdraw operation
     function executeWithdraw(Operations.Withdraw memory op) internal {
         // account request fast withdraw and account supply nonce
-        executeFastWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
+        _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
     }
 
     /// @dev Execute force exit operation
     function executeForcedExit(Operations.ForcedExit memory op) internal {
         // request forced exit for target account but initiator account supply nonce
         // forced exit take no fee for fast withdraw
-        executeFastWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
+        _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
     }
 
     /// @dev Execute full exit operation
@@ -633,7 +633,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Execute fast withdraw or normal withdraw according by nonce
-    function executeFastWithdraw(uint32 accountId, uint32 nonceFromAccountId, uint8 nonceFromSubAccountId, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal {
+    function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
         require(rt.registered, "o0");
@@ -643,7 +643,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             // recover withdraw amount
             uint128 acceptAmount = recoveryDecimals(amount, rt.decimals);
             uint128 dustAmount = amount - improveDecimals(acceptAmount, rt.decimals);
-            bytes32 fwHash = getFastWithdrawHash(nonceFromAccountId, nonceFromSubAccountId, nonce, owner, tokenId, acceptAmount, fastWithdrawFeeRate);
+            bytes32 fwHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, acceptAmount, fastWithdrawFeeRate);
             address acceptor = accepts[accountId][fwHash];
             if (acceptor == address(0)) {
                 // receiver act as a acceptor

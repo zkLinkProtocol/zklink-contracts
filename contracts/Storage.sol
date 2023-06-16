@@ -238,8 +238,8 @@ contract Storage is Config {
     }
 
     /// @dev Return accept record hash for fast withdraw
-    function getFastWithdrawHash(uint32 nonceFromAccountId, uint8 nonceFromSubAccountId, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(nonceFromAccountId, nonceFromSubAccountId, nonce, owner, tokenId, amount, fastWithdrawFeeRate));
+    function getFastWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate));
     }
 
     /// @notice Performs a delegatecall to the contract implementation

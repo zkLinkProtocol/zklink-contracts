@@ -181,8 +181,8 @@ function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,c
     return {ethWitness, owner};
 }
 
-function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, nonceFromAccountId, nonceFromSubAccountId, nonce) {
-    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","uint16","uint128","uint16"], [nonceFromAccountId, nonceFromSubAccountId, nonce, receiver, tokenId, amount, withdrawFeeRate]));
+function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
+    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","uint16","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate]));
 }
 
 function getRandomInt(max) {
