@@ -7,9 +7,6 @@ pragma solidity ^0.8.0;
 contract Config {
     bytes32 internal constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
-    /// @dev ERC20 tokens and ETH withdrawals gas limit, used only for complete withdrawals
-    uint256 internal constant WITHDRAWAL_GAS_LIMIT = 100000;
-
     /// @dev Bytes in one chunk
     uint8 internal constant CHUNK_BYTES = 23;
 

@@ -360,11 +360,11 @@ async function main() {
     amount = parseEther("1");
     tokenId = testSetUp.token2Id;
     params = {chainId:CHAIN_ID, opType:OP_FULL_EXIT, owner, tokenId, amount};
-    b0 = await testSetUp.token2.balanceOf(owner);
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurFullExitERC20CommitCost: " + opCost.commitCost);
     console.log("CurFullExitERC20ExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.token2.balanceOf(owner);
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'FullExit failed';
@@ -374,11 +374,11 @@ async function main() {
     tokenId = testSetUp.ethId;
     amount = parseEther("0.01");
     params = {chainId:CHAIN_ID, opType:OP_FULL_EXIT, owner, tokenId, amount};
-    b0 = await testSetUp.alice.getBalance();
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurFullExitETHCommitCost: " + opCost.commitCost);
     console.log("CurFullExitETHExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.alice.getBalance();
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'FullExit failed';
@@ -432,11 +432,11 @@ async function main() {
     owner = testSetUp.alice.address;
     tokenId = testSetUp.token2Id;
     params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, nonce:0, fastWithdrawFeeRate:0};
-    b0 = await testSetUp.token2.balanceOf(owner);
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurNormalWithdrawERC20CommitCost: " + opCost.commitCost);
     console.log("CurNormalWithdrawERC20ExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.token2.balanceOf(owner);
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'Normal withdraw failed';
@@ -447,11 +447,11 @@ async function main() {
     owner = testSetUp.alice.address;
     tokenId = testSetUp.ethId;
     params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, nonce:0, fastWithdrawFeeRate:0};
-    b0 = await testSetUp.alice.getBalance();
+    b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurNormalWithdrawETHCommitCost: " + opCost.commitCost);
     console.log("CurNormalWithdrawETHExecuteCost: " + opCost.executeCost);
-    b1 = await testSetUp.alice.getBalance();
+    b1 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     totalAmount = amount.mul(BigNumber.from(samples));
     if (!b1.sub(b0).eq(totalAmount)) {
         throw 'Normal withdraw failed';

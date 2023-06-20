@@ -595,41 +595,22 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
-                executeWithdraw(op);
+                // account request fast withdraw and account supply nonce
+                _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                executeForcedExit(op);
+                // request forced exit for target account but initiator account supply nonce
+                // forced exit take no fee for fast withdraw
+                _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
-                executeFullExit(op);
+                increasePendingBalance(op.tokenId, op.owner, op.amount);
             } else {
                 revert("m2");
             }
             pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
         }
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
-    }
-
-    /// @dev Execute withdraw operation
-    function executeWithdraw(Operations.Withdraw memory op) internal {
-        // account request fast withdraw and account supply nonce
-        _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
-    }
-
-    /// @dev Execute force exit operation
-    function executeForcedExit(Operations.ForcedExit memory op) internal {
-        // request forced exit for target account but initiator account supply nonce
-        // forced exit take no fee for fast withdraw
-        _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
-    }
-
-    /// @dev Execute full exit operation
-    function executeFullExit(Operations.FullExit memory op) internal {
-        // token MUST be registered
-        RegisteredToken storage rt = tokens[op.tokenId];
-        require(rt.registered, "r0");
-
-        withdrawOrStore(op.tokenId, rt.tokenAddress, rt.standard, rt.decimals, op.owner, op.amount);
     }
 
     /// @dev Execute fast withdraw or normal withdraw according by nonce
@@ -648,50 +629,16 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             if (acceptor == address(0)) {
                 // receiver act as a acceptor
                 accepts[accountId][fwHash] = owner;
-                withdrawOrStore(tokenId, rt.tokenAddress, rt.standard, rt.decimals, owner, amount);
+                increasePendingBalance(tokenId, owner, amount);
             } else {
-                // just increase the pending balance of acceptor
-                increasePendingBalance(tokenId, acceptor, amount);
+                increasePendingBalance(tokenId, acceptor, amount - dustAmount);
                 // add dust to owner
                 if (dustAmount > 0) {
                     increasePendingBalance(tokenId, owner, dustAmount);
                 }
             }
         } else {
-            withdrawOrStore(tokenId, rt.tokenAddress, rt.standard, rt.decimals, owner, amount);
-        }
-    }
-
-    /// @dev 1. Try to send token to _recipients
-    /// 2. On failure: Increment _recipients balance to withdraw.
-    function withdrawOrStore(uint16 _tokenId, address _tokenAddress, bool _isTokenStandard, uint8 _decimals, address _recipient, uint128 _amount) internal {
-        if (_amount == 0) {
-            return;
-        }
-        // recover withdraw amount and add dust to pending balance
-        uint128 withdrawAmount = recoveryDecimals(_amount, _decimals);
-        uint128 dustAmount = _amount - improveDecimals(withdrawAmount, _decimals);
-        bool sent = false;
-        if (_tokenAddress == ETH_ADDRESS) {
-            address payable toPayable = payable(_recipient);
-            sent = sendETHNoRevert(toPayable, withdrawAmount);
-        } else {
-            // We use `transferERC20` here to check that `ERC20` token indeed transferred `_amount`
-            // and fail if token subtracted from zkLink balance more then `_amount` that was requested.
-            // This can happen if token subtracts fee from sender while transferring `_amount` that was requested to transfer.
-            try this.transferERC20{gas: WITHDRAWAL_GAS_LIMIT}(IERC20(_tokenAddress), _recipient, withdrawAmount, withdrawAmount, _isTokenStandard) {
-                sent = true;
-            } catch {
-                sent = false;
-            }
-        }
-        if (sent) {
-            emit Withdrawal(_tokenId, withdrawAmount);
-            if (dustAmount > 0) {
-                increasePendingBalance(_tokenId, _recipient, dustAmount);
-            }
-        } else {
-            increasePendingBalance(_tokenId, _recipient, _amount);
+            increasePendingBalance(tokenId, owner, amount);
         }
     }
 
@@ -701,18 +648,5 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         bytes32 recipient = extendAddress(_recipient);
         increaseBalanceToWithdraw(recipient, _tokenId, _amount);
         emit WithdrawalPending(_tokenId, recipient, _amount);
-    }
-
-    /// @notice Sends ETH
-    /// @param _to Address of recipient
-    /// @param _amount Amount of tokens to transfer
-    /// @return bool flag indicating that transfer is successful
-    function sendETHNoRevert(address payable _to, uint256 _amount) internal returns (bool) {
-        // solhint-disable-next-line  avoid-low-level-calls
-        bool callSuccess;
-        assembly {
-            callSuccess := call(WITHDRAWAL_GAS_LIMIT, _to, _amount, 0, 0, 0, 0)
-        }
-        return callSuccess;
     }
 }
