@@ -413,12 +413,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Interactions===
         // make sure msg value >= amountReceive
         uint256 amountReturn = msg.value - amountReceive;
-        // add gas limit to prevent gas minting attack
+        // msg.sender should set a reasonable gas limit when call this function
         // solhint-disable-next-line avoid-low-level-calls
-        bool success;
-        assembly {
-            success := call(WITHDRAWAL_GAS_LIMIT, receiver, amountReceive, 0, 0, 0, 0)
-        }
+        (bool success, ) = receiver.call{value: amountReceive}("");
         require(success, "E0");
         // if send too more eth then return back to msg sender
         if (amountReturn > 0) {
