@@ -21,7 +21,7 @@ const OP_FORCE_EXIT_CHUNKS = 3;
 const OP_ORDER_MATCHING_CHUNKS = 4;
 const OP_DEPOSIT_SIZE = 59;
 const OP_TRANSFER_TO_NEW_SIZE = 52;
-const OP_WITHDRAW_SIZE = 67;
+const OP_WITHDRAW_SIZE = 68;
 const OP_TRANSFER_SIZE = 20;
 const OP_FULL_EXIT_SIZE = 59;
 const OP_CHANGE_PUBKEY_SIZE = 67;
@@ -42,9 +42,9 @@ function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, am
         [OP_DEPOSIT,chainId,0,subAccountId,tokenId,targetTokenId,amount,owner]);
 }
 
-function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16"],
-        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate]);
+function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, fastWithdraw }) {
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8"],
+        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate, fastWithdraw]);
     const pubdataArray = ethers.utils.arrayify(pubdata);
     console.assert(pubdataArray.length === OP_WITHDRAW_SIZE, "wrong withdraw pubdata");
     return pubdata;

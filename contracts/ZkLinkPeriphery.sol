@@ -403,7 +403,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param withdrawFeeRate Fast withdraw fee rate taken by acceptor
     /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
     /// @param subAccountIdOfNonce SubAccount that supply nonce
-    /// @param nonce Account nonce, used to produce unique accept info
+    /// @param nonce SubAccount nonce, used to produce unique accept info
     function acceptETH(address acceptor, uint32 accountId, address payable receiver, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable nonReentrant {
         // ===Checks===
         uint16 tokenId = tokenIds[ETH_ADDRESS];
@@ -436,7 +436,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param withdrawFeeRate Fast withdraw fee rate taken by acceptor
     /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
     /// @param subAccountIdOfNonce SubAccount that supply nonce
-    /// @param nonce Account nonce, used to produce unique accept info
+    /// @param nonce SubAccount nonce, used to produce unique accept info
     /// @param amountTransfer Amount that transfer from acceptor to receiver
     /// may be a litter larger than the amount receiver received
     function acceptERC20(address acceptor, uint32 accountId, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint128 amountTransfer) external nonReentrant {
@@ -474,8 +474,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     /// @notice Give allowance to broker to call accept
-    /// @param tokenId token that transfer to the receiver of accept request from accepter or broker
-    /// @param broker who are allowed to do accept by accepter(the msg.sender)
+    /// @param tokenId token that transfer to the receiver of accept request from acceptor or broker
+    /// @param broker who are allowed to do accept by acceptor(the msg.sender)
     /// @param amount the accept allowance of broker
     function brokerApprove(uint16 tokenId, address broker, uint128 amount) external returns (bool) {
         require(broker != address(0), "G");

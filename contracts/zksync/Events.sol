@@ -44,8 +44,8 @@ interface Events {
         uint256 expirationBlock
     );
 
-    /// @notice Event emitted when accepter accept a fast withdraw
-    event Accept(address indexed accepter, uint32 indexed accountId, address receiver, uint16 tokenId, uint128 amountSent, uint128 amountReceive);
+    /// @notice Event emitted when acceptor accept a fast withdraw
+    event Accept(address indexed acceptor, uint32 indexed accountId, address receiver, uint16 tokenId, uint128 amountSent, uint128 amountReceive);
 
     /// @notice Event emitted when set broker allowance
     event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);

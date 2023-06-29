@@ -38,6 +38,6 @@ contract ZkLinkTest is ZkLink {
     }
 
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
-        _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
+        _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.fastWithdraw);
     }
 }
