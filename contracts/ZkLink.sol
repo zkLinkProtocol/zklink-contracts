@@ -595,13 +595,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
-                // account request fast withdraw and account supply nonce
-                _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate);
+                // account request fast withdraw and sub account supply nonce
+                _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.fastWithdraw);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
-                // request forced exit for target account but initiator account supply nonce
-                // forced exit take no fee for fast withdraw
-                _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0);
+                // request forced exit for target account but initiator sub account supply nonce
+                // forced exit require fast withdraw default and take no fee for fast withdraw
+                _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0, 1);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 increasePendingBalance(op.tokenId, op.owner, op.amount);
@@ -613,14 +613,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
     }
 
-    /// @dev Execute fast withdraw or normal withdraw according by nonce
-    function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal {
+    /// @dev Execute fast withdraw or normal withdraw according by fastWithdraw flag
+    function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 fastWithdraw) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
         require(rt.registered, "o0");
 
-        // nonce > 0 means fast withdraw
-        if (nonce > 0) {
+        if (fastWithdraw == 1) {
             // recover withdraw amount
             uint128 acceptAmount = recoveryDecimals(amount, rt.decimals);
             uint128 dustAmount = amount - improveDecimals(acceptAmount, rt.decimals);

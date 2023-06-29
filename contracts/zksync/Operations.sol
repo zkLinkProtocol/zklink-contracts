@@ -162,9 +162,10 @@ library Operations {
         //uint16 fee; -- present in pubdata, ignored at serialization
         //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
         address owner; // the address to receive token
-        uint32 nonce; // zero means normal withdraw, not zero means fast withdraw and the value is the account nonce
-        uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by accepter
-    } // 67
+        uint32 nonce; // the sub account nonce
+        uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by acceptor
+        uint8 fastWithdraw; // when this flag is 1, it means fast withdrawal
+    } // 68
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -180,6 +181,7 @@ library Operations {
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
+        (offset, parsed.fastWithdraw) = Bytes.readUint8(_data, offset);
     }
 
     struct ForcedExit {
@@ -187,7 +189,7 @@ library Operations {
         uint8 chainId; // which chain the force exit happened
         uint32 initiatorAccountId; // the account id of initiator
         uint8 initiatorSubAccountId; // the sub account id of initiator
-        uint32 initiatorNonce; // the nonce of initiator,  zero means normal withdraw, not zero means fast withdraw
+        uint32 initiatorNonce; // the sub account nonce of initiator
         uint32 targetAccountId; // the account id of target
         //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw

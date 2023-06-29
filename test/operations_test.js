@@ -31,7 +31,7 @@ describe('Operations unit tests', function () {
     // Withdraw
     it('Correctly Parse Withdraw pubdata', async () => {
         const owner = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        const example = { chainId:1, accountId:32, subAccountId:4, tokenId:34, srcTokenId:34, amount:32, fee:14, owner:extendAddress(owner), nonce:45, fastWithdrawFeeRate:45 };
+        const example = { chainId:1, accountId:32, subAccountId:4, tokenId:34, srcTokenId:34, amount:32, fee:14, owner:extendAddress(owner), nonce:45, fastWithdrawFeeRate:45, fastWithdraw: 1 };
         const pubdata = getWithdrawPubdata(example);
         example.owner = owner;
         await testContract.testWithdrawPubdata(example, pubdata);

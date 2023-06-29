@@ -94,12 +94,12 @@ contract Storage is Config {
     /// @dev Accept infos of fast withdraw of account
     /// uint32 is the account id
     /// byte32 is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce))
-    /// address is the accepter
+    /// address is the acceptor
     mapping(uint32 => mapping(bytes32 => address)) public accepts;
 
-    /// @dev Broker allowance used in accept, accepter can authorize broker to do accept
+    /// @dev Broker allowance used in accept, acceptor can authorize broker to do accept
     /// @dev Similar to the allowance of transfer in ERC20
-    /// @dev The struct of this map is (tokenId => accepter => broker => allowance)
+    /// @dev The struct of this map is (tokenId => acceptor => broker => allowance)
     mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
 
     /// @notice A set of permitted validators
