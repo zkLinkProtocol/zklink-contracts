@@ -613,7 +613,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
     }
 
-    /// @dev Execute fast withdraw or normal withdraw according by sub account nonce
+    /// @dev Execute fast withdraw or normal withdraw according by fastWithdraw flag
     function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 fastWithdraw) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
