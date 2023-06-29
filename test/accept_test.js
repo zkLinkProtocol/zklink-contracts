@@ -41,8 +41,6 @@ describe('Accept unit tests', function () {
             .to.be.revertedWith("H3");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 10000, 10, 0, 1))
             .to.be.revertedWith("H4");
-        await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, 100, 100, 10, 0, 0))
-            .to.be.revertedWith("H5");
 
         const hash = calAcceptHash(bob.address, ethId, 100, 100, 10, 0, 1);
         await periphery.setAcceptor(fwAId, hash, alice.address);

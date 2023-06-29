@@ -496,8 +496,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // feeRate MUST be valid and MUST not be 100%
         require(withdrawFeeRate < MAX_ACCEPT_FEE_RATE, "H4");
         amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
-        // nonce MUST not be zero
-        require(nonce > 0, "H5");
 
         // accept tx may be later than block exec tx(with user withdraw op)
         bytes32 hash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate);
