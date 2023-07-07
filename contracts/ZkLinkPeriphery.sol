@@ -424,7 +424,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (success, ) = msg.sender.call{value: amountReturn}("");
             require(success, "E1");
         }
-        emit Accept(acceptor, accountId, receiver, tokenId, amountReceive, amountReceive);
+        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
     }
 
     /// @notice Acceptor accept a erc20 token fast withdraw, acceptor will get a fee for profit
@@ -465,7 +465,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             require(brokerAllowance(tokenId, acceptor, msg.sender) >= amountSent, "F1");
             brokerAllowances[tokenId][acceptor][msg.sender] -= amountSent;
         }
-        emit Accept(acceptor, accountId, receiver, tokenId, amountSent, amountReceive);
+        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountSent, amountReceive);
     }
 
     /// @return Return the accept allowance of broker
