@@ -93,7 +93,7 @@ contract Storage is Config {
 
     /// @dev Accept infos of fast withdraw of account
     /// uint32 is the account id
-    /// byte32 is keccak256(abi.encodePacked(receiver, tokenId, amount, withdrawFeeRate, nonce))
+    /// byte32 is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
     /// address is the acceptor
     mapping(uint32 => mapping(bytes32 => address)) public accepts;
 

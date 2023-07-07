@@ -62,7 +62,7 @@ describe('Accept unit tests', function () {
         const amountReceive = parseEther("0.99");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountReceive}))
             .to.be.emit(periphery, "Accept")
-            .withArgs(alice.address, fwAId, bob.address, ethId, amountReceive, amountReceive);
+            .withArgs(alice.address, fwAId, bob.address, ethId, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
         let hash = calAcceptHash(bob.address, ethId, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
         expect(await periphery.getAcceptor(fwAId, hash)).to.be.eq(alice.address);
 
@@ -76,7 +76,7 @@ describe('Accept unit tests', function () {
         const amountSentMore = parseEther("1.03");
         await expect(periphery.connect(alice).acceptETH(alice.address, fwAId, bob.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountSentMore}))
             .to.be.emit(periphery, "Accept")
-            .withArgs(alice.address, fwAId, bob.address, ethId, amountReceive, amountReceive);
+            .withArgs(alice.address, fwAId, bob.address, ethId, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
         // periphery should have no eth
         expect(await ethers.provider.getBalance(periphery.address)).to.be.eq(0);
 
@@ -89,7 +89,7 @@ describe('Accept unit tests', function () {
         nonce = 4;
         await expect(periphery.connect(defaultSender).acceptETH(alice.address, fwAId, bob.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountReceive}))
             .to.be.emit(periphery, "Accept")
-            .withArgs(alice.address, fwAId, bob.address, ethId, amountReceive, amountReceive);
+            .withArgs(alice.address, fwAId, bob.address, ethId, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
     });
 
     it('accept standard erc20 should success', async () => {
@@ -103,7 +103,7 @@ describe('Accept unit tests', function () {
         await token2.connect(bob).approve(periphery.address, amount);
         await expect(periphery.connect(bob).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive))
             .to.be.emit(periphery, "Accept")
-            .withArgs(bob.address, fwAId, alice.address, token2Id, amountReceive, amountReceive);
+            .withArgs(bob.address, fwAId, alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
         let hash = calAcceptHash(alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
         expect(await periphery.getAcceptor(fwAId, hash)).to.be.eq(bob.address);
         expect(await token2.balanceOf(alice.address)).to.be.eq(amountReceive);
@@ -120,7 +120,7 @@ describe('Accept unit tests', function () {
         await periphery.connect(bob).brokerApprove(token2Id, defaultSender.address, parseEther("1.5"));
         await expect(periphery.connect(defaultSender).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive))
             .to.be.emit(periphery, "Accept")
-            .withArgs(bob.address, fwAId, alice.address, token2Id, amountReceive, amountReceive);
+            .withArgs(bob.address, fwAId, alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
         expect(await periphery.connect(defaultSender).brokerAllowance(token2Id, bob.address, defaultSender.address)).to.eq(parseEther("0.51"));
 
         // broker allowance not enough
@@ -142,6 +142,6 @@ describe('Accept unit tests', function () {
         await token3.connect(bob).approve(periphery.address, amountTransfer);
         await expect(periphery.connect(bob).acceptERC20(bob.address, fwAId, alice.address, token3Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountTransfer))
             .to.be.emit(periphery, "Accept")
-            .withArgs(bob.address, fwAId, alice.address, token3Id, amountSent, amountReceive);
+            .withArgs(bob.address, fwAId, alice.address, token3Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountSent, amountReceive);
     });
 });
