@@ -195,7 +195,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         rt.standard = _standard;
         tokens[_tokenId] = rt;
         tokenIds[_tokenAddress] = _tokenId;
-        emit NewToken(_tokenId, _tokenAddress);
+        emit NewToken(_tokenId, _tokenAddress, _decimals);
     }
 
     struct Token {

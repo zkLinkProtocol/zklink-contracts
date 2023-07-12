@@ -51,7 +51,7 @@ interface Events {
     event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
 
     /// @notice Token added to ZkLink net
-    event NewToken(uint16 indexed tokenId, address indexed token);
+    event NewToken(uint16 indexed tokenId, address indexed token, uint8 decimals);
 
     /// @notice Governor changed
     event NewGovernor(address newGovernor);
