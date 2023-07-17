@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, createOrGetDeployLog, readDeployLogField, ChainContractDeployer} = require('./utils');
+const { verifyContractCode, createOrGetDeployLog, readDeployLogField, ChainContractDeployer} = require('./utils');
 const logName = require('./deploy_log_name');
 const {layerZero} = require("./layerzero");
 
@@ -54,15 +54,8 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         }
         console.log('lzBridge', lzBridge);
         if ((!(logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED in deployLog) || force) && !skipVerify) {
-            console.log('verify lzBridge...');
-            await verifyWithErrorHandle(async () => {
-                await hardhat.run("verify:verify", {
-                    address: lzBridge,
-                    constructorArguments: args
-                });
-            }, () => {
-                deployLog[logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED] = true;
-            })
+            await verifyContractCode(hardhat, lzBridge, args);
+            deployLog[logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 });

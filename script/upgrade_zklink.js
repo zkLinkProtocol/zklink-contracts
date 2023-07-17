@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyWithErrorHandle,getDeployLog } = require('./utils');
+const { verifyContractCode, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
 const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
@@ -85,14 +85,8 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
             upgradeTargets[0] = verifier.address;
             console.log('verifier target', verifier.address);
             if (!skipVerify) {
-                console.log('verify verifier target...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: verifier.address
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, verifier.address, []);
+                deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }
@@ -113,14 +107,8 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             console.log('periphery target', periphery.address);
             if (!skipVerify) {
-                console.log('verify periphery target...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: periphery.address
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, periphery.address, []);
+                deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
 
@@ -140,14 +128,8 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
             console.log('zkLink target', zkLink.address);
 
             if (!skipVerify) {
-                console.log('verify zkLink target...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: zkLink.address
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, zkLink.address, []);
+                deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }

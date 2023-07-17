@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyWithErrorHandle, createOrGetDeployLog, ChainContractDeployer} = require('./utils');
+const { verifyContractCode, createOrGetDeployLog, ChainContractDeployer} = require('./utils');
 const logName = require('./deploy_log_name');
 
 task("deployZkLink", "Deploy zklink contracts")
@@ -73,14 +73,8 @@ task("deployZkLink", "Deploy zklink contracts")
         }
         console.log('verifier target', verifierTarget);
         if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
-            console.log('verify verifier target...');
-            await verifyWithErrorHandle(async () => {
-                await hardhat.run("verify:verify", {
-                    address: verifierTarget
-                });
-            }, () => {
-                deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
-            })
+            await verifyContractCode(hardhat, verifierTarget, []);
+            deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
@@ -97,14 +91,8 @@ task("deployZkLink", "Deploy zklink contracts")
         }
         console.log('periphery target', peripheryTarget);
         if ((!(logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
-            console.log('verify periphery target...');
-            await verifyWithErrorHandle(async () => {
-                await hardhat.run("verify:verify", {
-                    address: peripheryTarget
-                });
-            }, () => {
-                deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
-            })
+            await verifyContractCode(hardhat, peripheryTarget, []);
+            deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
@@ -121,14 +109,8 @@ task("deployZkLink", "Deploy zklink contracts")
         }
         console.log('zkLink target', zkLinkTarget);
         if ((!(logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
-            console.log('verify zkLink target...');
-            await verifyWithErrorHandle(async () => {
-                await hardhat.run("verify:verify", {
-                    address: zkLinkTarget
-                });
-            }, () => {
-                deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
-            })
+            await verifyContractCode(hardhat, zkLinkTarget, []);
+            deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
@@ -196,48 +178,27 @@ task("deployZkLink", "Deploy zklink contracts")
         // zksync verify contract where created in contract not support now
         if (!contractDeployer.zksync) {
             if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
-                console.log('verify zkLink proxy...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: zkLinkProxyAddr,
-                        constructorArguments:[
-                            zkLinkTarget,
-                            hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','uint32','uint256','bytes32','bytes32','bytes32'],
-                                [verifierProxyAddr, peripheryTarget, deployFactoryAddr, blockNumber, timestamp, genesisRoot, commitment, syncHash])
-                        ]
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, zkLinkProxyAddr, [
+                    zkLinkTarget,
+                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','uint32','uint256','bytes32','bytes32','bytes32'],
+                        [verifierProxyAddr, peripheryTarget, deployFactoryAddr, blockNumber, timestamp, genesisRoot, commitment, syncHash])
+                ]);
+                deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
             if ((!(logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
-                console.log('verify verifier proxy...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: verifierProxyAddr,
-                        constructorArguments:[
-                            verifierTarget,
-                            hardhat.ethers.utils.defaultAbiCoder.encode([], []),
-                        ]
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, verifierProxyAddr, [
+                    verifierTarget,
+                    hardhat.ethers.utils.defaultAbiCoder.encode([], []),
+                ]);
+                deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
             if ((!(logName.DEPLOY_LOG_GATEKEEPER_VERIFIED in deployLog) || force) && !skipVerify) {
-                console.log('verify gatekeeper...');
-                await verifyWithErrorHandle(async () => {
-                    await hardhat.run("verify:verify", {
-                        address: gatekeeperAddr,
-                        constructorArguments:[
-                            zkLinkProxyAddr
-                        ]
-                    });
-                }, () => {
-                    deployLog[logName.DEPLOY_LOG_GATEKEEPER_VERIFIED] = true;
-                })
+                await verifyContractCode(hardhat, gatekeeperAddr, [
+                    zkLinkProxyAddr
+                ]);
+                deployLog[logName.DEPLOY_LOG_GATEKEEPER_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }

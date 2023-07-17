@@ -2,20 +2,30 @@ const fs = require("fs");
 const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
-const verifyWithErrorHandle = async (verify, successCallBack) => {
-    try {
-        await verify();
-        successCallBack();
-    } catch (e) {
-        if (e.message.includes('Already Verified')
-            || e.message.includes('Contract source code already verified')
-            || e.message.includes('Smart-contract already verified')
-        ) {
-            console.log('Already Verified');
-            successCallBack();
-        } else {
-            throw e;
+async function verifyContractCode(hardhat, address, constructorArguments) {
+    // contract code may be not exist after tx send to chain
+    // try every one minutes if verify failed
+    console.log('verify %s code...', address);
+    while (true) {
+        try {
+            await hardhat.run("verify:verify", {
+                address: address,
+                constructorArguments: constructorArguments
+            });
+            console.log('contract code verified success');
+            return;
+        } catch (e) {
+            if (e.message.includes('Already Verified')
+                || e.message.includes('Contract source code already verified')
+                || e.message.includes('Smart-contract already verified')
+            ) {
+                console.log('contract code already verified');
+                return;
+            } else {
+                console.warn('verify code failed: %s', e.message);
+            }
         }
+        await new Promise(r => setTimeout(r, 60000));
     }
 }
 
@@ -104,7 +114,7 @@ class ChainContractDeployer {
 }
 
 module.exports = {
-    verifyWithErrorHandle,
+    verifyContractCode,
     createOrGetDeployLog,
     getDeployLog,
     readDeployContract,
