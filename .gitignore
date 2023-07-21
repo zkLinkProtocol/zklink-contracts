@@ -3,6 +3,7 @@ node_modules
 
 contracts/zksync/KeysWithPlonkVerifier.sol
 log
+tmp
 
 etc/*
 !etc/EXAMPLE.json

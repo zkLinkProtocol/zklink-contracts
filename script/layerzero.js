@@ -34,6 +34,10 @@ const layerZero = {
         chainId: 165,
         address: '0x9b896c0e23220469C7AE69cb4BbAE391eAa4C8da'
     },
+    LINEA: {
+        chainId: 183,
+        address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
+    },
     GOERLI: {
         chainId: 10121,
         address: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23'
