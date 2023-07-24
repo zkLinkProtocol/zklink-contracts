@@ -278,3 +278,55 @@ task("estimateZkLinkBlockBridgeFees", "Get fee for bridge block")
         const result = await bridgeContract.estimateZkLinkBlockBridgeFees(lzInfo.chainId, syncHash, progress, useZro, adapterParams);
         console.log('result:%s', result);
     });
+
+task("transferMastershipOfUpgradeGatekeeper", "Set the master of UpgradeGatekeeper")
+    .addParam("gatekeeper", "The UpgradeGatekeeper contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("master", "The new master address", undefined, types.string, false)
+    .setAction(async (taskArgs, hardhat) => {
+        let gatekeeper = taskArgs.gatekeeper;
+        if (gatekeeper === undefined) {
+            gatekeeper = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GATEKEEPER);
+        }
+        const master = taskArgs.master;
+        console.log('gatekeeper', gatekeeper);
+        console.log('master', master);
+
+        const [oldMaster] = await hardhat.ethers.getSigners();
+        console.log('old master', oldMaster.address);
+
+        const balance = await oldMaster.getBalance();
+        console.log('old master balance', hardhat.ethers.utils.formatEther(balance));
+
+        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
+        const gatekeeperContract = gatekeeperFactory.attach(gatekeeper);
+
+        console.log('Set new master for gatekeeper...');
+        const tx = await gatekeeperContract.connect(oldMaster).transferMastership(master);
+        console.log('tx', tx.hash);
+    });
+
+task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
+    .addParam("zkLink", "The zkLink contract address (default get from deploy log)", undefined, types.string, true)
+    .addParam("governor", "The new governor address", undefined, types.string, false)
+    .setAction(async (taskArgs, hardhat) => {
+        let zkLinkProxy = taskArgs.zkLink;
+        if (zkLinkProxy === undefined) {
+            zkLinkProxy = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+        }
+        const governor = taskArgs.governor;
+        console.log('zklink', zkLinkProxy);
+        console.log('governor', governor);
+
+        const [oldGovernor] = await hardhat.ethers.getSigners();
+        console.log('old governor', oldGovernor.address);
+
+        const balance = await oldGovernor.getBalance();
+        console.log('old governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+        const peripheryContract = peripheryFactory.attach(zkLinkProxy);
+
+        console.log('Set new network governor for zklink...');
+        const tx = await peripheryContract.connect(oldGovernor).changeGovernor(governor);
+        console.log('tx', tx.hash);
+    });
