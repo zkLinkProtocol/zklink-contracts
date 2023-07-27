@@ -31,7 +31,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
     }
 
     modifier onlyGovernor {
-        require(msg.sender == networkGovernor, "Caller is not governor");
+        require(msg.sender == zklink.networkGovernor(), "Caller is not governor");
         _;
     }
 
@@ -39,13 +39,11 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         // receive the refund eth from layerzero endpoint when send msg
     }
 
-    /// @param _governor The network governor of zkLink protocol
     /// @param _zklink The zklink contract address
     /// @param _endpoint The LayerZero endpoint
-    constructor(address _governor, IZkLink _zklink, ILayerZeroEndpoint _endpoint) {
+    constructor(IZkLink _zklink, ILayerZeroEndpoint _endpoint) {
         initializeReentrancyGuard();
 
-        networkGovernor = _governor;
         zklink = _zklink;
         endpoint = _endpoint;
     }
@@ -113,15 +111,22 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         bytes32 syncHash = storedBlockInfo.syncHash;
         uint256 progress = zklink.getSynchronizedProgress(storedBlockInfo);
 
-        uint256 originBalance = address(this).balance - msg.value; // underflow is impossible
-        // before the last send, we send all balance of this contract and set refund address to this contract
-        for (uint i = 0; i < dstChainIds.length - 1; ++i) { // overflow is impossible
+        uint256 originMsgValue = msg.value;
+        uint256 originBalance = address(this).balance - originMsgValue; // underflow is impossible
+        // before refund, we send all balance of this contract and set refund address to this contract
+        for (uint i = 0; i < dstChainIds.length; ++i) { // overflow is impossible
             _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[i], payable(address(this)), zroPaymentAddress, adapterParams, address(this).balance);
         }
-        // for the last send, we send all left value exclude the origin balance of this contract and set refund address to `refundAddress`
-        require(address(this).balance > originBalance, "Msg value is not enough for the last send");
-        uint256 leftMsgValue = address(this).balance - originBalance; // underflow is impossible
-        _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[dstChainIds.length - 1], refundAddress, zroPaymentAddress, adapterParams, leftMsgValue);
+        // left value should be greater equal than originBalance and refund left value to `refundAddress`
+        require(address(this).balance >= originBalance, "Msg value is not enough for bridge");
+        uint256 leftMsgValue = address(this).balance - originBalance;  // underflow is impossible
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line  avoid-low-level-calls
+            (bool success, ) = refundAddress.call{value: leftMsgValue}("");
+            require(success, "Refund failed");
+        }
+        // log the fee payed to layerzero
+        emit SynchronizationFee(originMsgValue - leftMsgValue);
     }
 
     function _bridgeZkLinkBlockProgress(

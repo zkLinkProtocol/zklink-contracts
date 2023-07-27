@@ -10,8 +10,6 @@ import "../interfaces/IZkLink.sol";
 /// @dev Do not initialize any variables of this contract
 /// Do not break the alignment of contract storage
 contract LayerZeroStorage {
-    /// @notice ZkLink network governor
-    address public networkGovernor;
     /// @notice zklink contract address
     IZkLink public zklink;
     /// @notice LayerZero endpoint that used to send and receive message
@@ -30,4 +28,5 @@ contract LayerZeroStorage {
     event MessageFailed(uint16 indexed srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
     event SendSynchronizationProgress(uint16 indexed dstChainId, uint64 nonce, bytes32 syncHash, uint progress);
     event ReceiveSynchronizationProgress(uint16 indexed srcChainId, uint64 nonce, bytes32 syncHash, uint progress);
+    event SynchronizationFee(uint256 fee);
 }

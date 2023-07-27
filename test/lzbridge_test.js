@@ -1,19 +1,24 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
+const {deploy} = require("./utils");
 
 describe('LayerZero bridge unit tests', function () {
     const lzChainIdInETH = 1;
     const lzChainIdInBSC = 2;
-    let deployer,networkGovernor,alice,lzBridgeInBSC,zklinkInETH,mockLzInETH;
+    let networkGovernor,alice,lzBridgeInBSC,zklinkInETH,mockLzInETH;
     let lzInETH, lzBridgeInETH;
     before(async () => {
-        [deployer,networkGovernor,alice,lzBridgeInBSC,zklinkInETH,mockLzInETH] = await ethers.getSigners();
+        [alice,lzBridgeInBSC,mockLzInETH] = await ethers.getSigners();
+
+        let deployedInfo = await deploy();
+        zklinkInETH = deployedInfo.zkLink;
+        networkGovernor = deployedInfo.governor;
 
         const dummyLZFactory = await ethers.getContractFactory('LZEndpointMock');
         lzInETH = await dummyLZFactory.deploy(lzChainIdInETH);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
-        lzBridgeInETH = await lzBridgeFactory.deploy(networkGovernor.address, zklinkInETH.address, lzInETH.address);
+        lzBridgeInETH = await lzBridgeFactory.deploy(zklinkInETH.address, lzInETH.address);
     });
 
     it('only network governor can set destination', async () => {

@@ -22,8 +22,8 @@ describe('Bridge ZkLink block unit tests', function () {
         lzInBSC = await dummyLZFactory.deploy(lzChainIdInBSC);
 
         const lzBridgeFactory = await ethers.getContractFactory('LayerZeroBridgeMock');
-        lzBridgeInETH = await lzBridgeFactory.deploy(networkGovernor.address, zklinkInETH.address, lzInETH.address);
-        lzBridgeInBSC = await lzBridgeFactory.deploy(networkGovernor.address, zklinkInBSC.address, lzInBSC.address);
+        lzBridgeInETH = await lzBridgeFactory.deploy(zklinkInETH.address, lzInETH.address);
+        lzBridgeInBSC = await lzBridgeFactory.deploy(zklinkInBSC.address, lzInBSC.address);
 
         await lzInETH.setDestLzEndpoint(lzBridgeInBSC.address, lzInBSC.address);
         await lzInBSC.setDestLzEndpoint(lzBridgeInETH.address, lzInETH.address);
@@ -112,7 +112,7 @@ describe('Bridge ZkLink block unit tests', function () {
             ethers.constants.AddressZero,
             "0x",
             {value: fees.nativeFee})) // fee is not enough
-            .to.be.revertedWith("Msg value is not enough for the last send");
+            .to.be.revertedWith("LayerZeroMock: not enough native for fees");
 
         await expect(lzBridgeInETH.connect(alice).bridgeZkLinkBlock(
             storedBlock,

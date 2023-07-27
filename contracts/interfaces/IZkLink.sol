@@ -16,6 +16,9 @@ interface IZkLink {
         bytes32 syncHash;
     }
 
+    /// @notice Return the network governor
+    function networkGovernor() external view returns (address);
+
     /// @notice Get synchronized progress of zkLink contract known on deployed chain
     function getSynchronizedProgress(StoredBlockInfo memory block) external view returns (uint256 progress);
 
