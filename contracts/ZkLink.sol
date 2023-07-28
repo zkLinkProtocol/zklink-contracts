@@ -123,7 +123,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _amount Token amount
     /// @param _zkLinkAddress The receiver Layer 2 address
     /// @param _subAccountId The receiver sub account
-    /// @param _mapping If true and token has a mapping token, user will receive mapping token at l2
+    /// @param _mapping If true and token has a mapping token, user will receive mapping token at L2
     function depositERC20(IERC20 _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external nonReentrant {
         // erc20 token address MUST NOT be ETH_ADDRESS which represent deposit eth
         // it's nearly impossible to create an erc20 token which address is the ETH_ADDRESS
@@ -136,7 +136,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @param _accountId Numerical id of the account
     /// @param _subAccountId The exit sub account
     /// @param _tokenId Token id
-    /// @param _mapping If true and token has a mapping token, user's mapping token balance will be decreased at l2
+    /// @param _mapping If true and token has a mapping token, user's mapping token balance will be decreased at L2
     function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId, bool _mapping) external active nonReentrant {
         // ===Checks===
         // accountId and subAccountId MUST be valid

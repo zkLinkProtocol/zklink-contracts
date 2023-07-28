@@ -62,13 +62,13 @@ library Operations {
 
     struct Deposit {
         // uint8 opType
-        uint8 chainId; // deposit from which chain that identified by l2 chain id
+        uint8 chainId; // deposit from which chain that identified by L2 chain id
         uint32 accountId; // the account id bound to the owner address, ignored at serialization and will be set when the block is submitted
         uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
-        uint16 tokenId; // the token that registered to l2
-        uint16 targetTokenId; // the token that user increased in l2
-        uint128 amount; // the token amount deposited to l2
-        bytes32 owner; // the address that receive deposited token at l2
+        uint16 tokenId; // the token that registered to L2
+        uint16 targetTokenId; // the token that user increased in L2
+        uint128 amount; // the token amount deposited to L2
+        bytes32 owner; // the address that receive deposited token at L2
     } // 59
 
     /// @dev Deserialize deposit pubdata
@@ -106,13 +106,13 @@ library Operations {
 
     struct FullExit {
         // uint8 opType
-        uint8 chainId; // withdraw to which chain that identified by l2 chain id
+        uint8 chainId; // withdraw to which chain that identified by L2 chain id
         uint32 accountId; // the account id to withdraw from
         uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
-        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
-        address owner; // the address that own the account at l2
-        uint16 tokenId; // the token that withdraw to l1
-        uint16 srcTokenId; // the token that deducted in l2
+        //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
+        address owner; // the address that own the account at L2
+        uint16 tokenId; // the token that withdraw to L1
+        uint16 srcTokenId; // the token that deducted in L2
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
     } // 59
 
@@ -157,10 +157,10 @@ library Operations {
         uint32 accountId; // the account id to withdraw from
         uint8 subAccountId; // the sub account id to withdraw from
         uint16 tokenId; // the token that to withdraw
-        //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
+        //uint16 srcTokenId; -- the token that decreased in L2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
-        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
+        //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
         address owner; // the address to receive token
         uint32 nonce; // the sub account nonce
         uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by acceptor
@@ -193,9 +193,9 @@ library Operations {
         uint32 targetAccountId; // the account id of target
         //uint8 targetSubAccountId; -- present in pubdata, ignored at serialization
         uint16 tokenId; // the token that to withdraw
-        //uint16 srcTokenId; -- the token that decreased in l2, present in pubdata, ignored at serialization
+        //uint16 srcTokenId; -- the token that decreased in L2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
-        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
+        //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
         address target; // the address to receive token
     } // 68 bytes
 
@@ -222,7 +222,7 @@ library Operations {
         uint32 accountId; // the account that to change pubkey
         //uint8 subAccountId; -- present in pubdata, ignored at serialization
         bytes20 pubKeyHash; // hash of the new rollup pubkey
-        //bytes12 addressPrefixZero; -- address bytes length in l2 is 32
+        //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
         address owner; // the owner that own this account
         uint32 nonce; // the account nonce
         //uint16 tokenId; -- present in pubdata, ignored at serialization

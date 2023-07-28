@@ -67,8 +67,8 @@ contract Storage is Config {
 
     /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
     /// @dev The struct of this map is (accountId => subAccountId => withdrawTokenId => deductTokenId => performed)
-    /// @dev withdrawTokenId is the token that withdraw to user in l1
-    /// @dev deductTokenId is the token that deducted from user in l2
+    /// @dev withdrawTokenId is the token that withdraw to user in L1
+    /// @dev deductTokenId is the token that deducted from user in L2
     mapping(uint32 => mapping(uint8 => mapping(uint16 => mapping(uint16 => bool)))) public performedExodus;
 
     /// @dev Priority Requests mapping (request id - operation)

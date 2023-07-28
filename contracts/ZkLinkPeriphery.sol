@@ -32,9 +32,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _accountId Id of the account in the tree
     /// @param _subAccountId Id of the subAccount in the tree
     /// @param _proof Proof
-    /// @param _withdrawTokenId The token want to withdraw in l1
-    /// @param _deductTokenId The token deducted in l2
-    /// @param _amount Amount for owner (must be total amount, not part of it) in l2
+    /// @param _withdrawTokenId The token want to withdraw in L1
+    /// @param _deductTokenId The token deducted in L2
+    /// @param _amount Amount for owner (must be total amount, not part of it) in L2
     function performExodus(StoredBlockInfo calldata _storedBlockInfo, bytes32 _owner, uint32 _accountId, uint8 _subAccountId, uint16 _withdrawTokenId, uint16 _deductTokenId, uint128 _amount, uint256[] calldata _proof) external notActive nonReentrant {
         // ===Checks===
         // performed exodus MUST not be already exited
@@ -200,8 +200,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
     struct Token {
         uint16 tokenId; // token id defined by zkLink
-        address tokenAddress; // token address in l1
-        uint8 decimals; // token decimals in l1
+        address tokenAddress; // token address in L1
+        uint8 decimals; // token decimals in L1
         bool standard; // if token a pure erc20 or not
     }
 
