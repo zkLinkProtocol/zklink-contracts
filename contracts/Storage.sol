@@ -184,6 +184,8 @@ contract Storage is Config {
     /// @param _amount pending amount that need to recovery decimals when withdraw
     function increaseBalanceToWithdraw(bytes32 _address, uint16 _tokenId, uint128 _amount) internal {
         uint128 balance = pendingBalances[_address][_tokenId];
+        // overflow should not happen here
+        // (2^128 / 10^18 = 3.4 * 10^20) is enough to meet the really token balance of L2 account
         pendingBalances[_address][_tokenId] = balance + _amount;
     }
 
