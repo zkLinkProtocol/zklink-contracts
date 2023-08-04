@@ -34,8 +34,16 @@ const layerZero = {
         chainId: 165,
         address: '0x9b896c0e23220469C7AE69cb4BbAE391eAa4C8da'
     },
+    MANTLE: {
+        chainId: 181,
+        address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
+    },
     LINEA: {
         chainId: 183,
+        address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
+    },
+    BASE: {
+        chainId: 184,
         address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
     },
     GOERLI: {
@@ -74,9 +82,17 @@ const layerZero = {
         chainId: 10158,
         address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
     },
+    BASETEST: {
+        chainId: 10160,
+        address: '0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab'
+    },
     SCROLLTEST: {
         chainId: 10170,
         address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
+    },
+    MANTLETEST: {
+        chainId: 10181,
+        address: '0x2cA20802fd1Fd9649bA8Aa7E50F0C82b479f35fe'
     }
 }
 
