@@ -4,7 +4,7 @@ const logName = require('./deploy_log_name');
 const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
-task("upgradeZkLink", "Upgrade zkLink on testnet")
+task("upgradeZkLink", "Upgrade zkLink")
     .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
     .addParam("upgradeZkLink", "Upgrade zkLink", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
@@ -38,28 +38,11 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
         // deploy log must exist
         const {deployLogPath,deployLog} = getDeployLog(logName.DEPLOY_ZKLINK_LOG_PREFIX);
 
-        // check if upgrade at testnet
         let zkLinkProxyAddr = deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY];
         if (zkLinkProxyAddr === undefined) {
             console.log('ZkLink proxy address not exist');
             return;
         }
-        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-        let zkLinkProxy = await zkLinkFactory.attach(zkLinkProxyAddr);
-        const noticePeriod = await zkLinkProxy.connect(deployerWallet).getNoticePeriod();
-        if (noticePeriod > 0) {
-            console.log('Notice period is not zero, can not exec this task in main net');
-            return;
-        }
-
-        // attach upgrade gatekeeper
-        const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
-        if (gatekeeperAddr === undefined) {
-            console.log('Gatekeeper address not exist');
-            return;
-        }
-        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
-        const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
 
         // log deployer balance
         const balance = await deployerWallet.getBalance();
@@ -133,6 +116,24 @@ task("upgradeZkLink", "Upgrade zkLink on testnet")
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }
+
+        // check if upgrade at testnet
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+        let zkLinkProxy = await zkLinkFactory.attach(zkLinkProxyAddr);
+        const noticePeriod = await zkLinkProxy.connect(deployerWallet).getNoticePeriod();
+        if (noticePeriod > 0) {
+            console.log('Notice period is not zero, can not exec this task');
+            return;
+        }
+
+        // attach upgrade gatekeeper
+        const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
+        if (gatekeeperAddr === undefined) {
+            console.log('Gatekeeper address not exist');
+            return;
+        }
+        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
+        const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
 
         console.log('start upgrade...');
         const startUpgradeTx = await gatekeeper.connect(deployerWallet).startUpgrade(upgradeTargets);
