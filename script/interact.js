@@ -98,7 +98,7 @@ task("setDestinations", "Set layerzero bridge destinations (only support testnet
         }
 
         const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
-        const governorAddress = readDeployLogField(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
         console.log('bridge', bridgeAddr);
