@@ -48,73 +48,77 @@ task("upgradeZkLink", "Upgrade zkLink")
         const balance = await deployerWallet.getBalance();
         console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
 
-        const upgradeTargets = [hardhat.ethers.constants.AddressZero,
-            hardhat.ethers.constants.AddressZero];
-        const upgradeParameters = ['0x','0x'];
-
-        // verifier
-        if (upgradeVerifier) {
-            console.log('deploy verifier target...');
-            let verifier;
-            if (isZksync) {
-                const verifierArtifact = await zkSyncDeployer.loadArtifact('EmptyVerifier');
-                verifier = await zkSyncDeployer.deploy(verifierArtifact);
-            } else {
-                const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-                verifier = await verifierFactory.connect(deployerWallet).deploy();
-            }
-            await verifier.deployed();
-            deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifier.address;
-            upgradeTargets[0] = verifier.address;
-            console.log('verifier target', verifier.address);
-            if (!skipVerify) {
-                await verifyContractCode(hardhat, verifier.address, []);
-                deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
-                fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            }
+        // attach upgrade gatekeeper
+        const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
+        if (gatekeeperAddr === undefined) {
+            console.log('Gatekeeper address not exist');
+            return;
         }
+        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
+        const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
+        let upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
+        console.log('upgrade status: ', upgradeStatus);
 
-        // zkLink
-        if (upgradeZkLink) {
-            console.log('deploy periphery target...');
-            let periphery;
-            if (isZksync) {
-                const peripheryArtifact = await zkSyncDeployer.loadArtifact('ZkLinkPeriphery');
-                periphery = await zkSyncDeployer.deploy(peripheryArtifact);
-            } else {
-                const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-                periphery = await peripheryFactory.connect(deployerWallet).deploy();
+        // if upgrade status is Idle, then start deploy new targets
+        if (upgradeStatus === 0) {
+            // verifier
+            if (upgradeVerifier) {
+                console.log('deploy verifier target...');
+                let verifier;
+                if (isZksync) {
+                    const verifierArtifact = await zkSyncDeployer.loadArtifact('EmptyVerifier');
+                    verifier = await zkSyncDeployer.deploy(verifierArtifact);
+                } else {
+                    const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
+                    verifier = await verifierFactory.connect(deployerWallet).deploy();
+                }
+                await verifier.deployed();
+                deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifier.address;
+                console.log('verifier target', verifier.address);
+                if (!skipVerify) {
+                    await verifyContractCode(hardhat, verifier.address, []);
+                    deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+                }
             }
-            await periphery.deployed();
-            deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = periphery.address;
+
+            // zkLink
+            if (upgradeZkLink) {
+                console.log('deploy periphery target...');
+                let periphery;
+                if (isZksync) {
+                    const peripheryArtifact = await zkSyncDeployer.loadArtifact('ZkLinkPeriphery');
+                    periphery = await zkSyncDeployer.deploy(peripheryArtifact);
+                } else {
+                    const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+                    periphery = await peripheryFactory.connect(deployerWallet).deploy();
+                }
+                await periphery.deployed();
+                deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = periphery.address;
+                console.log('periphery target', periphery.address);
+                if (!skipVerify) {
+                    await verifyContractCode(hardhat, periphery.address, []);
+                    deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
+                }
+
+                console.log('deploy zkLink target...');
+                let zkLink;
+                if (isZksync) {
+                    const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
+                    zkLink = await zkSyncDeployer.deploy(zkLinkArtifact);
+                } else {
+                    const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+                    zkLink = await zkLinkFactory.connect(deployerWallet).deploy();
+                }
+                await zkLink.deployed();
+                deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLink.address;
+                console.log('zkLink target', zkLink.address);
+                if (!skipVerify) {
+                    await verifyContractCode(hardhat, zkLink.address, []);
+                    deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
+                }
+            }
+            console.log('write new targets to log');
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            console.log('periphery target', periphery.address);
-            if (!skipVerify) {
-                await verifyContractCode(hardhat, periphery.address, []);
-                deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
-                fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            }
-
-            console.log('deploy zkLink target...');
-            let zkLink;
-            if (isZksync) {
-                const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
-                zkLink = await zkSyncDeployer.deploy(zkLinkArtifact);
-            } else {
-                const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-                zkLink = await zkLinkFactory.connect(deployerWallet).deploy();
-            }
-            await zkLink.deployed();
-            deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLink.address;
-            upgradeTargets[1] = zkLink.address;
-            upgradeParameters[1] = hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [periphery.address])
-            console.log('zkLink target', zkLink.address);
-
-            if (!skipVerify) {
-                await verifyContractCode(hardhat, zkLink.address, []);
-                deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
-                fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            }
         }
 
         // check if upgrade at testnet
@@ -126,29 +130,40 @@ task("upgradeZkLink", "Upgrade zkLink")
             return;
         }
 
-        // attach upgrade gatekeeper
-        const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
-        if (gatekeeperAddr === undefined) {
-            console.log('Gatekeeper address not exist');
-            return;
+        const upgradeTargets = [hardhat.ethers.constants.AddressZero, hardhat.ethers.constants.AddressZero];
+        const upgradeParameters = ['0x','0x'];
+        if (upgradeVerifier) {
+            upgradeTargets[0] = deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET];
         }
-        const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
-        const gatekeeper = await gatekeeperFactory.attach(gatekeeperAddr);
+        if (upgradeZkLink) {
+            upgradeTargets[1] = deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET];
+            upgradeParameters[1] = hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET]])
+        }
 
-        console.log('start upgrade...');
-        const startUpgradeTx = await gatekeeper.connect(deployerWallet).startUpgrade(upgradeTargets);
-        console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
-        await startUpgradeTx.wait();
+        if (upgradeStatus === 0) {
+            console.log('start upgrade...');
+            const startUpgradeTx = await gatekeeper.connect(deployerWallet).startUpgrade(upgradeTargets);
+            console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
+            await startUpgradeTx.wait();
+            upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
+            console.log('upgrade status after start: ', upgradeStatus);
+        }
 
-        console.log('start preparation...');
-        const startPreparationUpgradeTx = await gatekeeper.connect(deployerWallet).startPreparation();
-        console.info(`upgrade preparation tx: ${startPreparationUpgradeTx.hash}`);
-        await startPreparationUpgradeTx.wait();
+        if (upgradeStatus === 1) {
+            console.log('start preparation...');
+            const startPreparationUpgradeTx = await gatekeeper.connect(deployerWallet).startPreparation();
+            console.info(`upgrade preparation tx: ${startPreparationUpgradeTx.hash}`);
+            await startPreparationUpgradeTx.wait();
+            upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
+            console.log('upgrade status after preparation: ', upgradeStatus);
+        }
 
-        const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade(upgradeParameters);
-        console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
-        await finishUpgradeTx.wait();
-
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        if (upgradeStatus === 2) {
+            const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade(upgradeParameters);
+            console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
+            await finishUpgradeTx.wait();
+            upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
+            console.log('upgrade status after finish: ', upgradeStatus);
+        }
         console.info('upgrade successful');
     });
