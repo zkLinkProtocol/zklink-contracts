@@ -112,7 +112,7 @@ describe('Accept unit tests', function () {
         await token2.connect(bob).approve(periphery.address, parseEther("0.98"));
         nonce = 2;
         await expect(periphery.connect(bob).acceptERC20(bob.address, fwAId, alice.address, token2Id, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, parseEther("0.98")))
-            .to.be.reverted;
+            .to.be.revertedWith("F0");
 
         // msg sender is not the acceptor
         nonce = 3;
