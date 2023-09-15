@@ -143,7 +143,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             // We will allow withdrawals of `value` such that:
             // `value` <= user pending balance
             // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
-            amount = this.transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
+            amount = transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
         }
 
         // improve withdrawn amount decimals

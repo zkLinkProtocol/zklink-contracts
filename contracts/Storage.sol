@@ -204,9 +204,7 @@ contract Storage is Config {
     /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
     /// @param _isStandard If token is a standard erc20
     /// @return withdrawnAmount The really amount than will be debited from user
-    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) external returns (uint128 withdrawnAmount) {
-        require(msg.sender == address(this), "n0"); // can be called only from this contract as one "external" call (to revert all this function state changes if it is needed)
-
+    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) internal returns (uint128 withdrawnAmount) {
         // most tokens are standard, fewer query token balance can save gas
         if (_isStandard) {
             _token.transfer(_to, _amount);
