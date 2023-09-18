@@ -12,6 +12,9 @@ import "./zksync/SafeCast.sol";
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
 contract Storage is Config {
+    /// @dev Used to safely call `delegatecall`, immutable state variables don't occupy storage slot
+    address internal immutable self = address(this);
+
     // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
 
     /// @notice Verifier contract. Used to verify block proof and exit proof
@@ -34,10 +37,7 @@ contract Storage is Config {
     /// @notice Total number of requests
     uint64 public totalOpenPriorityRequests;
 
-    // periphery(20 bytes) + totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) stored in the same slot
-
-    /// @notice Periphery contract. Contains some auxiliary features
-    address public periphery;
+    // totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) + totalBlocksSynchronized(4 bytes) + exodusMode(1 byte) stored in the same slot
 
     /// @notice Total blocks proven.
     uint32 public totalBlocksProven;
@@ -45,9 +45,6 @@ contract Storage is Config {
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
     uint64 public totalCommittedPriorityRequests;
-
-    /// @dev Used to safely call `delegatecall`, immutable state variables don't occupy storage slot
-    address internal immutable self = address(this);
 
     // totalBlocksSynchronized(4 bytes) + exodusMode(1 bytes) stored in the same slot
 

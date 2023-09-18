@@ -49,14 +49,12 @@ describe('UpgradeGatekeeper unit tests', function () {
         await expect(upgradeGatekeeperContract.connect(wallet).addUpgradeable(constants.AddressZero)).to.be.revertedWith('1c');
         await expect(upgradeGatekeeperContract.connect(wallet).startUpgrade([])).to.be.revertedWith('1c');
         await expect(upgradeGatekeeperContract.connect(wallet).cancelUpgrade()).to.be.revertedWith('1c');
-        await expect(upgradeGatekeeperContract.connect(wallet).startPreparation()).to.be.revertedWith('1c');
-        await expect(upgradeGatekeeperContract.connect(wallet).finishUpgrade([])).to.be.revertedWith('1c');
+        await expect(upgradeGatekeeperContract.connect(wallet).finishUpgrade()).to.be.revertedWith('1c');
     });
 
     it('checking UpgradeGatekeeper reverts; activation and cancellation upgrade', async () => {
         await expect(upgradeGatekeeperContract.cancelUpgrade()).to.be.revertedWith('cpu11');
-        await expect(upgradeGatekeeperContract.startPreparation()).to.be.revertedWith('ugp11');
-        await expect(upgradeGatekeeperContract.finishUpgrade([])).to.be.revertedWith('fpu11');
+        await expect(upgradeGatekeeperContract.finishUpgrade()).to.be.revertedWith('fpu11');
         await expect(upgradeGatekeeperContract.startUpgrade([])).to.be.revertedWith('spu12');
         await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.address])).to.emit(
             upgradeGatekeeperContract,
@@ -67,8 +65,6 @@ describe('UpgradeGatekeeper unit tests', function () {
     });
 
     it('checking that the upgrade works correctly', async () => {
-        const start_time = performance.now();
-
         // activate
         await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.address])).to.emit(
             upgradeGatekeeperContract,
@@ -76,36 +72,20 @@ describe('UpgradeGatekeeper unit tests', function () {
         );
 
         const activated_time = performance.now();
+        // need to wait unlock time
+        await expect(upgradeGatekeeperContract.finishUpgrade()).to.be.revertedWith('fpu12');
 
         // wait and activate preparation status
         const notice_period = parseInt(await dummyFirst.get_UPGRADE_NOTICE_PERIOD());
-        for (let step = 1; step <= 3; step++) {
-            if (step != 3) {
-                while (performance.now() - start_time < Math.round((notice_period * 1000.0 * step) / 10.0 + 10)) {
-                    // wait
-                }
-            } else {
-                while (performance.now() - activated_time < notice_period * 1000 + 10) {
-                    // wait
-                }
-            }
-
-            if (step !== 3) {
-                await upgradeGatekeeperContract.startPreparation();
-            } else {
-                await expect(upgradeGatekeeperContract.startPreparation()).to.emit(
-                    upgradeGatekeeperContract,
-                    'PreparationStart'
-                );
-            }
+        while (performance.now() - activated_time < notice_period * 1000 + 10) {
+            // wait
         }
 
-        await expect(upgradeGatekeeperContract.finishUpgrade([])).to.be.revertedWith('fpu12');
         // finish upgrade without verifying priority operations
-        await expect(upgradeGatekeeperContract.finishUpgrade([[bytes[2], bytes[3]]])).to.be.revertedWith('fpu13');
+        await expect(upgradeGatekeeperContract.finishUpgrade()).to.be.revertedWith('fpu13');
         // finish upgrade
         await proxyDummyInterface.verifyPriorityOperation();
-        await expect(upgradeGatekeeperContract.finishUpgrade([[bytes[2], bytes[3]]])).to.emit(
+        await expect(upgradeGatekeeperContract.finishUpgrade()).to.emit(
             upgradeGatekeeperContract,
             'UpgradeComplete'
         );
@@ -114,9 +94,5 @@ describe('UpgradeGatekeeper unit tests', function () {
 
         // check dummy index and updated storage
         expect(await proxyDummyInterface.get_DUMMY_INDEX()).to.equal(2);
-
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 1))).to.equal(bytes[0]);
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 2))).to.equal(bytes[2]);
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 3))).to.equal(bytes[3]);
     });
 });

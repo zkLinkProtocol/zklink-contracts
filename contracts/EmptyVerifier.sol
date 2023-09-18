@@ -12,13 +12,6 @@ contract EmptyVerifier is IVerifier {
         // no initialize need to do when delegatecall by Proxy
     }
 
-    /// @notice Verifier contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
-    /// @param upgradeParameters Encoded representation of upgrade parameters
-    // solhint-disable-next-line no-empty-blocks
-    function upgrade(bytes calldata upgradeParameters) external {
-        // no upgrade need to do when delegatecall by Proxy
-    }
-
     function verifyAggregatedBlockProof(uint256[] memory, uint256[] memory, uint8[] memory, uint256[] memory, uint256[16] memory) external override pure returns (bool) {
         return false;
     }

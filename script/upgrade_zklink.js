@@ -101,6 +101,9 @@ task("upgradeZkLink", "Upgrade zkLink")
                 }
 
                 console.log('deploy zkLink target...');
+                hardhat.config.solpp.defs.PERIPHERY_ADDRESS = periphery.address;
+                console.log(`set PERIPHERY_ADDRESS to ${periphery.address} and compile contracts...`);
+                await hardhat.run('compile');
                 let zkLink;
                 if (isZksync) {
                     const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
@@ -131,13 +134,11 @@ task("upgradeZkLink", "Upgrade zkLink")
         }
 
         const upgradeTargets = [hardhat.ethers.constants.AddressZero, hardhat.ethers.constants.AddressZero];
-        const upgradeParameters = ['0x','0x'];
         if (upgradeVerifier) {
             upgradeTargets[0] = deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET];
         }
         if (upgradeZkLink) {
             upgradeTargets[1] = deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET];
-            upgradeParameters[1] = hardhat.ethers.utils.defaultAbiCoder.encode(['address'], [deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET]])
         }
 
         if (upgradeStatus === 0) {
@@ -150,16 +151,7 @@ task("upgradeZkLink", "Upgrade zkLink")
         }
 
         if (upgradeStatus === 1) {
-            console.log('start preparation...');
-            const startPreparationUpgradeTx = await gatekeeper.connect(deployerWallet).startPreparation();
-            console.info(`upgrade preparation tx: ${startPreparationUpgradeTx.hash}`);
-            await startPreparationUpgradeTx.wait();
-            upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
-            console.log('upgrade status after preparation: ', upgradeStatus);
-        }
-
-        if (upgradeStatus === 2) {
-            const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade(upgradeParameters);
+            const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade();
             console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
             await finishUpgradeTx.wait();
             upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
