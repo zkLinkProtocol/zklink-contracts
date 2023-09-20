@@ -10,8 +10,6 @@ interface DummyTarget {
 
     function initialize(bytes calldata initializationParameters) external;
 
-    function upgrade(bytes calldata upgradeParameters) external;
-
     function verifyPriorityOperation() external;
 }
 
@@ -46,8 +44,6 @@ contract DummyFirst is UpgradeableMaster, DummyTarget {
             sstore(2, byte_1)
         }
     }
-
-    function upgrade(bytes calldata upgradeParameters) external override {}
 
     function totalVerifiedPriorityOperations() internal view returns (uint64) {
         return _verifiedPriorityOperations;
@@ -87,15 +83,6 @@ contract DummySecond is UpgradeableMaster, DummyTarget {
 
     function initialize(bytes calldata) external pure override {
         revert("dsini");
-    }
-
-    function upgrade(bytes calldata upgradeParameters) external override {
-        bytes32 byte_0 = bytes32(uint256(uint8(upgradeParameters[0])));
-        bytes32 byte_1 = bytes32(uint256(uint8(upgradeParameters[1])));
-        assembly {
-            sstore(2, byte_0)
-            sstore(3, byte_1)
-        }
     }
 
     function totalVerifiedPriorityOperations() internal view returns (uint64) {

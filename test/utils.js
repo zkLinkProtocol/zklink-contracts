@@ -41,6 +41,9 @@ async function deploy() {
     const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
     const periphery = await peripheryFactory.deploy();
     // zkLink
+    hardhat.config.solpp.defs.PERIPHERY_ADDRESS = periphery.address;
+    console.log(`set PERIPHERY_ADDRESS to ${periphery.address} and compile contracts...`);
+    await hardhat.run(`compile`);
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
     const zkLink = await zkLinkFactory.deploy();
 
@@ -49,7 +52,6 @@ async function deploy() {
     const deployer = await deployerFactory.deploy(
         verifier.address,
         zkLink.address,
-        periphery.address,
         0, // blockNumber
         0, // timestamp
         hardhat.ethers.utils.arrayify(GENESIS_ROOT), // stateHash

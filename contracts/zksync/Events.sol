@@ -86,9 +86,6 @@ interface UpgradeEvents {
     /// @notice Upgrade mode cancel event
     event UpgradeCancel(uint256 indexed versionId);
 
-    /// @notice Upgrade mode preparation status event
-    event PreparationStart(uint256 indexed versionId);
-
     /// @notice Upgrade mode complete event
     event UpgradeComplete(uint256 indexed versionId, address[] newTargets);
 }

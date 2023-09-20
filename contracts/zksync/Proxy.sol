@@ -29,11 +29,6 @@ contract Proxy is Upgradeable, Ownable {
         revert("ini11"); // ini11 - interception of initialization call
     }
 
-    /// @notice Intercepts upgrade calls
-    function upgrade(bytes calldata) external pure {
-        revert("upg11"); // upg11 - interception of upgrade call
-    }
-
     /// @notice Returns target of contract
     /// @return target Actual implementation address
     function getTarget() public view returns (address target) {
@@ -54,14 +49,10 @@ contract Proxy is Upgradeable, Ownable {
 
     /// @notice Upgrades target
     /// @param newTarget New target
-    /// @param newTargetUpgradeParameters New target upgrade parameters
-    function upgradeTarget(address newTarget, bytes calldata newTargetUpgradeParameters) external override {
+    function upgradeTarget(address newTarget) external override {
         requireMaster(msg.sender);
 
         setTarget(newTarget);
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool upgradeSuccess, ) = getTarget().delegatecall(abi.encodeWithSignature("upgrade(bytes)", newTargetUpgradeParameters));
-        require(upgradeSuccess, "ufu11"); // ufu11 - target upgrade failed
     }
 
     /// @notice Performs a delegatecall to the contract implementation

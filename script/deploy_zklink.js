@@ -100,6 +100,9 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkTarget;
         if (!(logName.DEPLOY_LOG_ZKLINK_TARGET in deployLog) || force) {
             console.log('deploy zkLink target...');
+            hardhat.config.solpp.defs.PERIPHERY_ADDRESS = peripheryTarget;
+            console.log(`set PERIPHERY_ADDRESS to ${peripheryTarget} and compile contracts...`);
+            await hardhat.run('compile');
             let zkLink = await contractDeployer.deployContract('ZkLink', []);
             zkLinkTarget = zkLink.address;
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTarget;
@@ -124,7 +127,6 @@ task("deployZkLink", "Deploy zklink contracts")
             const deployArgs = [
                 verifierTarget,
                 zkLinkTarget,
-                peripheryTarget,
                 blockNumber,
                 timestamp,
                 hardhat.ethers.utils.arrayify(genesisRoot),
@@ -180,8 +182,8 @@ task("deployZkLink", "Deploy zklink contracts")
             if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
                 await verifyContractCode(hardhat, zkLinkProxyAddr, [
                     zkLinkTarget,
-                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','address','uint32','uint256','bytes32','bytes32','bytes32'],
-                        [verifierProxyAddr, peripheryTarget, deployFactoryAddr, blockNumber, timestamp, genesisRoot, commitment, syncHash])
+                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','uint32','uint256','bytes32','bytes32','bytes32'],
+                        [verifierProxyAddr, deployFactoryAddr, blockNumber, timestamp, genesisRoot, commitment, syncHash])
                 ]);
                 deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));

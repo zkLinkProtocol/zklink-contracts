@@ -14,7 +14,7 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
     Upgradeable[] public managedContracts;
 
     /// @notice Upgrade mode statuses
-    enum UpgradeStatus {Idle, NoticePeriod, Preparation}
+    enum UpgradeStatus {Idle, NoticePeriod}
 
     UpgradeStatus public upgradeStatus;
 
@@ -75,33 +75,17 @@ contract UpgradeGatekeeper is UpgradeEvents, Ownable {
         emit UpgradeCancel(versionId);
     }
 
-    /// @notice Activates preparation status
-    /// @return Bool flag indicating that preparation status has been successfully activated
-    function startPreparation() external returns (bool) {
-        requireMaster(msg.sender);
-        require(upgradeStatus == UpgradeStatus.NoticePeriod, "ugp11"); // ugp11 - unable to activate preparation status in case of not active notice period status
-
-        if (block.timestamp >= noticePeriodFinishTimestamp) {
-            upgradeStatus = UpgradeStatus.Preparation;
-            emit PreparationStart(versionId);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     /// @notice Finishes upgrade
-    /// @param targetsUpgradeParameters New targets upgrade parameters per each upgradeable contract
-    function finishUpgrade(bytes[] calldata targetsUpgradeParameters) external {
+    function finishUpgrade() external {
         requireMaster(msg.sender);
-        require(upgradeStatus == UpgradeStatus.Preparation, "fpu11"); // fpu11 - unable to finish upgrade without preparation status active
-        require(targetsUpgradeParameters.length == managedContracts.length, "fpu12"); // fpu12 - number of new targets upgrade parameters must be equal to the number of managed contracts
+        require(upgradeStatus == UpgradeStatus.NoticePeriod, "fpu11"); // fpu11 - unable to finish upgrade without preparation status active
+        require(block.timestamp >= noticePeriodFinishTimestamp, "fpu12"); // fpu12 - unable to activate finish status in case of unlock time not expired
         require(mainContract.isReadyForUpgrade(), "fpu13"); // fpu13 - main contract is not ready for upgrade
 
         for (uint64 i = 0; i < managedContracts.length; ++i) {
             address newTarget = nextTargets[i];
             if (newTarget != address(0)) {
-                managedContracts[i].upgradeTarget(newTarget, targetsUpgradeParameters[i]);
+                managedContracts[i].upgradeTarget(newTarget);
             }
         }
         versionId++;

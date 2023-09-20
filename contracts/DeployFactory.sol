@@ -27,23 +27,23 @@ contract DeployFactory {
     // state. By including this address to the list of arguments, we're making ourselves able to restore
     // genesis state, as the very first account in tree is a fee account, and we need its address before
     // we're able to start recovering the data from the Ethereum blockchain.
-    constructor(IVerifier _verifierTarget, ZkLink _zkLinkTarget, ZkLinkPeriphery _peripheryTarget, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _firstValidator, address _governor, address _feeAccountAddress) {
+    constructor(IVerifier _verifierTarget, ZkLink _zkLinkTarget, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _firstValidator, address _governor, address _feeAccountAddress) {
         require(_firstValidator != address(0), "D0");
         require(_governor != address(0), "D1");
         require(_feeAccountAddress != address(0), "D2");
 
         Proxy verifier = new Proxy(address(_verifierTarget), abi.encode());
-        deployProxyContracts(verifier, _zkLinkTarget, _peripheryTarget,
+        deployProxyContracts(verifier, _zkLinkTarget,
             _blockNumber, _timestamp, _stateHash, _commitment, _syncHash,
             _firstValidator, _governor);
     }
 
     event Addresses(Proxy verifier, Proxy zkLink, UpgradeGatekeeper gatekeeper);
 
-    function deployProxyContracts(Proxy verifier, ZkLink _zkLinkTarget, ZkLinkPeriphery _peripheryTarget, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _validator, address _governor) internal {
+    function deployProxyContracts(Proxy verifier, ZkLink _zkLinkTarget, uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash, address _validator, address _governor) internal {
         // set this contract as governor
         Proxy zkLink =
-            new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), address(_peripheryTarget), address(this),
+            new Proxy(address(_zkLinkTarget), abi.encode(address(verifier), address(this),
                 _blockNumber, _timestamp, _stateHash, _commitment, _syncHash));
 
         UpgradeGatekeeper upgradeGatekeeper = new UpgradeGatekeeper(address(zkLink));

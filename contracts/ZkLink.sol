@@ -72,15 +72,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function initialize(bytes calldata initializationParameters) external onlyDelegateCall {
         initializeReentrancyGuard();
 
-        (address _verifierAddress, address _peripheryAddress, address _networkGovernor,
+        (address _verifierAddress, address _networkGovernor,
         uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash) =
-            abi.decode(initializationParameters, (address, address, address, uint32, uint256, bytes32, bytes32, bytes32));
+            abi.decode(initializationParameters, (address, address, uint32, uint256, bytes32, bytes32, bytes32));
         require(_verifierAddress != address(0), "i0");
-        require(_peripheryAddress != address(0), "i1");
         require(_networkGovernor != address(0), "i2");
 
         verifier = IVerifier(_verifierAddress);
-        periphery = _peripheryAddress;
         networkGovernor = _networkGovernor;
 
         // We need initial state hash because it is used in the commitment of the next block
@@ -91,18 +89,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         totalBlocksCommitted = totalBlocksProven = totalBlocksSynchronized = totalBlocksExecuted = _blockNumber;
     }
 
-    /// @notice ZkLink contract upgrade. Can be external because Proxy contract intercepts illegal calls of this function.
-    /// @param upgradeParameters Encoded representation of upgrade parameters
-    function upgrade(bytes calldata upgradeParameters) external onlyDelegateCall {
-        (address _peripheryAddress) = abi.decode(upgradeParameters, (address));
-        require(_peripheryAddress != address(0), "u0");
-        periphery = _peripheryAddress;
-    }
-
     // =================Delegate call=================
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
+        address periphery = $(defined(PERIPHERY_ADDRESS) ? PERIPHERY_ADDRESS : 0x0000000000000000000000000000000000000000);
         _fallback(periphery);
     }
 
