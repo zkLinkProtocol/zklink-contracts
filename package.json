@@ -18,7 +18,8 @@
     "zksync-web3": "^0.14.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.8.2"
+    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts-upgradeable": "^4.9.3"
   },
   "scripts": {
     "compile": "npx hardhat compile",
