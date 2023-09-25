@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IZKLinkL1Gateway {
     enum Chains {
@@ -50,7 +49,7 @@ interface IZKLinkL1Gateway {
     /***********************************************
      * ZKSync
      ***********************************************/
-    event DepositETH(
+    event DepositZKSyncETH(
         bytes32 zklinkAddress,
         uint8 subAccountId,
         uint256 amount,

@@ -9,7 +9,7 @@ import "../interfaces/IZKSyncGateway.sol";
 
 import "../library/AddressAliasHelper.sol";
 
-contract ZKSyncL2Gateway is Ownable, IZKSyncGateway {
+contract ZKSyncGateway is Ownable, IZKSyncGateway {
     /// @notice zklink contract address of zksync
     IZkLink public zklink;
 
@@ -23,9 +23,8 @@ contract ZKSyncL2Gateway is Ownable, IZKSyncGateway {
         _;
     }
 
-    constructor(IZkLink _zklink, address _remoteGateway) {
+    constructor(IZkLink _zklink) {
         zklink = _zklink;
-        remoteGateway = _remoteGateway;
     }
 
     /// deposit ETH to zklink

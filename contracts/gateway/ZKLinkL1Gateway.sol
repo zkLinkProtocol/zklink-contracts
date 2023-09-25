@@ -248,7 +248,7 @@ contract ZKLinkL1Gateway is Ownable, IZKLinkL1Gateway {
             refundRecipient
         );
 
-        emit DepositETH(zklinkAddress, subAccountId, amount, txhash);
+        emit DepositZKSyncETH(zklinkAddress, subAccountId, amount, txhash);
     }
 
     /// @notice set linea ERC20 bridges of L1

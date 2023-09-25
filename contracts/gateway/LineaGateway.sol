@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {IL2LineaGateway} from "../interfaces/IL2LineaGateway.sol";
+import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract LineaGateway is Ownable, IL2LineaGateway {
+contract LineaGateway is Ownable, ILineaGateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;
