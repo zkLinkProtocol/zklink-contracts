@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-interface IZKLinkL2Gateway {
+interface ILineaGateway {
     event ClaimedDepositERC20(
         address token,
         uint104 amount,

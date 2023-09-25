@@ -1,50 +1,44 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IZKLinkL2Gateway} from "../interfaces/IZKLinkL2Gateway.sol";
+
+import {IL2LineaGateway} from "../interfaces/IL2LineaGateway.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract ZKLinkL2Gateway is
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    IZKLinkL2Gateway
-{
+contract LineaGateway is Ownable, IL2LineaGateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;
 
-    // Claim fee recipient
+    /// @notice Claim fee recipient
     address payable public feeRecipient;
 
-    // message service address
+    /// @notice message service address
     IMessageService public messageService;
 
-    // Remote Gateway address
+    /// @notice Remote Gateway address
     address public remoteGateway;
 
+    /// @notice zklink contract of linea
     address public zklinkContract;
 
-    // Mapping from token to token bridge
+    /// @dev Mapping from token to token bridge
     mapping(address => address) bridges;
 
-    // Mapping from token to remote bridge
+    /// @dev Mapping from token to remote bridge
     mapping(address => address) remoteBridge;
 
-    // Mapping L1 token address to L2 token address
+    /// @dev Mapping L1 token address to L2 token address
     mapping(address => address) remoteTokens;
 
-    // Mapping from messageHash to bool
+    /// @dev Mapping from messageHash to bool
     mapping(bytes32 => bool) messageHashUsed;
 
+    /// @notice current claim messageHash
     bytes32 public messageHash;
-
-    uint256[49] internal __gap;
 
     modifier onlyMessageService() {
         if (msg.sender != address(messageService)) {
@@ -53,15 +47,12 @@ contract ZKLinkL2Gateway is
         _;
     }
 
-    function initialize() public initializer {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-    }
-
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
-
+    /// claim deposit ERC20 message
+    /// @param _token L2 ERC20 token address
+    /// @param _calldata deposit ERC20 message calldata
+    /// @param _nonce deposit ETC20 message nonce
+    /// @param _cbCalldata verify params message calldata
+    /// @param _cbNonce verify params message nonce
     function claimDepositERC20(
         address _token,
         bytes calldata _calldata,
@@ -123,6 +114,13 @@ contract ZKLinkL2Gateway is
         );
     }
 
+    /// claim deposit ERC20 verify params callback
+    /// @param _token L2 ERC20 token address
+    /// @param _amount amount to deposit
+    /// @param _zkLinkAddress zklink address.
+    /// @param _subAccountId sub account id
+    /// @param _mapping is mapping token
+    /// @param _messageHash linea bridge deposit messageHash
     function claimDepositERC20Callback(
         address _token,
         uint104 _amount,
@@ -136,7 +134,7 @@ contract ZKLinkL2Gateway is
         }
 
         // approve token to zklink
-        IERC20Upgradeable(_token).approve(zklinkContract, _amount);
+        IERC20(_token).approve(zklinkContract, _amount);
 
         // deposit erc20 to zklink
         (bool success, bytes memory errorInfo) = zklinkContract.call(
@@ -170,6 +168,10 @@ contract ZKLinkL2Gateway is
         );
     }
 
+    /// claim deposit ETH message hash
+    /// @param zkLinkAddress zklink address
+    /// @param subAccountId sub account id
+    /// @param amount amount to deposit
     function claimDepositETH(
         bytes32 zkLinkAddress,
         uint8 subAccountId,
@@ -191,6 +193,9 @@ contract ZKLinkL2Gateway is
         );
     }
 
+    /// set linea ERC20 bridges of tokens
+    /// @param _tokens L2 ERC20 token address
+    /// @param _bridges L2 bridge addresses of tokens
     function setBridges(
         address[] calldata _tokens,
         address[] calldata _bridges
@@ -205,6 +210,9 @@ contract ZKLinkL2Gateway is
         }
     }
 
+    /// set remote bridge address of token
+    /// @param _tokens L2 ERC20 token addresses
+    /// @param _remoteBridges L1 bridge addresses of L2 tokens
     function setRemoteBridges(
         address[] calldata _tokens,
         address[] calldata _remoteBridges
@@ -219,6 +227,9 @@ contract ZKLinkL2Gateway is
         }
     }
 
+    /// set remote ERC20 token address of L2
+    /// @param _tokens L2 ERC20 token addresses
+    /// @param _remoteTokens L1 ERC20 token addresses of L2 ERC20 tokens
     function setRemoteTokens(
         address[] calldata _tokens,
         address[] calldata _remoteTokens
@@ -233,6 +244,8 @@ contract ZKLinkL2Gateway is
         }
     }
 
+    /// set remote gateway address
+    /// @param _remoteGateway L1 gateway address
     function setRemoteGateway(address _remoteGateway) external onlyOwner {
         if (_remoteGateway == address(0)) {
             revert InvalidParmas();
@@ -241,6 +254,8 @@ contract ZKLinkL2Gateway is
         remoteGateway = _remoteGateway;
     }
 
+    /// set message service
+    /// @param _messageService L2 message service
     function setMessageService(address _messageService) external onlyOwner {
         if (_messageService == address(0)) {
             revert InvalidParmas();
@@ -249,6 +264,8 @@ contract ZKLinkL2Gateway is
         messageService = IMessageService(_messageService);
     }
 
+    /// set zklink contract address
+    /// @param _zklinkContract zklink address of linea
     function setZKLink(address _zklinkContract) external onlyOwner {
         if (_zklinkContract == address(0)) {
             revert InvalidParmas();
@@ -256,6 +273,8 @@ contract ZKLinkL2Gateway is
         zklinkContract = _zklinkContract;
     }
 
+    /// set fee recipient address
+    /// @param _feeRecipient fee recipient address who claim this message
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         if (_feeRecipient == address(0)) {
             revert InvalidParmas();
@@ -263,14 +282,20 @@ contract ZKLinkL2Gateway is
         feeRecipient = payable(_feeRecipient);
     }
 
+    /// get bridge address of ERC20 token
+    /// @param token ERC20 token address of L2
     function getBridge(address token) external view returns (address) {
         return bridges[token];
     }
 
+    /// get L1 bridge address of L2 ERC20 token
+    /// @param token L2 ERC20 token address
     function getRemoteBridge(address token) external view returns (address) {
         return remoteBridge[token];
     }
 
+    /// get L1 token address of L2 ERC20 token
+    /// @param token L2 ERC20 token address
     function getRemoteToken(address token) external view returns (address) {
         return remoteTokens[token];
     }
