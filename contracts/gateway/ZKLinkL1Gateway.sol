@@ -366,4 +366,10 @@ contract ZKLinkL1Gateway is Ownable, IZKLinkL1Gateway {
     function getRemoteToken(address token) external view returns (address) {
         return remoteTokens[token];
     }
+
+    /// get remote gateway of zksync or linea
+    /// @param _chain Chains.ZKSync or Chains.Linea
+    function getRemoteGateway(Chains _chain) external view returns (address) {
+        return remoteGateway[_chain];
+    }
 }
