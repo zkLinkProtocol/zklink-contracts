@@ -22,7 +22,7 @@ interface IZKLinkL1Gateway {
         uint8 _subAccountId,
         uint104 amount
     );
-    event SetFeeOn(bool feeOn);
+    event SetFeeOn(Chains chain, bool feeOn, uint64 fee);
     event SetBridge(address token, address bridge);
     event SetRemoteBridge(address token, address remoteBridge);
     event SetRemoteToken(address token, address remoteToken);
@@ -33,15 +33,15 @@ interface IZKLinkL1Gateway {
     error NotReceiveETHDirectly();
     error NoRemoteTokenSet();
 
-    function depositERC20(
+    function depositERC20ByLinea(
         address _token,
         uint104 _amount,
         bytes32 _zkLinkAddress,
         uint8 _subAccountId,
         bool _mapping
-    ) external payable; // fee 填 0.001 ether
+    ) external payable;
 
-    function depositETH(
+    function depositETHByLinea(
         bytes32 _zkLinkAddress,
         uint8 _subAccountId
     ) external payable;
@@ -64,12 +64,20 @@ interface IZKLinkL1Gateway {
         bytes32 txhash
     );
 
-    function depositERC20(
+    function depositERC20ByZksync(
         address _token,
         uint104 _amount,
         bytes32 _zkLinkAddress,
         uint8 _subAccountId,
         bool _mapping,
         bytes calldata _extendParams
+    ) external payable;
+
+    function depositETHByZksync(
+        bytes32 zklinkAddress,
+        uint8 subAccountId,
+        uint256 amount,
+        uint256 l2GasLimit,
+        uint256 baseCost
     ) external payable;
 }
