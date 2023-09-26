@@ -123,6 +123,40 @@ contract ZKSyncGateway is Ownable, IZKSyncGateway {
         );
     }
 
+    /// @dev just used for estimate gas
+    function estimateDepositETHGas(
+        bytes32 zkLinkAddress,
+        uint8 subAccountId
+    ) external payable {
+        bytes32 messageHash = keccak256(
+            abi.encode(zkLinkAddress, subAccountId, msg.value)
+        );
+        inboxL1L2Status[messageHash] = INBOX_STATUS_UNKNOWN;
+        emit DepositETH(msg.sender, zkLinkAddress, subAccountId, msg.value);
+    }
+
+    /// @dev just used for estimate gas
+    function estimateDepositERC20Gas(
+        address _token,
+        uint104 _amount,
+        bytes32 _zkLinkAddress,
+        uint8 _subAccountId,
+        bool _mapping
+    ) external {
+        bytes32 messageHash = keccak256(
+            abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping)
+        );
+        inboxL1L2Status[messageHash] = INBOX_STATUS_UNKNOWN;
+
+        emit DepositERC20(
+            _token,
+            _amount,
+            _zkLinkAddress,
+            _subAccountId,
+            _mapping
+        );
+    }
+
     /// set zklink contract address
     /// @param _zklink zklink address
     function setZKLink(IZkLink _zklink) external {
