@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./zksync/ReentrancyGuard.sol";
 import "./Storage.sol";
 import "./zksync/Events.sol";
@@ -518,7 +519,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that change operation is correct
-    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool) {
+    function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool) {
         ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
         if (changePkType == ChangePubkeyType.ECRECOVER) {
             return verifyChangePubkeyECRECOVER(_ethWitness, _changePk);
@@ -530,15 +531,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @notice Checks that signature is valid for pubkey change message
-    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal view returns (bool) {
+    function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool) {
         (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
-        uint cid;
-        assembly {
-            cid := chainid()
-        }
-        bytes32 domainSeparator = keccak256(abi.encode(CHANGE_PUBKEY_DOMAIN_SEPARATOR, CHANGE_PUBKEY_HASHED_NAME, CHANGE_PUBKEY_HASHED_VERSION, cid, address(this)));
-        bytes32 structHash = keccak256(abi.encode(CHANGE_PUBKEY_TYPE_HASH, _changePk.pubKeyHash, _changePk.nonce, _changePk.accountId));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        bytes memory message = abi.encodePacked("ChangePubKey\nPubKeyHash: ", Strings.toHexString(uint160(_changePk.pubKeyHash)), "\nNonce: ", Strings.toString(_changePk.nonce), "\nAccountId: ", Strings.toString(_changePk.accountId));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n", Strings.toString(message.length), message));
         address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
         return recoveredAddress == _changePk.owner;
     }

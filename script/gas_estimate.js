@@ -31,14 +31,12 @@ const {
     OP_ORDER_MATCHING,
     OP_CHANGE_PUBKEY,
     OP_WITHDRAW,
-    OP_NOOP_CHUNKS,
     OP_DEPOSIT_CHUNKS,
     OP_TRANSFER_TO_NEW_CHUNKS,
     OP_WITHDRAW_CHUNKS,
     OP_TRANSFER_CHUNKS,
     OP_FULL_EXIT_CHUNKS,
     OP_CHANGE_PUBKEY_CHUNKS,
-    OP_FORCE_EXIT_CHUNKS,
     OP_ORDER_MATCHING_CHUNKS,
     extendAddress,
 } = require('./op_utils');
@@ -191,7 +189,7 @@ class TestSetUp {
             const changePubkeyType = params.changePubkeyType;
             let owner = this.alice.address;
             if (changePubkeyType === 0) {
-                ethWitness = createEthWitnessOfECRECOVER(this.zkLink.address,pubKeyHash,nonce,accountId,this.alice);
+                ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,this.alice);
             } else if (changePubkeyType === 1) {
                 const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
                 const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";

@@ -75,7 +75,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const accountId = 15;
         const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:5, pubKeyHash, owner:extendAddress(alice.address), nonce, tokenId:0, fee:0});
         const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
-        const ethWitness = createEthWitnessOfECRECOVER(zkLink.address,pubKeyHash,nonce,accountId,alice);
+        const ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,alice);
         const onchainOperations = [{
             "ethWitness":ethWitness,
             "publicDataOffset":0
@@ -120,5 +120,17 @@ describe('ZkLink change pubkey unit tests', function () {
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
         expect(result.priorityOperationsProcessed).eq(0);
         expect(result.offsetsCommitment).eq('0x010000');
+    });
+
+    it('verifyChangePubkeyECRECOVER should be success', async () => {
+        const pubKeyHash = "0xdbd9c8235e4fc9d5b9b7bb201f1133e8a28c0edd";
+        const nonce = 0;
+        const accountId = 2;
+        const owner = "0xd09Ad14080d4b257a819a4f579b8485Be88f086c";
+        const changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
+        const signature = "efd0d9c6beb00310535bb51ee58745adb547e7d875d5823892365a6450caf6c559a6a4bfd83bf336ac59cf83e97948dbf607bf2aecd24f6829c3deac20ecdb601b";
+        const witness = "0x00" + signature;
+        const result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
+        expect(result).eq(true);
     });
 });
