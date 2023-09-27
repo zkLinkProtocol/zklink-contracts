@@ -195,4 +195,10 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     function getRemoteGateway(Chains _chain) external view returns (address) {
         return remoteGateway[_chain];
     }
+
+    /// withdraw fees
+    /// @param receiver receiver address
+    function withdrawFee(address payable receiver) external onlyOwner {
+        receiver.transfer(address(this).balance);
+    }
 }
