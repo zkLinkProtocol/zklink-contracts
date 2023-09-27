@@ -148,29 +148,11 @@ function hashBytesToBytes20(pubData) {
     return ethers.utils.hexlify(ethers.utils.arrayify(ethers.utils.keccak256(pubData)).slice(12));
 }
 
-async function createEthWitnessOfECRECOVER(zkLinkAddr,pubKeyHash,nonce,accountId,owner) {
-    // All properties on a domain are optional
-    const domain = {
-        name: 'ZkLink',
-        version: '1',
-        chainId: 31337, // hardhat default network chainId
-        verifyingContract: zkLinkAddr
-    };
-    // The named list of all type definitions
-    const types = {
-        ChangePubKey: [
-            { name: 'pubKeyHash', type: 'bytes20' },
-            { name: 'nonce', type: 'uint32' },
-            { name: 'accountId', type: 'uint32' }
-        ]
-    };
-    // The data to sign
-    const value = {
-        pubKeyHash: pubKeyHash,
-        nonce: nonce,
-        accountId: accountId
-    };
-    const signature = await owner._signTypedData(domain, types, value);
+async function createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,owner) {
+    const sigMsg = ethers.utils.solidityPack(
+        ["string"],
+        ["ChangePubKey\nPubKeyHash: " + pubKeyHash + "\nNonce: " + nonce + "\nAccountId: " + accountId]);
+    const signature = await owner.signMessage(ethers.utils.arrayify(sigMsg));
     return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
 }
 
