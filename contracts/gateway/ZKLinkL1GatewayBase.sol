@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IZkSync} from "@matterlabs/zksync-contracts/l1/contracts/zksync/interfaces/IZkSync.sol";
+import {IL1Bridge as IZKSyncL1Bridge} from "@matterlabs/zksync-contracts/l1/contracts/bridge/interfaces/IL1Bridge.sol";
 
-import {IZkSync} from "../interfaces/IZkSync.sol";
 import {ILineaERC20Bridge} from "../interfaces/ILineaERC20Bridge.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
 import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
 import {IZKSyncGateway} from "../interfaces/IZKSyncGateway.sol";
-import {IZKSyncL1Bridge} from "../interfaces/IZKSyncL1Bridge.sol";
 import {IZKLinkL1Gateway} from "../interfaces/IZKLinkL1Gateway.sol";
 
 abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
