@@ -47,6 +47,11 @@ contract LineaGateway is Ownable, ILineaGateway {
         _;
     }
 
+    constructor(IMessageService _messageService, address _zklinkContract) {
+        messageService = _messageService;
+        zklinkContract = _zklinkContract;
+    }
+
     /// claim deposit ERC20 message
     /// @param _token L2 ERC20 token address
     /// @param _calldata deposit ERC20 message calldata

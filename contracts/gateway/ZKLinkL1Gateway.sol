@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./ZKLinkL1GatewayBase.sol";
 
 contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
+    constructor(IMessageService _messageService, IZkSync _zksync) {
+        messageService = _messageService;
+        zksync = _zksync;
+    }
+
     function depositERC20ByLinea(
         address _token,
         uint104 _amount,
