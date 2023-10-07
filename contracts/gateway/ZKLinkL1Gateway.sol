@@ -11,21 +11,12 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
         zksync = _zksync;
     }
 
-    function depositERC20ByLinea(
-        address _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping
-    ) external payable override {
+    function depositERC20ByLinea(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override {
         if (lineaFeeOn && msg.value != lineaFee) {
             revert InvalidFee();
         }
 
-        if (
-            (bridges[_token] == address(0)) ||
-            (remoteBridge[_token] == address(0))
-        ) {
+        if ((bridges[_token] == address(0)) || (remoteBridge[_token] == address(0))) {
             revert TokenNotSupport();
         }
 
@@ -38,75 +29,32 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
 
         // deposit erc20
         uint256 nonce = messageService.nextMessageNumber();
-        bytes memory _calldata = abi.encodeCall(
-            ILineaERC20Bridge.receiveFromOtherLayer,
-            (remoteGateway[Chains.Linea], _amount)
-        );
-        bytes32 messageHash = keccak256(
-            abi.encode(
-                bridges[_token],
-                remoteBridge[_token],
-                0,
-                0,
-                nonce,
-                _calldata
-            )
-        );
+        bytes memory _calldata = abi.encodeCall(ILineaERC20Bridge.receiveFromOtherLayer, (remoteGateway[Chains.Linea], _amount));
+        bytes32 messageHash = keccak256(abi.encode(bridges[_token], remoteBridge[_token], 0, 0, nonce, _calldata));
 
-        ILineaERC20Bridge(bridges[_token]).depositTo(
-            _amount,
-            remoteGateway[Chains.Linea]
-        );
+        ILineaERC20Bridge(bridges[_token]).depositTo(_amount, remoteGateway[Chains.Linea]);
 
         // sendClaimERC20 message
         bytes memory verifyCalldata = abi.encodeCall(
             ILineaGateway.claimDepositERC20Callback,
-            (
-                remoteTokens[_token],
-                _amount,
-                _zkLinkAddress,
-                _subAccountId,
-                _mapping,
-                messageHash
-            )
+            (remoteTokens[_token], _amount, _zkLinkAddress, _subAccountId, _mapping, messageHash)
         );
-        messageService.sendMessage(
-            remoteGateway[Chains.Linea],
-            0,
-            verifyCalldata
-        );
-        emit DepositERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping,
-            _calldata,
-            nonce,
-            messageHash
-        );
+        messageService.sendMessage(remoteGateway[Chains.Linea], 0, verifyCalldata);
+
+        txNonce++;
+        emit DepositLineaERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, messageHash, txNonce);
     }
 
-    function depositETHByLinea(
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId
-    ) external payable override {
+    function depositETHByLinea(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override {
         require(msg.value < 2 ** 128, "16");
-        uint104 amount = lineaFeeOn
-            ? uint104(msg.value) - lineaFee
-            : uint104(msg.value);
+        uint104 amount = lineaFeeOn ? uint104(msg.value) - lineaFee : uint104(msg.value);
 
-        bytes memory _calldata = abi.encodeCall(
-            ILineaGateway.claimDepositETH,
-            (_zkLinkAddress, _subAccountId, amount)
-        );
+        bytes memory _calldata = abi.encodeCall(ILineaGateway.claimDepositETH, (_zkLinkAddress, _subAccountId, amount));
 
-        messageService.sendMessage{value: msg.value}(
-            remoteGateway[Chains.Linea],
-            0,
-            _calldata
-        );
-        emit DepositETH(_zkLinkAddress, _subAccountId, amount);
+        messageService.sendMessage{value: msg.value}(remoteGateway[Chains.Linea], 0, _calldata);
+
+        txNonce++;
+        emit DepositLineaETH(_zkLinkAddress, _subAccountId, amount, txNonce);
     }
 
     ///
@@ -124,27 +72,17 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
         bool _mapping,
         bytes calldata _extendParams
     ) external payable override {
-        (
-            uint256 _defaultBridgeGasLimit,
-            uint256 _defaultBridgeCost,
-            uint256 _l2GasLimit,
-            uint256 _gatewayCost
-        ) = abi.decode(_extendParams, (uint256, uint256, uint256, uint256));
+        (uint256 _defaultBridgeGasLimit, uint256 _defaultBridgeCost, uint256 _l2GasLimit, uint256 _gatewayCost) = abi.decode(_extendParams, (uint256, uint256, uint256, uint256));
 
         if (zksyncFeeOn) {
-            require(
-                msg.value == _defaultBridgeCost + _gatewayCost + zksyncFee,
-                "fee"
-            );
+            require(msg.value == _defaultBridgeCost + _gatewayCost + zksyncFee, "fee");
         }
 
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
         IERC20(_token).approve(zksyncL1Bridge, _amount);
 
         // bridge erc20 to remote gateway
-        bytes32 txhash = IZKSyncL1Bridge(zksyncL1Bridge).deposit{
-            value: _defaultBridgeCost
-        }(
+        bytes32 txhash = IZKSyncL1Bridge(zksyncL1Bridge).deposit{value: _defaultBridgeCost}(
             remoteGateway[Chains.ZKSync],
             _token,
             _amount,
@@ -155,13 +93,7 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
 
         bytes memory _calldata = abi.encodeCall(
             IZKSyncGateway.depositERC20,
-            (
-                IZKSyncL1Bridge(zksyncL1Bridge).l2TokenAddress(_token),
-                _amount,
-                _zkLinkAddress,
-                _subAccountId,
-                _mapping
-            )
+            (IZKSyncL1Bridge(zksyncL1Bridge).l2TokenAddress(_token), _amount, _zkLinkAddress, _subAccountId, _mapping)
         );
 
         zksync.requestL2Transaction{value: _gatewayCost}(
@@ -174,14 +106,8 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
             refundRecipient
         );
 
-        emit DepositZksyncERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping,
-            txhash
-        );
+        txNonce++;
+        emit DepositZksyncERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, txhash, txNonce);
     }
 
     /// deposit ETH to zklink by zksync bridge
@@ -189,21 +115,12 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
     /// @param subAccountId sub account id
     /// @param amount amount eth to bridge
     /// @param l2GasLimit L2 depositETH function call gas limit
-    function depositETHByZksync(
-        bytes32 zklinkAddress,
-        uint8 subAccountId,
-        uint256 amount,
-        uint256 l2GasLimit,
-        uint256 baseCost
-    ) external payable override {
+    function depositETHByZksync(bytes32 zklinkAddress, uint8 subAccountId, uint256 amount, uint256 l2GasLimit, uint256 baseCost) external payable override {
         if (zksyncFeeOn) {
             require(msg.value == amount + zksyncFee + baseCost, "fee");
         }
 
-        bytes memory _calldata = abi.encodeCall(
-            IZKSyncGateway.depositETH,
-            (zklinkAddress, subAccountId)
-        );
+        bytes memory _calldata = abi.encodeCall(IZKSyncGateway.depositETH, (zklinkAddress, subAccountId));
         bytes32 txhash = zksync.requestL2Transaction{value: baseCost + amount}(
             address(remoteGateway[Chains.ZKSync]),
             amount,
@@ -214,6 +131,7 @@ contract ZKLinkL1Gateway is ZKLinkL1GatewayBase {
             refundRecipient
         );
 
-        emit DepositZKSyncETH(zklinkAddress, subAccountId, amount, txhash);
+        txNonce++;
+        emit DepositZKSyncETH(zklinkAddress, subAccountId, amount, txhash, txNonce);
     }
 }

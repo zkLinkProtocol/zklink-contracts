@@ -37,13 +37,8 @@ contract ZKSyncGateway is Ownable, IZKSyncGateway {
     /// deposit ETH to zklink
     /// @param zkLinkAddress zklink address
     /// @param subAccountId sub account id
-    function depositETH(
-        bytes32 zkLinkAddress,
-        uint8 subAccountId
-    ) external payable onlyRemoteGateway {
-        bytes32 messageHash = keccak256(
-            abi.encode(zkLinkAddress, subAccountId, msg.value)
-        );
+    function depositETH(bytes32 zkLinkAddress, uint8 subAccountId) external payable onlyRemoteGateway {
+        bytes32 messageHash = keccak256(abi.encode(zkLinkAddress, subAccountId, msg.value));
         inboxL1L2Status[messageHash] = INBOX_STATUS_RECEIVED;
         emit DepositETH(msg.sender, zkLinkAddress, subAccountId, msg.value);
     }
@@ -54,35 +49,15 @@ contract ZKSyncGateway is Ownable, IZKSyncGateway {
     /// @param _zkLinkAddress zklink address
     /// @param _subAccountId sub account id
     /// @param _mapping is mapping token
-    function depositERC20(
-        address _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping
-    ) external onlyRemoteGateway {
-        bytes32 messageHash = keccak256(
-            abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping)
-        );
+    function depositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external onlyRemoteGateway {
+        bytes32 messageHash = keccak256(abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping));
         inboxL1L2Status[messageHash] = INBOX_STATUS_RECEIVED;
 
-        emit DepositERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping
-        );
+        emit DepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
-    function claimDepositETH(
-        bytes32 zkLinkAddress,
-        uint8 subAccountId,
-        uint256 amount
-    ) external {
-        bytes32 messageHash = keccak256(
-            abi.encode(zkLinkAddress, subAccountId, amount)
-        );
+    function claimDepositETH(bytes32 zkLinkAddress, uint8 subAccountId, uint256 amount) external {
+        bytes32 messageHash = keccak256(abi.encode(zkLinkAddress, subAccountId, amount));
 
         _checkMessageHash(messageHash);
         inboxL1L2Status[messageHash] = INBOX_STATUS_CLAIMED;
@@ -92,69 +67,30 @@ contract ZKSyncGateway is Ownable, IZKSyncGateway {
         emit ClaimedDepositETH(zkLinkAddress, subAccountId, amount);
     }
 
-    function claimDepositERC20(
-        address _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping
-    ) external {
-        bytes32 messageHash = keccak256(
-            abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping)
-        );
+    function claimDepositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external {
+        bytes32 messageHash = keccak256(abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping));
         _checkMessageHash(messageHash);
         inboxL1L2Status[messageHash] = INBOX_STATUS_CLAIMED;
 
         IERC20(_token).approve(address(zklink), _amount);
-        zklink.depositERC20(
-            IERC20(_token),
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping
-        );
+        zklink.depositERC20(IERC20(_token), _amount, _zkLinkAddress, _subAccountId, _mapping);
 
-        emit ClaimedDepositERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping
-        );
+        emit ClaimedDepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
     /// @dev just used for estimate gas
-    function estimateDepositETHGas(
-        bytes32 zkLinkAddress,
-        uint8 subAccountId
-    ) external payable {
-        bytes32 messageHash = keccak256(
-            abi.encode(zkLinkAddress, subAccountId, msg.value)
-        );
+    function estimateDepositETHGas(bytes32 zkLinkAddress, uint8 subAccountId) external payable {
+        bytes32 messageHash = keccak256(abi.encode(zkLinkAddress, subAccountId, msg.value));
         inboxL1L2Status[messageHash] = INBOX_STATUS_UNKNOWN;
         emit DepositETH(msg.sender, zkLinkAddress, subAccountId, msg.value);
     }
 
     /// @dev just used for estimate gas
-    function estimateDepositERC20Gas(
-        address _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping
-    ) external {
-        bytes32 messageHash = keccak256(
-            abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping)
-        );
+    function estimateDepositERC20Gas(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external {
+        bytes32 messageHash = keccak256(abi.encode(_token, _amount, _zkLinkAddress, _subAccountId, _mapping));
         inboxL1L2Status[messageHash] = INBOX_STATUS_UNKNOWN;
 
-        emit DepositERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping
-        );
+        emit DepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
     /// set zklink contract address
@@ -176,10 +112,7 @@ contract ZKSyncGateway is Ownable, IZKSyncGateway {
     }
 
     function _checkMessageHash(bytes32 messageHash) internal view {
-        if (
-            inboxL1L2Status[messageHash] == INBOX_STATUS_UNKNOWN ||
-            inboxL1L2Status[messageHash] == INBOX_STATUS_CLAIMED
-        ) {
+        if (inboxL1L2Status[messageHash] == INBOX_STATUS_UNKNOWN || inboxL1L2Status[messageHash] == INBOX_STATUS_CLAIMED) {
             revert InvalidParmas();
         }
     }

@@ -22,6 +22,8 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     uint64 public lineaFee;
     uint64 public zksyncFee;
 
+    uint120 public txNonce;
+
     // /// @notice amount of L2 claim message fees users should pay for
     // uint256 public fee;
 
@@ -59,11 +61,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
         _;
     }
 
-    function setFeeOnAndFee(
-        Chains _chain,
-        bool _feeOn,
-        uint64 _fee
-    ) external onlyOwner {
+    function setFeeOnAndFee(Chains _chain, bool _feeOn, uint64 _fee) external onlyOwner {
         if (_chain == Chains.Linea) {
             lineaFeeOn = _feeOn;
             lineaFee = _fee;
@@ -77,10 +75,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// @notice set linea ERC20 bridges of L1
     /// @param _tokens L1 ERC20 tokens
     /// @param _bridges L1 bridges of ERC20 tokens
-    function setBridges(
-        address[] calldata _tokens,
-        address[] calldata _bridges
-    ) external onlyOwner {
+    function setBridges(address[] calldata _tokens, address[] calldata _bridges) external onlyOwner {
         if (_tokens.length != _bridges.length) {
             revert InvalidParmas();
         }
@@ -94,10 +89,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// @notice set linea L2 bridges of l1 tokens
     /// @param _tokens L1 tokens of linea
     /// @param _remoteBridges L2 bridges of L1 tokens
-    function setRemoteBridges(
-        address[] calldata _tokens,
-        address[] calldata _remoteBridges
-    ) external onlyOwner {
+    function setRemoteBridges(address[] calldata _tokens, address[] calldata _remoteBridges) external onlyOwner {
         if (_tokens.length != _remoteBridges.length) {
             revert InvalidParmas();
         }
@@ -111,10 +103,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// @notice set remote Gateway address
     /// @param _chain Chains.Linea || Chains.ZKSync
     /// @param _remoteGateway remote gateway address
-    function setRemoteGateway(
-        Chains _chain,
-        address _remoteGateway
-    ) external onlyOwner {
+    function setRemoteGateway(Chains _chain, address _remoteGateway) external onlyOwner {
         if (_remoteGateway == address(0)) {
             revert InvalidParmas();
         }
@@ -125,10 +114,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// set L2 ERC20 tokens of L1
     /// @param _tokens linea L1 ERC20 tokens
     /// @param _remoteTokens linea L2 ERC20 tokens
-    function setRemoteTokens(
-        address[] calldata _tokens,
-        address[] calldata _remoteTokens
-    ) external onlyOwner {
+    function setRemoteTokens(address[] calldata _tokens, address[] calldata _remoteTokens) external onlyOwner {
         if (_tokens.length != _remoteTokens.length) {
             revert InvalidParmas();
         }
@@ -141,9 +127,7 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
 
     /// @notice set linea L1 message service
     /// @param _messageService message service address
-    function setMessageService(
-        address _messageService
-    ) external addressZeroCheck(_messageService) onlyOwner {
+    function setMessageService(address _messageService) external addressZeroCheck(_messageService) onlyOwner {
         messageService = IMessageService(_messageService);
     }
 
@@ -158,17 +142,13 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
 
     /// set refund recipient address of zksync
     /// @param _refundRecipient refund recipient address, suggest EOA address
-    function setRefundRecipient(
-        address _refundRecipient
-    ) external addressZeroCheck(_refundRecipient) onlyOwner {
+    function setRefundRecipient(address _refundRecipient) external addressZeroCheck(_refundRecipient) onlyOwner {
         refundRecipient = payable(_refundRecipient);
     }
 
     /// set zksync l1 bridge
     /// @param _zksyncL1Bridge zksync l1 bridge
-    function setZKSyncL1Bridge(
-        address _zksyncL1Bridge
-    ) external addressZeroCheck(_zksyncL1Bridge) onlyOwner {
+    function setZKSyncL1Bridge(address _zksyncL1Bridge) external addressZeroCheck(_zksyncL1Bridge) onlyOwner {
         zksyncL1Bridge = _zksyncL1Bridge;
     }
 

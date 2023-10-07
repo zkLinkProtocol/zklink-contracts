@@ -58,23 +58,8 @@ contract LineaGateway is Ownable, ILineaGateway {
     /// @param _nonce deposit ETC20 message nonce
     /// @param _cbCalldata verify params message calldata
     /// @param _cbNonce verify params message nonce
-    function claimDepositERC20(
-        address _token,
-        bytes calldata _calldata,
-        uint256 _nonce,
-        bytes calldata _cbCalldata,
-        uint256 _cbNonce
-    ) external override {
-        messageHash = keccak256(
-            abi.encode(
-                remoteBridge[_token],
-                bridges[_token],
-                0,
-                0,
-                _nonce,
-                _calldata
-            )
-        );
+    function claimDepositERC20(address _token, bytes calldata _calldata, uint256 _nonce, bytes calldata _cbCalldata, uint256 _cbNonce) external override {
+        messageHash = keccak256(abi.encode(remoteBridge[_token], bridges[_token], 0, 0, _nonce, _calldata));
 
         uint256 status = messageService.inboxL1L2MessageStatus(messageHash);
         if (status == INBOX_STATUS_UNKNOWN) {
@@ -88,35 +73,15 @@ contract LineaGateway is Ownable, ILineaGateway {
 
         if (status == INBOX_STATUS_RECEIVED) {
             // claim erc20 token
-            (bool success, bytes memory errorInfo) = address(messageService)
-                .call(
-                    abi.encodeCall(
-                        IMessageService.claimMessage,
-                        (
-                            remoteBridge[_token],
-                            bridges[_token],
-                            0,
-                            0,
-                            feeRecipient,
-                            _calldata,
-                            _nonce
-                        )
-                    )
-                );
+            (bool success, bytes memory errorInfo) = address(messageService).call(
+                abi.encodeCall(IMessageService.claimMessage, (remoteBridge[_token], bridges[_token], 0, 0, feeRecipient, _calldata, _nonce))
+            );
 
             require(success, string(errorInfo));
         }
 
         // claim callback message to verify messages
-        messageService.claimMessage(
-            remoteGateway,
-            address(this),
-            0,
-            0,
-            feeRecipient,
-            _cbCalldata,
-            _cbNonce
-        );
+        messageService.claimMessage(remoteGateway, address(this), 0, 0, feeRecipient, _cbCalldata, _cbNonce);
     }
 
     /// claim deposit ERC20 verify params callback
@@ -142,18 +107,7 @@ contract LineaGateway is Ownable, ILineaGateway {
         IERC20(_token).approve(zklinkContract, _amount);
 
         // deposit erc20 to zklink
-        (bool success, bytes memory errorInfo) = zklinkContract.call(
-            abi.encodeCall(
-                IZkLink.depositERC20,
-                (
-                    IERC20(_token),
-                    _amount,
-                    _zkLinkAddress,
-                    _subAccountId,
-                    _mapping
-                )
-            )
-        );
+        (bool success, bytes memory errorInfo) = zklinkContract.call(abi.encodeCall(IZkLink.depositERC20, (IERC20(_token), _amount, _zkLinkAddress, _subAccountId, _mapping)));
 
         if (success) {
             messageHashUsed[messageHash] = true;
@@ -162,49 +116,26 @@ contract LineaGateway is Ownable, ILineaGateway {
         // reset messageHash
         messageHash = bytes32(0);
 
-        emit ClaimedDepositERC20(
-            _token,
-            _amount,
-            _zkLinkAddress,
-            _subAccountId,
-            _mapping,
-            success,
-            errorInfo
-        );
+        emit ClaimedDepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, success, errorInfo);
     }
 
     /// claim deposit ETH message hash
     /// @param zkLinkAddress zklink address
     /// @param subAccountId sub account id
     /// @param amount amount to deposit
-    function claimDepositETH(
-        bytes32 zkLinkAddress,
-        uint8 subAccountId,
-        uint104 amount
-    ) external payable override onlyMessageService {
+    function claimDepositETH(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable override onlyMessageService {
         if (msg.value != amount) {
             revert InvalidValue();
         }
-        (bool success, bytes memory errorInfo) = zklinkContract.call{
-            value: msg.value
-        }(abi.encodeCall(IZkLink.depositETH, (zkLinkAddress, subAccountId)));
+        (bool success, bytes memory errorInfo) = zklinkContract.call{value: msg.value}(abi.encodeCall(IZkLink.depositETH, (zkLinkAddress, subAccountId)));
 
-        emit ClaimedDepositETH(
-            zkLinkAddress,
-            subAccountId,
-            amount,
-            success,
-            errorInfo
-        );
+        emit ClaimedDepositETH(zkLinkAddress, subAccountId, amount, success, errorInfo);
     }
 
     /// set linea ERC20 bridges of tokens
     /// @param _tokens L2 ERC20 token address
     /// @param _bridges L2 bridge addresses of tokens
-    function setBridges(
-        address[] calldata _tokens,
-        address[] calldata _bridges
-    ) external onlyOwner {
+    function setBridges(address[] calldata _tokens, address[] calldata _bridges) external onlyOwner {
         if (_tokens.length != _bridges.length) {
             revert InvalidParmas();
         }
@@ -218,10 +149,7 @@ contract LineaGateway is Ownable, ILineaGateway {
     /// set remote bridge address of token
     /// @param _tokens L2 ERC20 token addresses
     /// @param _remoteBridges L1 bridge addresses of L2 tokens
-    function setRemoteBridges(
-        address[] calldata _tokens,
-        address[] calldata _remoteBridges
-    ) external onlyOwner {
+    function setRemoteBridges(address[] calldata _tokens, address[] calldata _remoteBridges) external onlyOwner {
         if (_tokens.length != _remoteBridges.length) {
             revert InvalidParmas();
         }
@@ -235,10 +163,7 @@ contract LineaGateway is Ownable, ILineaGateway {
     /// set remote ERC20 token address of L2
     /// @param _tokens L2 ERC20 token addresses
     /// @param _remoteTokens L1 ERC20 token addresses of L2 ERC20 tokens
-    function setRemoteTokens(
-        address[] calldata _tokens,
-        address[] calldata _remoteTokens
-    ) external onlyOwner {
+    function setRemoteTokens(address[] calldata _tokens, address[] calldata _remoteTokens) external onlyOwner {
         if (_tokens.length != _remoteTokens.length) {
             revert InvalidParmas();
         }
