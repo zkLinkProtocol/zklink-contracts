@@ -1,6 +1,6 @@
 const { ChainContractDeployer } = require("./utils");
 
-task("deployZKSyncGateway", "deploy zksync gateway contract")
+task("deployZKSyncL2Gateway", "deploy zksync gateway contract")
   .addParam("zklink", "zklink contract address on zksync")
   .setAction(async (taskArgs, hardhat) => {
     const { zklink } = taskArgs;
@@ -10,6 +10,6 @@ task("deployZKSyncGateway", "deploy zksync gateway contract")
     await deployer.init();
 
     const args = [zklink];
-    const contract = await deployer.deployContract("ZKSyncGateway", args);
-    console.log("zksync gateway deployed: ", contract.address);
+    const contract = await deployer.deployContract("ZKSyncL2Gateway", args);
+    console.log("ZKSyncL2Gateway deployed: ", contract.address);
   });

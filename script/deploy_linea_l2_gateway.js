@@ -1,6 +1,6 @@
 const { ChainContractDeployer } = require("./utils");
 
-task("deployLineaGateway", "Deploy linea gateway contract")
+task("deployLineaL2Gateway", "Deploy linea l2 gateway contract")
   .addParam("messageService", "linea l2 message service contract address")
   .addParam("zklink", "zklink contract address on linea")
   .setAction(async (taskArgs, hardhat) => {
@@ -12,6 +12,6 @@ task("deployLineaGateway", "Deploy linea gateway contract")
     await deployer.init();
 
     const args = [messageService, zklink];
-    const contract = await deployer.deployContract("LineaGateway", args);
-    console.log("Linea gateway deployed:", contract.address);
+    const contract = await deployer.deployContract("LineaL2Gateway", args);
+    console.log("LineaL2Gateway deployed:", contract.address);
   });
