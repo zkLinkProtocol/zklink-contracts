@@ -3,13 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@matterlabs/zksync-contracts/l2/contracts/vendor/AddressAliasHelper.sol";
 
 import "../interfaces/IZkLink.sol";
-import "../interfaces/IZKSyncGateway.sol";
+import "../interfaces/IZKSyncL2Gateway.sol";
 
-import "../library/AddressAliasHelper.sol";
-
-contract ZKSyncGateway is Ownable, IZKSyncGateway {
+contract ZKSyncL2Gateway is Ownable, IZKSyncL2Gateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;

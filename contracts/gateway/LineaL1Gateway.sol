@@ -2,36 +2,26 @@
 pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IZkSync} from "@matterlabs/zksync-contracts/l1/contracts/zksync/interfaces/IZkSync.sol";
-import {IL1Bridge as IZKSyncL1Bridge} from "@matterlabs/zksync-contracts/l1/contracts/bridge/interfaces/IL1Bridge.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ILineaERC20Bridge} from "../interfaces/ILineaERC20Bridge.sol";
+import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
-import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
-import {IZKSyncGateway} from "../interfaces/IZKSyncGateway.sol";
-import {IZKLinkL1Gateway} from "../interfaces/IZKLinkL1Gateway.sol";
+import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 
-abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
-    /// @notice zksync l2TxGasPerPubdataByte
-    uint256 public constant REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
+contract LineaL1Gateway is Ownable, ILineaL1Gateway {
+    bool public feeOn;
 
-    /// @notice if fee on, when bridge from ethereum to linea should pay l2 claim message gas fee
-    bool public lineaFeeOn;
-    bool public zksyncFeeOn;
+    /// @notice amount of L2 claim message fees users should pay for
+    uint64 public fee;
 
-    uint64 public lineaFee;
-    uint64 public zksyncFee;
-
-    uint120 public txNonce;
-
-    // /// @notice amount of L2 claim message fees users should pay for
-    // uint256 public fee;
+    uint184 public txNonce;
 
     /// @notice linea message service address
     IMessageService public messageService;
 
     /// @dev Remote Gateway address
-    mapping(Chains => address) internal remoteGateway;
+    address public remoteGateway;
 
     /// @dev Mapping from token to token bridge (only linea)
     mapping(address => address) internal bridges;
@@ -42,34 +32,67 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// @dev Mapping L1 token address to L2 token address
     mapping(address => address) internal remoteTokens;
 
-    /***********************************************
-     * ZKSync
-     ***********************************************/
-    /// @notice zksync L1 message service
-    IZkSync public zksync;
-
-    /// @notice zksync refund recipient on L2
-    address payable public refundRecipient;
-
-    /// @notice zksync l1 bridge address
-    address public zksyncL1Bridge;
-
-    modifier addressZeroCheck(address addressToSet) {
+    modifier zeroAddressCheck(address addressToSet) {
         if (addressToSet == address(0)) {
             revert InvalidParmas();
         }
         _;
     }
 
-    function setFeeOnAndFee(Chains _chain, bool _feeOn, uint64 _fee) external onlyOwner {
-        if (_chain == Chains.Linea) {
-            lineaFeeOn = _feeOn;
-            lineaFee = _fee;
-        } else if (_chain == Chains.ZKSync) {
-            zksyncFeeOn = _feeOn;
-            zksyncFee = _fee;
+    constructor(IMessageService _messageService) {
+        messageService = _messageService;
+    }
+
+    function depositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override {
+        if (feeOn && msg.value != fee) {
+            revert InvalidFee();
         }
-        emit SetFeeOn(_chain, _feeOn, _fee);
+
+        if ((bridges[_token] == address(0)) || (remoteBridge[_token] == address(0))) {
+            revert TokenNotSupport();
+        }
+
+        if (remoteTokens[_token] == address(0)) {
+            revert NoRemoteTokenSet();
+        }
+
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        IERC20(_token).approve(bridges[_token], _amount);
+
+        // deposit erc20
+        uint256 nonce = messageService.nextMessageNumber();
+        bytes memory _calldata = abi.encodeCall(ILineaERC20Bridge.receiveFromOtherLayer, (remoteGateway, _amount));
+        bytes32 messageHash = keccak256(abi.encode(bridges[_token], remoteBridge[_token], 0, 0, nonce, _calldata));
+
+        ILineaERC20Bridge(bridges[_token]).depositTo(_amount, remoteGateway);
+
+        // sendClaimERC20 message
+        bytes memory verifyCalldata = abi.encodeCall(
+            ILineaL2Gateway.claimDepositERC20Callback,
+            (remoteTokens[_token], _amount, _zkLinkAddress, _subAccountId, _mapping, messageHash)
+        );
+        messageService.sendMessage(remoteGateway, 0, verifyCalldata);
+
+        txNonce++;
+        emit DepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, messageHash, txNonce);
+    }
+
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override {
+        require(msg.value < 2 ** 128, "16");
+        uint104 amount = feeOn ? uint104(msg.value) - fee : uint104(msg.value);
+
+        bytes memory _calldata = abi.encodeCall(ILineaL2Gateway.claimDepositETH, (_zkLinkAddress, _subAccountId, amount));
+
+        messageService.sendMessage{value: msg.value}(remoteGateway, 0, _calldata);
+
+        txNonce++;
+        emit DepositETH(_zkLinkAddress, _subAccountId, amount, txNonce);
+    }
+
+    function setFeeOnAndFee(bool _feeOn, uint64 _fee) external onlyOwner {
+        feeOn = _feeOn;
+        fee = _fee;
+        emit SetFeeOn(_feeOn, _fee);
     }
 
     /// @notice set linea ERC20 bridges of L1
@@ -101,14 +124,9 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     }
 
     /// @notice set remote Gateway address
-    /// @param _chain Chains.Linea || Chains.ZKSync
     /// @param _remoteGateway remote gateway address
-    function setRemoteGateway(Chains _chain, address _remoteGateway) external onlyOwner {
-        if (_remoteGateway == address(0)) {
-            revert InvalidParmas();
-        }
-
-        remoteGateway[_chain] = _remoteGateway;
+    function setRemoteGateway(address _remoteGateway) external zeroAddressCheck(_remoteGateway) onlyOwner {
+        remoteGateway = _remoteGateway;
     }
 
     /// set L2 ERC20 tokens of L1
@@ -127,29 +145,8 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
 
     /// @notice set linea L1 message service
     /// @param _messageService message service address
-    function setMessageService(address _messageService) external addressZeroCheck(_messageService) onlyOwner {
+    function setMessageService(address _messageService) external zeroAddressCheck(_messageService) onlyOwner {
         messageService = IMessageService(_messageService);
-    }
-
-    /// set zksync L1 message service
-    /// @param _zksync zksync message service
-    function setZKSync(IZkSync _zksync) external onlyOwner {
-        if (address(_zksync) == address(0)) {
-            revert InvalidParmas();
-        }
-        zksync = _zksync;
-    }
-
-    /// set refund recipient address of zksync
-    /// @param _refundRecipient refund recipient address, suggest EOA address
-    function setRefundRecipient(address _refundRecipient) external addressZeroCheck(_refundRecipient) onlyOwner {
-        refundRecipient = payable(_refundRecipient);
-    }
-
-    /// set zksync l1 bridge
-    /// @param _zksyncL1Bridge zksync l1 bridge
-    function setZKSyncL1Bridge(address _zksyncL1Bridge) external addressZeroCheck(_zksyncL1Bridge) onlyOwner {
-        zksyncL1Bridge = _zksyncL1Bridge;
     }
 
     /// @notice get linea L1 bridge of token
@@ -168,12 +165,6 @@ abstract contract ZKLinkL1GatewayBase is Ownable, IZKLinkL1Gateway {
     /// @param token L1 ERC20 token address
     function getRemoteToken(address token) external view returns (address) {
         return remoteTokens[token];
-    }
-
-    /// get remote gateway of zksync or linea
-    /// @param _chain Chains.ZKSync or Chains.Linea
-    function getRemoteGateway(Chains _chain) external view returns (address) {
-        return remoteGateway[_chain];
     }
 
     /// withdraw fees

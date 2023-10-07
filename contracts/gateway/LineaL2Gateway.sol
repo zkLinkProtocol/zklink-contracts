@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
+import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract LineaGateway is Ownable, ILineaGateway {
+contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;
@@ -26,16 +26,16 @@ contract LineaGateway is Ownable, ILineaGateway {
     address public zklinkContract;
 
     /// @dev Mapping from token to token bridge
-    mapping(address => address) bridges;
+    mapping(address => address) internal bridges;
 
     /// @dev Mapping from token to remote bridge
-    mapping(address => address) remoteBridge;
+    mapping(address => address) internal remoteBridge;
 
     /// @dev Mapping L1 token address to L2 token address
-    mapping(address => address) remoteTokens;
+    mapping(address => address) internal remoteTokens;
 
     /// @dev Mapping from messageHash to bool
-    mapping(bytes32 => bool) messageHashUsed;
+    mapping(bytes32 => bool) internal messageHashUsed;
 
     /// @notice current claim messageHash
     bytes32 public messageHash;
@@ -228,5 +228,15 @@ contract LineaGateway is Ownable, ILineaGateway {
     /// @param token L2 ERC20 token address
     function getRemoteToken(address token) external view returns (address) {
         return remoteTokens[token];
+    }
+
+    /// batch check whether messageHash can claim
+    /// @param messageHashs: L1 messageHash
+    function checkMessageStatus(bytes32[] calldata messageHashs) external view returns (uint256[] memory) {
+        uint256[] memory status = new uint256[](messageHashs.length);
+        for (uint i = 0; i < messageHashs.length; i++) {
+            status[i] = messageService.inboxL1L2MessageStatus(messageHashs[i]);
+        }
+        return status;
     }
 }
