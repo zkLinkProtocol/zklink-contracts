@@ -8,11 +8,19 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
+import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 
 contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;
+
+    struct UsdcInfo {
+        address token;
+        address bridge;
+        address remoteBridge;
+        address remoteToken;
+    }
 
     /// @notice Claim fee recipient
     address payable public feeRecipient;
@@ -26,14 +34,11 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
     /// @notice zklink contract of linea
     address public zklinkContract;
 
-    /// @dev Mapping from token to token bridge
-    mapping(address => address) internal bridges;
+    /// @notice linea token bridge address
+    address public tokenBridge;
 
-    /// @dev Mapping from token to remote bridge
-    mapping(address => address) internal remoteBridges;
-
-    /// @dev Mapping L1 token address to L2 token address
-    mapping(address => address) internal remoteTokens;
+    /// @dev linea usdc token and bridge info
+    UsdcInfo public usdcInfo;
 
     /// @dev Mapping from messageHash to bool
     mapping(bytes32 => bool) internal messageHashUsed;
@@ -46,12 +51,14 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
         _;
     }
 
-    function initialize(IMessageService _messageService, address _zklinkContract) external initializer {
+    function initialize(IMessageService _messageService, address _zklinkContract, address _tokenBridge, UsdcInfo calldata _usdcInfo) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         messageService = _messageService;
         zklinkContract = _zklinkContract;
+        tokenBridge = _tokenBridge;
+        usdcInfo = _usdcInfo;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -63,18 +70,10 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
     /// @param _cbCalldata verify params message calldata
     /// @param _cbNonce verify params message nonce
     function claimDepositERC20(address _token, bytes calldata _calldata, uint256 _nonce, bytes calldata _cbCalldata, uint256 _cbNonce) external override {
-        messageHash = keccak256(abi.encode(remoteBridges[_token], bridges[_token], 0, 0, _nonce, _calldata));
-        uint256 status = messageService.inboxL1L2MessageStatus(messageHash);
-        require(status != INBOX_STATUS_UNKNOWN, "M1");
-
-        // if status == INBOX_STATUS_CLAIMED means someone else claimed erc20 token directly
-        if (status == INBOX_STATUS_RECEIVED) {
-            // claim erc20 token
-            (bool success, bytes memory errorInfo) = address(messageService).call(
-                abi.encodeCall(IMessageService.claimMessage, (remoteBridges[_token], bridges[_token], 0, 0, feeRecipient, _calldata, _nonce))
-            );
-
-            require(success, string(errorInfo));
+        if (_token == usdcInfo.token) {
+            _claimERC20(usdcInfo.remoteBridge, usdcInfo.bridge, _calldata, _nonce);
+        } else {
+            _claimERC20(ITokenBridge(tokenBridge).remoteSender(), tokenBridge, _calldata, _nonce);
         }
 
         // claim callback message to verify messages
@@ -130,74 +129,21 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
         emit ClaimedDepositETH(zkLinkAddress, subAccountId, amount, success, errorInfo);
     }
 
-    /// set linea ERC20 bridges of tokens
-    /// @param _tokens L2 ERC20 token address
-    /// @param _bridges L2 bridge addresses of tokens
-    function setBridges(address[] calldata _tokens, address[] calldata _bridges) external onlyOwner {
-        require(_tokens.length == _bridges.length, "P0");
+    function _claimERC20(address _remoteBirdge, address _bridge, bytes calldata _calldata, uint256 _nonce) internal {
+        messageHash = keccak256(abi.encode(_remoteBirdge, _bridge, 0, 0, _nonce, _calldata));
 
-        for (uint i = 0; i < _tokens.length; i++) {
-            bridges[_tokens[i]] = _bridges[i];
-            emit SetBridge(_tokens[i], _bridges[i]);
+        uint256 status = messageService.inboxL1L2MessageStatus(messageHash);
+        require(status != INBOX_STATUS_UNKNOWN, "M1");
+
+        // if status == INBOX_STATUS_CLAIMED means someone else claimed erc20 token directly
+        if (status == INBOX_STATUS_RECEIVED) {
+            // claim erc20 token
+            (bool success, bytes memory errorInfo) = address(messageService).call(
+                abi.encodeCall(IMessageService.claimMessage, (_remoteBirdge, _bridge, 0, 0, feeRecipient, _calldata, _nonce))
+            );
+
+            require(success, string(errorInfo));
         }
-    }
-
-    /// set remote bridge address of token
-    /// @param _tokens L2 ERC20 token addresses
-    /// @param _remoteBridges L1 bridge addresses of L2 tokens
-    function setRemoteBridges(address[] calldata _tokens, address[] calldata _remoteBridges) external onlyOwner {
-        require(_tokens.length == _remoteBridges.length, "P0");
-
-        for (uint i = 0; i < _tokens.length; i++) {
-            remoteBridges[_tokens[i]] = _remoteBridges[i];
-            emit SetRemoteBridge(_tokens[i], _remoteBridges[i]);
-        }
-    }
-
-    /// set remote ERC20 token address of L2
-    /// @param _tokens L2 ERC20 token addresses
-    /// @param _remoteTokens L1 ERC20 token addresses of L2 ERC20 tokens
-    function setRemoteTokens(address[] calldata _tokens, address[] calldata _remoteTokens) external onlyOwner {
-        require(_tokens.length == _remoteTokens.length, "P0");
-
-        for (uint i = 0; i < _tokens.length; i++) {
-            remoteTokens[_tokens[i]] = _remoteTokens[i];
-            emit SetRemoteToken(_tokens[i], _remoteTokens[i]);
-        }
-    }
-
-    /// set remote gateway address
-    /// @param _remoteGateway L1 gateway address
-    function setRemoteGateway(address _remoteGateway) external onlyOwner {
-        require(_remoteGateway != address(0), "P0");
-
-        remoteGateway = _remoteGateway;
-    }
-
-    /// set fee recipient address
-    /// @param _feeRecipient fee recipient address who claim this message
-    function setFeeRecipient(address _feeRecipient) external onlyOwner {
-        require(_feeRecipient != address(0), "P0");
-
-        feeRecipient = payable(_feeRecipient);
-    }
-
-    /// get bridge address of ERC20 token
-    /// @param token ERC20 token address of L2
-    function getBridge(address token) external view returns (address) {
-        return bridges[token];
-    }
-
-    /// get L1 bridge address of L2 ERC20 token
-    /// @param token L2 ERC20 token address
-    function getRemoteBridge(address token) external view returns (address) {
-        return remoteBridges[token];
-    }
-
-    /// get L1 token address of L2 ERC20 token
-    /// @param token L2 ERC20 token address
-    function getRemoteToken(address token) external view returns (address) {
-        return remoteTokens[token];
     }
 
     /// batch check whether messageHash can claim
