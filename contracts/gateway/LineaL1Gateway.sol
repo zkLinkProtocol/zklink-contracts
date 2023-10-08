@@ -32,8 +32,6 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway 
     /// @dev Mapping L1 token address to L2 token address
     mapping(address => address) internal remoteTokens;
 
-    uint256[50] private __gap;
-
     modifier zeroAddressCheck(address addressToSet) {
         require(addressToSet != address(0), "Z0");
         _;

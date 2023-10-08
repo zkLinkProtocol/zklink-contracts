@@ -8,8 +8,6 @@ require("./script/deploy_account_mock");
 require("./script/interact");
 require("./script/deploy_linea_l1_gateway");
 require("./script/deploy_linea_l2_gateway");
-require("./script/deploy_zksync_l1_gateway");
-require("./script/deploy_zksync_l2_gateway");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig

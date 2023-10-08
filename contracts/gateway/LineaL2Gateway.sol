@@ -41,14 +41,15 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
     /// @notice current claim messageHash
     bytes32 public messageHash;
 
-    uint256[50] private __gap;
-
     modifier onlyMessageService() {
         require(msg.sender == address(messageService), "M0");
         _;
     }
 
     function initialize(IMessageService _messageService, address _zklinkContract) external initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
         messageService = _messageService;
         zklinkContract = _zklinkContract;
     }
