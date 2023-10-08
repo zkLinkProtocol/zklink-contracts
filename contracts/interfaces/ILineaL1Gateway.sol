@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface ILineaL1Gateway {
-    event DepositERC20(
+    event Deposit(
         address token,
         uint104 amount,
         bytes32 zklinkAddress,
@@ -10,10 +10,10 @@ interface ILineaL1Gateway {
         bool _mapping,
         bytes _calldata,
         uint256 nonce,
+        bytes _cbCalldata,
         bytes32 messageHash,
         uint192 txNonce
     );
-    event DepositETH(bytes32 _zkLinkAddress, uint8 _subAccountId, uint104 amount, uint192 txNonce);
     event SetFee(uint64 fee);
     event SetBridge(address token, address bridge);
     event SetRemoteBridge(address token, address remoteBridge);

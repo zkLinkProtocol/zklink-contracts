@@ -10,7 +10,9 @@ interface ILineaL2Gateway {
 
     function claimDepositERC20(address token, bytes calldata _calldata, uint256 nonce, bytes calldata cbCalldata, uint256 cbNonce) external;
 
-    function claimDepositETH(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable;
+    function claimDepositETH(bytes calldata _calldata, uint256 _nonce, uint256 _value) external;
+
+    function claimDepositETHCallback(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable;
 
     function claimDepositERC20Callback(address token, uint104 amount, bytes32 zkLinkAddress, uint8 subAccountId, bool _mapping, bytes32 messageHash) external;
 }

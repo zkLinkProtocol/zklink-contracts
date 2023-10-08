@@ -6,7 +6,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
-import {IMessageService} from "../interfaces/IMessageService.sol";
+import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
 contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway {
@@ -114,11 +114,15 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
         emit ClaimedDepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, success, errorInfo);
     }
 
+    function claimDepositETH(bytes calldata _calldata, uint256 _nonce, uint256 _amount) external override {
+        messageService.claimMessage(remoteGateway, address(this), 0, _amount, feeRecipient, _calldata, _nonce);
+    }
+
     /// claim deposit ETH message hash
     /// @param zkLinkAddress zklink address
     /// @param subAccountId sub account id
     /// @param amount amount to deposit
-    function claimDepositETH(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable override onlyMessageService {
+    function claimDepositETHCallback(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable override onlyMessageService {
         require(msg.value == amount, "V0");
 
         (bool success, bytes memory errorInfo) = zklinkContract.call{value: msg.value}(abi.encodeCall(IZkLink.depositETH, (zkLinkAddress, subAccountId)));
@@ -168,22 +172,6 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway 
         require(_remoteGateway != address(0), "P0");
 
         remoteGateway = _remoteGateway;
-    }
-
-    /// set message service
-    /// @param _messageService L2 message service
-    function setMessageService(address _messageService) external onlyOwner {
-        require(_messageService != address(0), "P0");
-
-        messageService = IMessageService(_messageService);
-    }
-
-    /// set zklink contract address
-    /// @param _zklinkContract zklink address of linea
-    function setZKLink(address _zklinkContract) external onlyOwner {
-        require(_zklinkContract != address(0), "P0");
-
-        zklinkContract = _zklinkContract;
     }
 
     /// set fee recipient address

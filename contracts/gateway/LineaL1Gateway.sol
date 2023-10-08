@@ -5,12 +5,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import {ILineaERC20Bridge} from "../interfaces/ILineaERC20Bridge.sol";
+import {ILineaERC20Bridge} from "../interfaces/linea/ILineaERC20Bridge.sol";
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
-import {IMessageService} from "../interfaces/IMessageService.sol";
+import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 
 contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway {
+    /// @dev Address represent eth when deposit or withdraw
+    address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     /// @notice L2 claim message gas fee users should pay for
     uint64 public fee;
 
@@ -73,19 +76,20 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway 
         messageService.sendMessage(remoteGateway, 0, verifyCalldata);
 
         txNonce++;
-        emit DepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, messageHash, txNonce);
+        emit Deposit(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, verifyCalldata, messageHash, txNonce);
     }
 
     function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override {
         require(msg.value < 2 ** 128, "16");
         uint104 amount = fee > 0 ? uint104(msg.value) - fee : uint104(msg.value);
 
-        bytes memory _calldata = abi.encodeCall(ILineaL2Gateway.claimDepositETH, (_zkLinkAddress, _subAccountId, amount));
+        uint256 nonce = messageService.nextMessageNumber();
+        bytes memory _calldata = abi.encodeCall(ILineaL2Gateway.claimDepositETHCallback, (_zkLinkAddress, _subAccountId, amount));
 
         messageService.sendMessage{value: msg.value}(remoteGateway, 0, _calldata);
 
         txNonce++;
-        emit DepositETH(_zkLinkAddress, _subAccountId, amount, txNonce);
+        emit Deposit(ETH_ADDRESS, amount, _zkLinkAddress, _subAccountId, false, _calldata, nonce, new bytes(0), bytes32(0), txNonce);
     }
 
     /// set fee
@@ -135,12 +139,6 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway 
             remoteTokens[_tokens[i]] = _remoteTokens[i];
             emit SetRemoteToken(_tokens[i], _remoteTokens[i]);
         }
-    }
-
-    /// @notice set linea L1 message service
-    /// @param _messageService message service address
-    function setMessageService(address _messageService) external zeroAddressCheck(_messageService) onlyOwner {
-        messageService = IMessageService(_messageService);
     }
 
     /// @notice get linea L1 bridge of token
