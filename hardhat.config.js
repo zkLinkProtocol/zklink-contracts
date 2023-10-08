@@ -58,6 +58,9 @@ const hardhatUserConfig = {
   gasReporter: {
     enabled: !!process.env.REPORT_GAS,
   },
+  mocha: {
+    timeout: 600000,
+  },
 };
 
 // custom hardhat user config for different net
