@@ -11,19 +11,13 @@ interface ILineaL1Gateway {
         bytes _calldata,
         uint256 nonce,
         bytes32 messageHash,
-        uint184 txNonce
+        uint192 txNonce
     );
-    event DepositETH(bytes32 _zkLinkAddress, uint8 _subAccountId, uint104 amount, uint184 txNonce);
-    event SetFeeOn(bool feeOn, uint64 fee);
+    event DepositETH(bytes32 _zkLinkAddress, uint8 _subAccountId, uint104 amount, uint192 txNonce);
+    event SetFee(uint64 fee);
     event SetBridge(address token, address bridge);
     event SetRemoteBridge(address token, address remoteBridge);
     event SetRemoteToken(address token, address remoteToken);
-
-    error InvalidFee();
-    error InvalidParmas();
-    error TokenNotSupport();
-    error NotReceiveETHDirectly();
-    error NoRemoteTokenSet();
 
     function depositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable;
 

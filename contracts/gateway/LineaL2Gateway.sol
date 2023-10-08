@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/IMessageService.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract LineaL2Gateway is Ownable, ILineaL2Gateway {
+contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway {
     uint8 public constant INBOX_STATUS_UNKNOWN = 0;
     uint8 public constant INBOX_STATUS_RECEIVED = 1;
     uint8 public constant INBOX_STATUS_CLAIMED = 2;
@@ -29,7 +30,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     mapping(address => address) internal bridges;
 
     /// @dev Mapping from token to remote bridge
-    mapping(address => address) internal remoteBridge;
+    mapping(address => address) internal remoteBridges;
 
     /// @dev Mapping L1 token address to L2 token address
     mapping(address => address) internal remoteTokens;
@@ -40,17 +41,19 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @notice current claim messageHash
     bytes32 public messageHash;
 
+    uint256[50] private __gap;
+
     modifier onlyMessageService() {
-        if (msg.sender != address(messageService)) {
-            revert OnlyMessageService();
-        }
+        require(msg.sender == address(messageService), "M0");
         _;
     }
 
-    constructor(IMessageService _messageService, address _zklinkContract) {
+    function initialize(IMessageService _messageService, address _zklinkContract) external initializer {
         messageService = _messageService;
         zklinkContract = _zklinkContract;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// claim deposit ERC20 message
     /// @param _token L2 ERC20 token address
@@ -59,22 +62,15 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @param _cbCalldata verify params message calldata
     /// @param _cbNonce verify params message nonce
     function claimDepositERC20(address _token, bytes calldata _calldata, uint256 _nonce, bytes calldata _cbCalldata, uint256 _cbNonce) external override {
-        messageHash = keccak256(abi.encode(remoteBridge[_token], bridges[_token], 0, 0, _nonce, _calldata));
-
+        messageHash = keccak256(abi.encode(remoteBridges[_token], bridges[_token], 0, 0, _nonce, _calldata));
         uint256 status = messageService.inboxL1L2MessageStatus(messageHash);
-        if (status == INBOX_STATUS_UNKNOWN) {
-            revert UnknowMessage();
-        }
+        require(status != INBOX_STATUS_UNKNOWN, "M1");
 
         // if status == INBOX_STATUS_CLAIMED means someone else claimed erc20 token directly
-        if (status == INBOX_STATUS_CLAIMED && messageHashUsed[messageHash]) {
-            revert CanNotClaimTwice();
-        }
-
         if (status == INBOX_STATUS_RECEIVED) {
             // claim erc20 token
             (bool success, bytes memory errorInfo) = address(messageService).call(
-                abi.encodeCall(IMessageService.claimMessage, (remoteBridge[_token], bridges[_token], 0, 0, feeRecipient, _calldata, _nonce))
+                abi.encodeCall(IMessageService.claimMessage, (remoteBridges[_token], bridges[_token], 0, 0, feeRecipient, _calldata, _nonce))
             );
 
             require(success, string(errorInfo));
@@ -99,9 +95,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
         bool _mapping,
         bytes32 _messageHash
     ) external override onlyMessageService {
-        if (messageHash != _messageHash) {
-            revert InvalidParmas();
-        }
+        require(messageHash == _messageHash, "M2");
 
         // approve token to zklink
         IERC20(_token).approve(zklinkContract, _amount);
@@ -124,9 +118,8 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @param subAccountId sub account id
     /// @param amount amount to deposit
     function claimDepositETH(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable override onlyMessageService {
-        if (msg.value != amount) {
-            revert InvalidValue();
-        }
+        require(msg.value == amount, "V0");
+
         (bool success, bytes memory errorInfo) = zklinkContract.call{value: msg.value}(abi.encodeCall(IZkLink.depositETH, (zkLinkAddress, subAccountId)));
 
         emit ClaimedDepositETH(zkLinkAddress, subAccountId, amount, success, errorInfo);
@@ -136,9 +129,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @param _tokens L2 ERC20 token address
     /// @param _bridges L2 bridge addresses of tokens
     function setBridges(address[] calldata _tokens, address[] calldata _bridges) external onlyOwner {
-        if (_tokens.length != _bridges.length) {
-            revert InvalidParmas();
-        }
+        require(_tokens.length == _bridges.length, "P0");
 
         for (uint i = 0; i < _tokens.length; i++) {
             bridges[_tokens[i]] = _bridges[i];
@@ -150,12 +141,10 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @param _tokens L2 ERC20 token addresses
     /// @param _remoteBridges L1 bridge addresses of L2 tokens
     function setRemoteBridges(address[] calldata _tokens, address[] calldata _remoteBridges) external onlyOwner {
-        if (_tokens.length != _remoteBridges.length) {
-            revert InvalidParmas();
-        }
+        require(_tokens.length == _remoteBridges.length, "P0");
 
         for (uint i = 0; i < _tokens.length; i++) {
-            remoteBridge[_tokens[i]] = _remoteBridges[i];
+            remoteBridges[_tokens[i]] = _remoteBridges[i];
             emit SetRemoteBridge(_tokens[i], _remoteBridges[i]);
         }
     }
@@ -164,9 +153,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// @param _tokens L2 ERC20 token addresses
     /// @param _remoteTokens L1 ERC20 token addresses of L2 ERC20 tokens
     function setRemoteTokens(address[] calldata _tokens, address[] calldata _remoteTokens) external onlyOwner {
-        if (_tokens.length != _remoteTokens.length) {
-            revert InvalidParmas();
-        }
+        require(_tokens.length == _remoteTokens.length, "P0");
 
         for (uint i = 0; i < _tokens.length; i++) {
             remoteTokens[_tokens[i]] = _remoteTokens[i];
@@ -177,9 +164,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// set remote gateway address
     /// @param _remoteGateway L1 gateway address
     function setRemoteGateway(address _remoteGateway) external onlyOwner {
-        if (_remoteGateway == address(0)) {
-            revert InvalidParmas();
-        }
+        require(_remoteGateway != address(0), "P0");
 
         remoteGateway = _remoteGateway;
     }
@@ -187,9 +172,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// set message service
     /// @param _messageService L2 message service
     function setMessageService(address _messageService) external onlyOwner {
-        if (_messageService == address(0)) {
-            revert InvalidParmas();
-        }
+        require(_messageService != address(0), "P0");
 
         messageService = IMessageService(_messageService);
     }
@@ -197,18 +180,16 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// set zklink contract address
     /// @param _zklinkContract zklink address of linea
     function setZKLink(address _zklinkContract) external onlyOwner {
-        if (_zklinkContract == address(0)) {
-            revert InvalidParmas();
-        }
+        require(_zklinkContract != address(0), "P0");
+
         zklinkContract = _zklinkContract;
     }
 
     /// set fee recipient address
     /// @param _feeRecipient fee recipient address who claim this message
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
-        if (_feeRecipient == address(0)) {
-            revert InvalidParmas();
-        }
+        require(_feeRecipient != address(0), "P0");
+
         feeRecipient = payable(_feeRecipient);
     }
 
@@ -221,7 +202,7 @@ contract LineaL2Gateway is Ownable, ILineaL2Gateway {
     /// get L1 bridge address of L2 ERC20 token
     /// @param token L2 ERC20 token address
     function getRemoteBridge(address token) external view returns (address) {
-        return remoteBridge[token];
+        return remoteBridges[token];
     }
 
     /// get L1 token address of L2 ERC20 token
