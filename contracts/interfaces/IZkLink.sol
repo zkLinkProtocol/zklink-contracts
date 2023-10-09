@@ -21,27 +21,15 @@ interface IZkLink {
     /// @notice Return the network governor
     function networkGovernor() external view returns (address);
 
+    /// @notice Deposit ETH to Layer 2 - transfer ether from user into contract, validate it, register deposit
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable;
+
+    /// @notice Deposit ERC20 token to Layer 2 - transfer ERC20 tokens from user into contract, validate it, register deposit
+    function depositERC20(IERC20 _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external;
+
     /// @notice Get synchronized progress of zkLink contract known on deployed chain
-    function getSynchronizedProgress(
-        StoredBlockInfo memory block
-    ) external view returns (uint256 progress);
+    function getSynchronizedProgress(StoredBlockInfo memory block) external view returns (uint256 progress);
 
     /// @notice Combine the `progress` of the other chains of a `syncHash` with self
-    function receiveSynchronizationProgress(
-        bytes32 syncHash,
-        uint256 progress
-    ) external;
-
-    function depositERC20(
-        IERC20 _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping
-    ) external;
-
-    function depositETH(
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId
-    ) external payable;
+    function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external;
 }

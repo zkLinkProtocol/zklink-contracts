@@ -1,158 +1,115 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/linea/IMessageService.sol";
-import {IZkLink} from "../interfaces/IZkLink.sol";
+import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
+import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL2Gateway {
-    uint8 public constant INBOX_STATUS_UNKNOWN = 0;
-    uint8 public constant INBOX_STATUS_RECEIVED = 1;
-    uint8 public constant INBOX_STATUS_CLAIMED = 2;
+contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, ILineaL2Gateway {
+    using SafeERC20 for IERC20;
 
-    struct UsdcInfo {
-        address token;
-        address bridge;
-        address remoteBridge;
-        address remoteToken;
-    }
-
-    /// @notice Claim fee recipient
-    address payable public feeRecipient;
-
-    /// @notice message service address
+    /// @notice Linea message service address on Linea
     IMessageService public messageService;
 
-    /// @notice Remote Gateway address
+    /// @notice Remote Gateway address on L1
     address public remoteGateway;
 
-    /// @notice zklink contract of linea
-    address public zklinkContract;
+    /// @notice zkLink contract on Linea
+    IZkLink public zkLinkContract;
 
-    /// @notice linea token bridge address
-    address public tokenBridge;
+    /// @notice Linea token bridge on Linea
+    ITokenBridge public tokenBridge;
 
-    /// @dev linea usdc token and bridge info
-    UsdcInfo public usdcInfo;
+    /// @notice Linea USDC bridge on Linea
+    IUSDCBridge public usdcBridge;
 
-    /// @dev Mapping from messageHash to bool
-    mapping(bytes32 => bool) internal messageHashUsed;
-
-    /// @notice current claim messageHash
-    bytes32 public messageHash;
-
+    /// @dev Modifier to make sure the caller is the known message service.
     modifier onlyMessageService() {
-        require(msg.sender == address(messageService), "M0");
+        require(msg.sender == address(messageService), "Not message service");
         _;
     }
 
-    function initialize(IMessageService _messageService, address _zklinkContract, address _tokenBridge, UsdcInfo calldata _usdcInfo) external initializer {
+    /// @dev Modifier to make sure the original sender is LineaL1Gateway.
+    modifier onlyRemoteGateway() {
+        require(messageService.sender() == remoteGateway, "Not remote gateway");
+        _;
+    }
+
+    function initialize(IMessageService _messageService, IZkLink _zkLinkContract, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         messageService = _messageService;
-        zklinkContract = _zklinkContract;
+        zkLinkContract = _zkLinkContract;
         tokenBridge = _tokenBridge;
-        usdcInfo = _usdcInfo;
+        usdcBridge = _usdcBridge;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    /// claim deposit ERC20 message
-    /// @param _token L2 ERC20 token address
-    /// @param _calldata deposit ERC20 message calldata
-    /// @param _nonce deposit ETC20 message nonce
-    /// @param _cbCalldata verify params message calldata
-    /// @param _cbNonce verify params message nonce
-    function claimDepositERC20(address _token, bytes calldata _calldata, uint256 _nonce, bytes calldata _cbCalldata, uint256 _cbNonce) external override {
-        if (_token == usdcInfo.token) {
-            _claimERC20(usdcInfo.remoteBridge, usdcInfo.bridge, _calldata, _nonce);
+    /// @dev ETH is transferred from LineaL1Gateway to LineaL2Gateway and then deposit to zkLink for user
+    function claimDepositETH(uint256 _value, bytes calldata _callData, uint256 _nonce) external override nonReentrant {
+        // no fee on origin chain
+        messageService.claimMessage(remoteGateway, address(this), 0, _value, payable(msg.sender), _callData, _nonce);
+    }
+
+    function claimDepositETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
+        require(msg.value == _amount, "claim eth value not match");
+
+        zkLinkContract.depositETH{value: _amount}(_zkLinkAddress, _subAccountId);
+        emit ClaimedDepositETH(_zkLinkAddress, _subAccountId, _amount);
+    }
+
+    /// @dev ERC20 token is transferred from LineaL1Gateway to LineaL2Gateway and then deposit to zkLink for user
+    function claimDepositERC20(address _remoteBridge, address _bridge, bytes calldata _bridgeCallData, uint256 _bridgeNonce, bytes calldata _cbCallData, uint256 _cbNonce) external override nonReentrant {
+        // when depositERC20 of LineaL1Gateway is called, the message service on L1 will generate two consecutive nonce messages.
+        require(_cbNonce == _bridgeNonce + 1, "Claim erc20 message nonce is not continuous");
+
+        // claim token from token bridge on Linea to LineaL2Gateway
+        // no value and no fee on origin chain
+        messageService.claimMessage(_remoteBridge, _bridge, 0, 0, payable(msg.sender), _bridgeCallData, _bridgeNonce);
+
+        // execute depositERC20 command
+        // no value and no fee on origin chain
+        messageService.claimMessage(remoteGateway, address(this), 0, 0, payable(msg.sender), _cbCallData, _cbNonce);
+    }
+
+    function claimDepositERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway {
+        // find target token on Linea
+        address targetToken;
+        if (_isUSDC) {
+            targetToken = usdcBridge.usdc();
         } else {
-            _claimERC20(ITokenBridge(tokenBridge).remoteSender(), tokenBridge, _calldata, _nonce);
+            // check token if a native token on L1
+            address bridgedToken = tokenBridge.nativeToBridgedToken(tokenBridge.targetChainId(), _nativeToken);
+            if (bridgedToken != address(0)) {
+                // token is a native token on L1, then use the bridged token
+                targetToken = bridgedToken;
+            } else {
+                // token is a native token on Linea, then use the token
+                targetToken = _nativeToken;
+            }
         }
-
-        // claim callback message to verify messages
-        messageService.claimMessage(remoteGateway, address(this), 0, 0, feeRecipient, _cbCalldata, _cbNonce);
+        // approve token to zkLink
+        IERC20(targetToken).safeApprove(address(zkLinkContract), _amount);
+        // deposit erc20 to zkLink
+        zkLinkContract.depositERC20(IERC20(targetToken), uint104(_amount), _zkLinkAddress, _subAccountId, _mapping);
+        emit ClaimedDepositERC20(targetToken, _amount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
-    /// claim deposit ERC20 verify params callback
-    /// @param _token L2 ERC20 token address
-    /// @param _amount amount to deposit
-    /// @param _zkLinkAddress zklink address.
-    /// @param _subAccountId sub account id
-    /// @param _mapping is mapping token
-    /// @param _messageHash linea bridge deposit messageHash
-    function claimDepositERC20Callback(
-        address _token,
-        uint104 _amount,
-        bytes32 _zkLinkAddress,
-        uint8 _subAccountId,
-        bool _mapping,
-        bytes32 _messageHash
-    ) external override onlyMessageService {
-        require(messageHash == _messageHash, "M2");
-
-        // approve token to zklink
-        IERC20(_token).approve(zklinkContract, _amount);
-
-        // deposit erc20 to zklink
-        (bool success, bytes memory errorInfo) = zklinkContract.call(abi.encodeCall(IZkLink.depositERC20, (IERC20(_token), _amount, _zkLinkAddress, _subAccountId, _mapping)));
-
-        if (success) {
-            messageHashUsed[messageHash] = true;
-        }
-
-        // reset messageHash
-        messageHash = bytes32(0);
-
-        emit ClaimedDepositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, success, errorInfo);
-    }
-
-    function claimDepositETH(bytes calldata _calldata, uint256 _nonce, uint256 _amount) external override {
-        messageService.claimMessage(remoteGateway, address(this), 0, _amount, feeRecipient, _calldata, _nonce);
-    }
-
-    /// claim deposit ETH message hash
-    /// @param zkLinkAddress zklink address
-    /// @param subAccountId sub account id
-    /// @param amount amount to deposit
-    function claimDepositETHCallback(bytes32 zkLinkAddress, uint8 subAccountId, uint104 amount) external payable override onlyMessageService {
-        require(msg.value == amount, "V0");
-
-        (bool success, bytes memory errorInfo) = zklinkContract.call{value: msg.value}(abi.encodeCall(IZkLink.depositETH, (zkLinkAddress, subAccountId)));
-
-        emit ClaimedDepositETH(zkLinkAddress, subAccountId, amount, success, errorInfo);
-    }
-
-    function _claimERC20(address _remoteBirdge, address _bridge, bytes calldata _calldata, uint256 _nonce) internal {
-        messageHash = keccak256(abi.encode(_remoteBirdge, _bridge, 0, 0, _nonce, _calldata));
-
-        uint256 status = messageService.inboxL1L2MessageStatus(messageHash);
-        require(status != INBOX_STATUS_UNKNOWN, "M1");
-
-        // if status == INBOX_STATUS_CLAIMED means someone else claimed erc20 token directly
-        if (status == INBOX_STATUS_RECEIVED) {
-            // claim erc20 token
-            (bool success, bytes memory errorInfo) = address(messageService).call(
-                abi.encodeCall(IMessageService.claimMessage, (_remoteBirdge, _bridge, 0, 0, feeRecipient, _calldata, _nonce))
-            );
-
-            require(success, string(errorInfo));
-        }
-    }
-
-    /// batch check whether messageHash can claim
-    /// @param messageHashs: L1 messageHash
-    function checkMessageStatus(bytes32[] calldata messageHashs) external view returns (uint256[] memory) {
-        uint256[] memory status = new uint256[](messageHashs.length);
-        for (uint i = 0; i < messageHashs.length; i++) {
-            status[i] = messageService.inboxL1L2MessageStatus(messageHashs[i]);
-        }
-        return status;
+    /// @notice Set remote Gateway address
+    /// @param _remoteGateway remote gateway address
+    function setRemoteGateway(address _remoteGateway) external onlyOwner {
+        remoteGateway = _remoteGateway;
+        emit SetRemoteGateway(_remoteGateway);
     }
 }

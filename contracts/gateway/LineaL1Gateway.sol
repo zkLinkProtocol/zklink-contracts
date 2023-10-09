@@ -1,35 +1,23 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ILineaERC20Bridge} from "../interfaces/linea/ILineaERC20Bridge.sol";
+import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 
-contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway {
+contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, ILineaL1Gateway {
+    using SafeERC20 for IERC20;
+
     /// @dev Address represent eth when deposit or withdraw
     address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    // Special addresses used in the mappings to mark specific states for tokens.
-    /// @notice EMPTY means a token is not present in the mapping.
-    address internal constant EMPTY = address(0x0);
-    /// @notice RESERVED means a token is reserved and cannot be bridged.
-    address internal constant RESERVED_STATUS = address(0x111);
-    /// @notice NATIVE means a token is native to the current local chain.
-    address internal constant NATIVE_STATUS = address(0x222);
-    /// @notice DEPLOYED means the bridged token contract has been deployed on the remote chain.
-    address internal constant DEPLOYED_STATUS = address(0x333);
-    struct UsdcInfo {
-        address token;
-        address bridge;
-        address remoteBridge;
-        address remoteToken;
-    }
 
     /// @notice L2 claim message gas fee users should pay for
     uint64 public fee;
@@ -37,153 +25,106 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ILineaL1Gateway 
     /// @notice Used to prevent off-chain monitoring events from being lost
     uint192 public txNonce;
 
-    /// @notice linea message service address
+    /// @notice Linea message service on L1
     IMessageService public messageService;
 
-    /// @notice Remote Gateway address
+    /// @notice Remote Gateway address on Linea
     address public remoteGateway;
 
-    /// @notice linea token bridge address
-    address public tokenBridge;
+    /// @notice Linea token bridge on L1
+    ITokenBridge public tokenBridge;
 
-    /// @dev linea usdc token and bridge info
-    UsdcInfo public usdcInfo;
+    /// @notice Linea USDC bridge on L1
+    IUSDCBridge public usdcBridge;
 
-    modifier zeroAddressCheck(address addressToSet) {
-        require(addressToSet != address(0), "Z0");
-        _;
-    }
-
-    function initialize(IMessageService _messageService, address _tokenBridge, UsdcInfo calldata _usdcInfo) external initializer {
+    function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         messageService = _messageService;
         tokenBridge = _tokenBridge;
-        usdcInfo = _usdcInfo;
+        usdcBridge = _usdcBridge;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function depositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override {
-        if (fee > 0) {
-            require(msg.value == fee, "F0");
-        }
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant {
+        // ensure amount bridged is not zero
+        require(msg.value > fee, "msg value too low");
+        uint256 amount = msg.value - fee;
 
-        if (_token == usdcInfo.token) {
-            _depositUSDC(_token, _amount, _zkLinkAddress, _subAccountId, _mapping);
+        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimDepositETHCallback, (_zkLinkAddress, _subAccountId, amount));
+        // transfer no fee to Linea
+        messageService.sendMessage{value: amount}(remoteGateway, 0, callData);
+
+        emit Deposit(txNonce, ETH_ADDRESS, amount, _zkLinkAddress, _subAccountId, false);
+        txNonce++;
+    }
+
+    function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override nonReentrant {
+        require(msg.value == fee, "invalid msg value");
+        require(_amount > 0, "invalid token amount");
+
+        // transfer token from sender to LineaL1Gateway
+        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+
+        // approve bridge
+        // bridge token to remoteGateway(the first message send to Linea)
+        // find the native token
+        bool isUSDC;
+        address nativeToken;
+        if (_token == usdcBridge.usdc()) {
+            IERC20(_token).safeApprove(address(usdcBridge), _amount);
+            usdcBridge.depositTo(_amount, remoteGateway);
+            isUSDC = true;
+            nativeToken = _token;
         } else {
-            _depositERC20(_token, _amount, _zkLinkAddress, _subAccountId, _mapping);
+            IERC20(_token).safeApprove(address(tokenBridge), _amount);
+            tokenBridge.bridgeToken(_token, _amount, remoteGateway);
+            isUSDC = false;
+            nativeToken = tokenBridge.bridgedToNativeToken(_token);
+            if (nativeToken == address(0)) {
+                nativeToken = _token;
+            }
         }
-    }
 
-    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override {
-        require(msg.value < 2 ** 128, "16");
-        uint104 amount = fee > 0 ? uint104(msg.value) - fee : uint104(msg.value);
+        // only support pure erc20 token
+        uint256 balanceAfter = IERC20(_token).balanceOf(address(this));
+        require(balanceAfter == balanceBefore, "only support pure erc20 token");
 
-        uint256 nonce = messageService.nextMessageNumber();
-        bytes memory _calldata = abi.encodeCall(ILineaL2Gateway.claimDepositETHCallback, (_zkLinkAddress, _subAccountId, amount));
-
-        messageService.sendMessage{value: msg.value}(remoteGateway, 0, _calldata);
-
-        txNonce++;
-        emit Deposit(ETH_ADDRESS, amount, _zkLinkAddress, _subAccountId, false, _calldata, nonce, new bytes(0), bytes32(0), txNonce);
-    }
-
-    function _depositUSDC(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal {
-        require(usdcInfo.token != address(0) && usdcInfo.bridge != address(0) && usdcInfo.remoteBridge != address(0) && usdcInfo.remoteToken != address(0), "T0");
-
-        // bridge deposit can ensure success
-        _depositAndApprove(_token, usdcInfo.bridge, _amount);
-
-        // bridge usdc
-        (uint256 nonce, bytes memory _calldata, bytes32 messageHash) = _bridgeUSDC(_amount);
-
-        // sendClaimERC20 message
-        bytes memory verifyCalldata = abi.encodeCall(
+        // send depositERC20 command to LineaL2Gateway(the second message send to Linea)
+        bytes memory executeData = abi.encodeCall(
             ILineaL2Gateway.claimDepositERC20Callback,
-            (usdcInfo.remoteToken, _amount, _zkLinkAddress, _subAccountId, _mapping, messageHash)
+            (isUSDC, nativeToken, _amount, _zkLinkAddress, _subAccountId, _mapping)
         );
-        messageService.sendMessage(remoteGateway, 0, verifyCalldata);
+        messageService.sendMessage(remoteGateway, 0, executeData);
 
+        emit Deposit(txNonce, _token, _amount, _zkLinkAddress, _subAccountId, _mapping);
         txNonce++;
-        emit Deposit(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, verifyCalldata, messageHash, txNonce);
     }
 
-    function _depositERC20(address _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) internal {
-        // bridge deposit can ensure success
-        _depositAndApprove(_token, tokenBridge, _amount);
-
-        // bridge ERC20 token
-        (uint256 nonce, bytes memory _calldata, bytes32 messageHash) = _bridgeERC20(_token, _amount);
-
-        // sendClaimERC20 message
-        bytes memory verifyCalldata = abi.encodeCall(
-            ILineaL2Gateway.claimDepositERC20Callback,
-            (ITokenBridge(tokenBridge).bridgedToNativeToken(_token), _amount, _zkLinkAddress, _subAccountId, _mapping, messageHash)
-        );
-        messageService.sendMessage(remoteGateway, 0, verifyCalldata);
-
-        txNonce++;
-        emit Deposit(_token, _amount, _zkLinkAddress, _subAccountId, _mapping, _calldata, nonce, verifyCalldata, messageHash, txNonce);
-    }
-
-    function _depositAndApprove(address _token, address _bridge, uint104 _amount) internal {
-        IERC20Upgradeable(_token).transferFrom(msg.sender, address(this), _amount);
-        IERC20Upgradeable(_token).approve(_bridge, _amount);
-    }
-
-    function _bridgeUSDC(uint104 _amount) internal returns (uint256 nonce, bytes memory _calldata, bytes32 messageHash) {
-        nonce = messageService.nextMessageNumber();
-        _calldata = abi.encodeCall(ILineaERC20Bridge.receiveFromOtherLayer, (remoteGateway, _amount));
-        messageHash = keccak256(abi.encode(usdcInfo.bridge, usdcInfo.remoteBridge, 0, 0, nonce, _calldata));
-
-        ILineaERC20Bridge(usdcInfo.bridge).depositTo(_amount, remoteGateway);
-    }
-
-    function _bridgeERC20(address _token, uint104 _amount) internal returns (uint256 nonce, bytes memory _calldata, bytes32 messageHash) {
-        // bridge erc20
-        nonce = messageService.nextMessageNumber();
-
-        bytes memory tokenMetadata;
-        address nativeMappingValue = ITokenBridge(tokenBridge).nativeToBridgedToken(_token);
-        if (nativeMappingValue != DEPLOYED_STATUS) {
-            tokenMetadata = _getMetdata(_token);
-        }
-        _calldata = abi.encodeCall(ITokenBridge.completeBridging, (_token, _amount, remoteGateway, tokenMetadata));
-
-        messageHash = keccak256(abi.encode(tokenBridge, ITokenBridge(tokenBridge).remoteSender(), 0, 0, nonce, _calldata));
-
-        ITokenBridge(tokenBridge).bridgeToken(_token, _amount, remoteGateway);
-    }
-
-    function _getMetdata(address _token) internal view returns (bytes memory) {
-        (string memory name, string memory symbol, uint8 decimals) = getMetdata(_token);
-        return abi.encode(name, symbol, decimals);
-    }
-
-    /// set fee
-    /// @param _fee L2 claim message gas fee
+    /// @notice Set deposit fee
     function setFee(uint64 _fee) external onlyOwner {
         fee = _fee;
         emit SetFee(_fee);
     }
 
-    /// @notice set remote Gateway address
+    /// @notice Set remote Gateway address
     /// @param _remoteGateway remote gateway address
-    function setRemoteGateway(address _remoteGateway) external zeroAddressCheck(_remoteGateway) onlyOwner {
+    function setRemoteGateway(address _remoteGateway) external onlyOwner {
         remoteGateway = _remoteGateway;
+        emit SetRemoteGateway(_remoteGateway);
     }
 
-    /// withdraw fees
-    /// @param receiver receiver address
-    function withdrawFee(address payable receiver) external onlyOwner {
-        receiver.transfer(address(this).balance);
-    }
+    /// @notice Withdraw fees
+    /// @param _receiver The receiver address
+    /// @param _amount The withdraw amount
+    function withdrawFee(address payable _receiver, uint256 _amount) external onlyOwner {
+        (bool success, ) = _receiver.call{value: _amount}("");
+        require(success, "withdraw fee failed");
 
-    function getMetdata(address _token) public view returns (string memory name, string memory symbol, uint8 decimals) {
-        name = bytes(IERC20MetadataUpgradeable(_token).name()).length > 0 ? IERC20MetadataUpgradeable(_token).name() : "NO_NAME";
-        symbol = bytes(IERC20MetadataUpgradeable(_token).symbol()).length > 0 ? IERC20MetadataUpgradeable(_token).symbol() : "NO_SYMBOL";
-        decimals = IERC20MetadataUpgradeable(_token).decimals() > 0 ? IERC20MetadataUpgradeable(_token).decimals() : 18;
+        emit WithdrawFee(_receiver, _amount);
     }
 }

@@ -29,8 +29,4 @@ interface IMessageService {
      * @return The original sender of the message on the origin layer.
      */
     function sender() external view returns (address);
-
-    function nextMessageNumber() external view returns (uint256);
-
-    function inboxL1L2MessageStatus(bytes32 messageHash) external view returns (uint256);
 }
