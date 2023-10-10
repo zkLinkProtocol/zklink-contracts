@@ -15,6 +15,7 @@
     "@matterlabs/zksync-contracts": "^0.6.1",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomiclabs/hardhat-solpp": "^2.0.1",
+    "@openzeppelin/hardhat-upgrades": "^1.27.0",
     "hardhat": "^2.13.1",
     "zksync-web3": "^0.14.3"
   },
