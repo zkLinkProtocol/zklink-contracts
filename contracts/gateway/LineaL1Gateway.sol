@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -13,7 +14,7 @@ import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 
-contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, ILineaL1Gateway {
+contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL1Gateway {
     using SafeERC20 for IERC20;
 
     /// @dev Address represent eth when deposit or withdraw
@@ -41,6 +42,7 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         messageService = _messageService;
         tokenBridge = _tokenBridge;
@@ -49,7 +51,7 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant {
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
         require(msg.value > fee, "msg value too low");
         uint256 amount = msg.value - fee;
@@ -62,7 +64,7 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         txNonce++;
     }
 
-    function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override nonReentrant {
+    function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override nonReentrant whenNotPaused {
         require(msg.value == fee, "invalid msg value");
         require(_amount > 0, "invalid token amount");
 
@@ -116,6 +118,16 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     function setRemoteGateway(address _remoteGateway) external onlyOwner {
         remoteGateway = _remoteGateway;
         emit SetRemoteGateway(_remoteGateway);
+    }
+
+    /// @dev Pause the contract, can only be called by the owner
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @dev Unpause the contract, can only be called by the owner
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /// @notice Withdraw fees

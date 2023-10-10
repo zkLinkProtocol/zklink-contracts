@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -13,7 +14,7 @@ import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 
-contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, ILineaL2Gateway {
+contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL2Gateway {
     using SafeERC20 for IERC20;
 
     /// @notice Linea message service address on Linea
@@ -47,6 +48,7 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         messageService = _messageService;
         zkLinkContract = _zkLinkContract;
@@ -62,7 +64,7 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         messageService.claimMessage(remoteGateway, address(this), 0, _value, payable(msg.sender), _callData, _nonce);
     }
 
-    function claimDepositETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
+    function claimDepositETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway whenNotPaused {
         require(msg.value == _amount, "claim eth value not match");
 
         zkLinkContract.depositETH{value: _amount}(_zkLinkAddress, _subAccountId);
@@ -83,7 +85,7 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         messageService.claimMessage(remoteGateway, address(this), 0, 0, payable(msg.sender), _cbCallData, _cbNonce);
     }
 
-    function claimDepositERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway {
+    function claimDepositERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway whenNotPaused {
         // find target token on Linea
         address targetToken;
         if (_isUSDC) {
@@ -111,5 +113,15 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     function setRemoteGateway(address _remoteGateway) external onlyOwner {
         remoteGateway = _remoteGateway;
         emit SetRemoteGateway(_remoteGateway);
+    }
+
+    /// @dev Pause the contract, can only be called by the owner
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @dev Unpause the contract, can only be called by the owner
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
