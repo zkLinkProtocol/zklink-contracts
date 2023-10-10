@@ -6,38 +6,40 @@ require("./script/deploy_lz_bridge");
 require("./script/deploy_faucet");
 require("./script/deploy_account_mock");
 require("./script/interact");
+require("./script/deploy_linea_l1_gateway");
+require("./script/deploy_linea_l2_gateway");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 const hardhatUserConfig = {
   solidity: {
-    compilers:[
+    compilers: [
       {
         version: "0.8.18",
         settings: {
           viaIR: true,
           optimizer: {
             enabled: true,
-            runs: 200
-          }
-        }
+            runs: 200,
+          },
+        },
       },
       {
         version: "0.7.6",
         settings: {
           optimizer: {
             enabled: true,
-            runs: 800
-          }
-        }
-      }
-    ]
+            runs: 800,
+          },
+        },
+      },
+    ],
   },
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true
-    }
+      allowUnlimitedContractSize: true,
+    },
   },
   solpp: {
     defs: {
@@ -48,15 +50,15 @@ const hardhatUserConfig = {
       ENABLE_COMMIT_COMPRESSED_BLOCK: true,
       MIN_CHAIN_ID: 1,
       MAX_CHAIN_ID: 4,
-      ALL_CHAINS: 15
-    }
+      ALL_CHAINS: 15,
+    },
   },
   gasReporter: {
-    enabled: !!(process.env.REPORT_GAS)
+    enabled: !!process.env.REPORT_GAS,
   },
   mocha: {
-    timeout: 600000
-  }
+    timeout: 600000,
+  },
 };
 
 // custom hardhat user config for different net
@@ -84,7 +86,7 @@ if (process.env.NET !== undefined) {
     hardhatUserConfig.zksolc = {
       version: "1.3.8",
       compilerSource: "binary",
-      settings: {}
+      settings: {},
     };
   }
 }

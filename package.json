@@ -12,16 +12,18 @@
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^0.3.16",
     "@matterlabs/hardhat-zksync-verify": "^0.1.5",
+    "@matterlabs/zksync-contracts": "^0.6.1",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomiclabs/hardhat-solpp": "^2.0.1",
     "hardhat": "^2.13.1",
     "zksync-web3": "^0.14.3"
   },
-  "dependencies": {
-    "@openzeppelin/contracts": "^4.8.2"
-  },
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx harthat test"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.6.0",
+    "@openzeppelin/contracts-upgradeable": "^4.6.0"
   }
 }
