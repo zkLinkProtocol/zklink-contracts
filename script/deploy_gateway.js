@@ -38,7 +38,7 @@ task("deployGateway", "Deploy Gateway")
       }
 
       const { deployLogPath, deployLog } = createOrGetDeployLog(
-        logName.DEPLOY_GATEWAY_LOG_PREFIX + contractName
+        logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName
       );
 
       console.log("load deployLog:", deployLog);
