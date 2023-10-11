@@ -2,7 +2,7 @@ const fs = require("fs");
 const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
 const { verifyContractCode, createOrGetDeployLog } = require("./utils");
 const logName = require("./deploy_log_name");
-const gateayConfig = require("./gateway");
+const gatewayConfig = require("./gateway");
 
 task("deployGateway", "Deploy Gateway")
   .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
@@ -20,8 +20,9 @@ task("deployGateway", "Deploy Gateway")
     const { force, skipVerify } = taskArgs;
     console.log("force:", force);
     console.log("skipVerify", skipVerify);
+    console.log("ignoreContracts", taskArgs.ignoreContracts);
 
-    const config = gateayConfig[network.name];
+    const config = gatewayConfig[network.name];
     let ignoreContracts = taskArgs.ignoreContracts
       ? taskArgs.ignoreContracts.split(" ")
       : [];
@@ -37,7 +38,7 @@ task("deployGateway", "Deploy Gateway")
       }
 
       const { deployLogPath, deployLog } = createOrGetDeployLog(
-        logName.DEPLOY_GATEWAY_LOG_PREFIX
+        logName.DEPLOY_GATEWAY_LOG_PREFIX + contractName
       );
 
       console.log("load deployLog:", deployLog);
