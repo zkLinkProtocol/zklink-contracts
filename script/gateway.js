@@ -2,6 +2,7 @@ module.exports = {
   GOERLI: [
     {
       contractName: "LineaL1Gateway",
+      l2Network: "Linea",
       //   [messageService,tokenBridge,usdcBridge]
       initializeParams: [
         "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
@@ -13,6 +14,7 @@ module.exports = {
   LINEATEST: [
     {
       contractName: "LineaL2Gateway",
+      l2Network: "Linea",
       //   [messageService,zklink，tokenBridge,usdcBridge]
       initializeParams: [
         "0xC499a572640B64eA1C8c194c43Bc3E19940719dC",
