@@ -4,47 +4,21 @@ const { verifyContractCode, createOrGetDeployLog } = require("./utils");
 const logName = require("./deploy_log_name");
 const gatewayConfig = require("./gateway");
 
-task("deployGateway", "Deploy Gateway")
+task("deployL2Gateway", "Deploy L2 Gateway")
   .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
   .addParam("skipVerify", "Skip verify", false, types.boolean, true)
-  .addParam(
-    "l2Network",
-    "(required) match L1Gateway contract based on L2 network name.require eq: 'Linea' or 'ZKSync'",
-    undefined,
-    types.string,
-    false
-  )
   .setAction(async (taskArgs, hardhat) => {
     const { network, upgrades, ethers } = hardhat;
-
-    const { force, skipVerify, l2Network } = taskArgs;
-    console.log("force:", force);
-    console.log("skipVerify", skipVerify);
-    console.log("l2Network", taskArgs.l2Network);
-
     const config = gatewayConfig[network.name];
-    if (!config.length) {
-      throw new Error("NET not support");
+    if (!config) {
+      throw Error("network not support");
     }
-
-    if (!["Linea", "ZKSync"].includes(l2Network)) {
-      throw new Error("require l2Network to equal Linea or ZKSync");
-    }
-
-    const gateway = config.filter((item) => {
-      return item.l2Network === l2Network;
-    });
-
-    if (!gateway.length) {
-      throw new Error("No l2Network matched");
-    }
-
-    const { initializeParams, contractName } = gateway[0];
+    const { initializeParams, contractName } = config;
     console.log(`
-        contractName: ${contractName}
-        initializeParams: ${initializeParams}
+        contractName:${contractName}
+        initializeParams:${initializeParams}
         network: ${network.name}
-      `);
+    `);
 
     const { deployLogPath, deployLog } = createOrGetDeployLog(
       logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName
@@ -54,6 +28,7 @@ task("deployGateway", "Deploy Gateway")
     let instance = {
       address: "",
     };
+
     try {
       if (logName.DEPLOY_GATEWAY in deployLog) {
         instance.address = deployLog[logName.DEPLOY_GATEWAY];
@@ -90,7 +65,7 @@ task("deployGateway", "Deploy Gateway")
         deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
       }
     } catch (error) {
-      console.error("error happend:", error);
+      console.error("error:", error);
     } finally {
       console.log("write deploy log", deployLog);
       fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
