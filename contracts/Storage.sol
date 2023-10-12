@@ -98,10 +98,9 @@ contract Storage is Config {
     mapping(bytes32 => uint256) internal synchronizedChains;
 
     /// @dev Accept infos of fast withdraw of account
-    /// uint32 is the account id
-    /// byte32 is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
-    /// address is the acceptor
-    mapping(uint32 => mapping(bytes32 => address)) public accepts;
+    /// @dev key is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
+    /// @dev value is the acceptor
+    mapping(bytes32 => address) public accepts;
 
     /// @dev Broker allowance used in accept, acceptor can authorize broker to do accept
     /// @dev Similar to the allowance of transfer in ERC20
