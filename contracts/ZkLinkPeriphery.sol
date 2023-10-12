@@ -265,6 +265,14 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         return bridges[index].enableBridgeFrom;
     }
 
+    /// @notice Set gateway address
+    /// @param _gateway gateway address
+    function setGateway(IL2Gateway _gateway) external onlyGovernor {
+        // allow setting gateway to zero address to disable withdraw to L1
+        gateway = _gateway;
+        emit SetGateway(address(_gateway));
+    }
+
     // =======================Block interface======================
 
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
@@ -468,5 +476,40 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Effects===
         accepts[accountId][hash] = acceptor;
+    }
+
+    // =======================Withdraw to L1======================
+    /// @notice Withdraw token to L1 for user by gateway
+    /// @param owner User receive token on L1
+    /// @param tokenId Token id
+    /// @param amount The amount(recovered decimals) of withdraw operation
+    /// @param fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
+    /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
+    /// @param subAccountIdOfNonce SubAccount that supply nonce
+    /// @param nonce SubAccount nonce, used to produce unique accept info
+    /// @param msgValue Eth value when call gateway
+    function withdrawToL1(address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint256 msgValue) external nonReentrant {
+        // ===Checks===
+        // ensure withdraw data is not executed
+        bytes32 withdrawHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate);
+        require(pendingL1Withdraws[withdrawHash] == true, "M0");
+
+        // token MUST be registered to ZkLink
+        RegisteredToken memory rt = tokens[tokenId];
+        require(rt.registered, "M1");
+
+        // ===Effects===
+        pendingL1Withdraws[withdrawHash] = false;
+
+        // ===Interactions===
+        // transfer token to gateway
+        if (rt.tokenAddress == ETH_ADDRESS) {
+            // msgValue >= amount check is done in gateway
+            gateway.withdrawETH{value: msgValue}(owner, amount, withdrawHash);
+        } else {
+            IERC20(rt.tokenAddress).safeApprove(address(gateway), amount);
+            gateway.withdrawERC20{value: msgValue}(owner, rt.tokenAddress, amount, withdrawHash);
+        }
+        emit WithdrawalL1(withdrawHash);
     }
 }

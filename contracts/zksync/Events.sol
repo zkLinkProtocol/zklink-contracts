@@ -23,6 +23,12 @@ interface Events {
     /// @notice Event emitted when user funds are withdrawn from the zkLink state but not from contract
     event WithdrawalPending(uint16 indexed tokenId, bytes32 indexed recepient, uint128 amount);
 
+    /// @notice Event emitted when user funds are withdrawn from the zkLink state to L1 and contract
+    event WithdrawalL1(bytes32 indexed withdrawHash);
+
+    /// @notice Event emitted when user funds are withdrawn from the zkLink state to L1 but not from contract
+    event WithdrawalPendingL1(bytes32 indexed withdrawHash);
+
     /// @notice Event emitted when user sends a authentication fact (e.g. pub-key hash)
     event FactAuth(address indexed sender, uint32 nonce, bytes fact);
 
@@ -68,6 +74,9 @@ interface Events {
 
     /// @notice Bridge update
     event UpdateBridge(uint256 indexed bridgeIndex, bool enableBridgeTo, bool enableBridgeFrom);
+
+    /// @notice Gateway address changed
+    event SetGateway(address indexed newGateway);
 }
 
 /// @title Upgrade events

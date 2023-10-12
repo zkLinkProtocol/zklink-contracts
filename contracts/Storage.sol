@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "./zksync/Operations.sol";
 import "./zksync/Config.sol";
 import "./interfaces/IVerifier.sol";
+import "./interfaces/IL2Gateway.sol";
 import "./zksync/SafeCast.sol";
 
 /// @title ZkLink storage contract
@@ -36,7 +37,11 @@ contract Storage is Config {
     /// @notice Total number of requests
     uint64 public totalOpenPriorityRequests;
 
-    // totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) + totalBlocksSynchronized(4 bytes) + exodusMode(1 byte) stored in the same slot
+    // gateway(20 bytes) + totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) stored in the same slot
+
+    /// @notice The gateway is used for communicating with L1
+    /// @dev The gateway will not be set if local chain is a L1
+    IL2Gateway public gateway;
 
     /// @notice Total blocks proven.
     uint32 public totalBlocksProven;
@@ -60,6 +65,11 @@ contract Storage is Config {
     /// @dev The type of owner is bytes32, when storing evm address, 12 bytes of prefix zero will be appended
     /// @dev for example: 0x000000000000000000000000A1a547358A9Ca8E7b320d7742729e3334Ad96546
     mapping(bytes32 => mapping(uint16 => uint128)) internal pendingBalances;
+
+    /// @dev Store withdraw data hash that need to be relayed to L1 by gateway
+    /// @dev The key is the withdraw data hash
+    /// @dev The value is a flag to indicating whether withdraw exists
+    mapping(bytes32 => bool) internal pendingL1Withdraws;
 
     /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
     /// @dev The struct of this map is (accountId => subAccountId => withdrawTokenId => deductTokenId => performed)
