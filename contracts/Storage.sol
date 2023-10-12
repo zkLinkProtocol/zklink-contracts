@@ -102,11 +102,6 @@ contract Storage is Config {
     /// @dev value is the acceptor
     mapping(bytes32 => address) public accepts;
 
-    /// @dev Broker allowance used in accept, acceptor can authorize broker to do accept
-    /// @dev Similar to the allowance of transfer in ERC20
-    /// @dev The struct of this map is (tokenId => acceptor => broker => allowance)
-    mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
-
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;
 
