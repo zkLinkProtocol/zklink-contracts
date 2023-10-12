@@ -34,7 +34,7 @@ const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("eth
 
 describe('Block commit unit tests', function () {
     let deployedInfo;
-    let zkLink, ethId, token2, token2Id, token3, token3Id, defaultSender, alice, bob, governor, verifier;
+    let zkLink, ethId, token2, token2Id, defaultSender, alice, bob, governor, verifier;
     let commitBlockTemplate;
     before(async () => {
         deployedInfo = await deploy();
@@ -42,8 +42,6 @@ describe('Block commit unit tests', function () {
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
-        token3 = deployedInfo.token3.contract;
-        token3Id = deployedInfo.token3.tokenId;
         defaultSender = deployedInfo.defaultSender;
         alice = deployedInfo.alice;
         bob = deployedInfo.bob;
@@ -131,7 +129,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // deposit of chain4
-        op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token3Id,targetTokenId:token3Id,amount:parseEther("0.345"),owner:extendAddress(bob.address)});
+        op = getDepositPubdata({chainId:4,accountId:3,subAccountId:6,tokenId:token2Id,targetTokenId:token2Id,amount:parseEther("0.345"),owner:extendAddress(bob.address)});
         opPadding = paddingChunk(op, OP_DEPOSIT_CHUNKS);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
@@ -140,7 +138,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // full exit of chain4
-        op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:extendAddress(bob.address),tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5")});
+        op = getFullExitPubdata({chainId:4,accountId:43,subAccountId:2,owner:extendAddress(bob.address),tokenId:token2Id,srcTokenId:token2Id,amount:parseEther("24.5")});
         opPadding = paddingChunk(op, OP_FULL_EXIT_CHUNKS);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash4), opPadding])));
@@ -156,7 +154,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, false));
 
         // force exit of chain3
-        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,initiatorSubAccountId:7,initiatorNonce:3,targetAccountId:43,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),target:extendAddress(alice.address)});
+        op = getForcedExitPubdata({chainId:3,initiatorAccountId:30,initiatorSubAccountId:7,initiatorNonce:3,targetAccountId:43,targetSubAccountId:2,tokenId:token2Id,srcTokenId:token2Id,amount:parseEther("24.5"),target:extendAddress(alice.address)});
         opPadding = paddingChunk(op, OP_FORCE_EXIT_CHUNKS);
         pubdatas.push(opPadding);
         onchainOpPubdataHash3 = hexlify(keccak256(concat([arrayify(onchainOpPubdataHash3), opPadding])));
@@ -194,7 +192,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // force exit of current chain
-        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,initiatorSubAccountId:4,initiatorNonce:0,targetAccountId:23,targetSubAccountId:2,tokenId:token3Id,srcTokenId:token3Id,amount:parseEther("24.5"),target:extendAddress(alice.address)});
+        op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,initiatorSubAccountId:4,initiatorNonce:0,targetAccountId:23,targetSubAccountId:2,tokenId:token2Id,srcTokenId:token2Id,amount:parseEther("24.5"),target:extendAddress(alice.address)});
         opPadding = paddingChunk(op, OP_FORCE_EXIT_CHUNKS);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);

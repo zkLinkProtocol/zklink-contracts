@@ -71,26 +71,21 @@ async function deploy() {
     // add some tokens
     const ethId = 33;
     const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18, true);
+    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
     const token2Id = 34;
-    await peripheryProxy.connect(governor).addToken(token2Id, token2.address, 18, true);
-
-    const nstFactory = await hardhat.ethers.getContractFactory('NonStandardToken');
-    const token3 = await nstFactory.deploy("Token3", "T3");
-    const token3Id = 35;
-    await peripheryProxy.connect(governor).addToken(token3Id, token3.address, 18, false);
+    await peripheryProxy.connect(governor).addToken(token2Id, token2.address, 18);
 
     const token4 = await stFactory.deploy("Token4", "T4");
     const token4Id = 17;
-    await peripheryProxy.connect(governor).addToken(token4Id, token4.address, 18, true);
+    await peripheryProxy.connect(governor).addToken(token4Id, token4.address, 18);
 
     const stdFactory = await hardhat.ethers.getContractFactory('StandardTokenWithDecimals');
     const token5 = await stdFactory.deploy("Token5", "T5", 6);
     const token5Id = 36;
-    await peripheryProxy.connect(governor).addToken(token5Id, token5.address, 6, true);
+    await peripheryProxy.connect(governor).addToken(token5Id, token5.address, 6);
 
     return {
         zkLink: zkLinkProxy,
@@ -109,10 +104,6 @@ async function deploy() {
         token2: {
             tokenId: token2Id,
             contract: token2,
-        },
-        token3: {
-            tokenId: token3Id,
-            contract: token3,
         },
         token4: {
             tokenId: token4Id,

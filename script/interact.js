@@ -3,11 +3,11 @@ const logName = require('./deploy_log_name');
 const { layerZero } = require('./layerzero');
 const {extendAddress} = require("./op_utils");
 
-async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard) {
+async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
     const governanceFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
     const governance = governanceFactory.attach(governanceAddr);
-    const tx = await governance.connect(governor).addToken(tokenId, tokenAddr, tokenDecimals, standard);
+    const tx = await governance.connect(governor).addToken(tokenId, tokenAddr, tokenDecimals);
     console.log('tx hash: ', tx.hash);
     const receipt = await tx.wait();
     if (receipt.status) {
@@ -22,7 +22,6 @@ task("addToken", "Adds a new token with a given address for testnet")
     .addParam("tokenId", "The token id")
     .addParam("tokenAddress", "The token address")
     .addParam("tokenDecimals", "The token decimals", 18, types.int, true)
-    .addParam("standard", "If the token is a standard erc20", true, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const [governor] = await hardhat.ethers.getSigners();
         let governanceAddr = taskArgs.zkLink;
@@ -32,18 +31,16 @@ task("addToken", "Adds a new token with a given address for testnet")
         const tokenId = taskArgs.tokenId;
         const tokenAddr = taskArgs.tokenAddress;
         const tokenDecimals = taskArgs.tokenDecimals;
-        const standard = taskArgs.standard;
         console.log('governor', governor.address);
         console.log('zkLink', governanceAddr);
         console.log('token id', tokenId);
         console.log('token address', tokenAddr);
         console.log('token decimals', tokenDecimals);
-        console.log('standard', standard);
 
         const balance = await governor.getBalance();
         console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
 
-        await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals, standard);
+        await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals);
     });
 
 task("depositERC20", "Deposit erc20 token to zkLink on testnet")

@@ -23,25 +23,24 @@ describe('Governance unit tests', function () {
     it('Add token should success', async () => {
         const tokenId = 1;
         const tokenAddress = '0x823B747710C5bC9b8A47243f2c3d1805F1aA00c5';
-        await expect(testContract.connect(jack).addToken(tokenId, tokenAddress, 6, true)).to.be.revertedWith("3");
+        await expect(testContract.connect(jack).addToken(tokenId, tokenAddress, 6)).to.be.revertedWith("3");
 
-        await expect(testContract.connect(bob).addToken(0, tokenAddress, 18, true)).to.be.revertedWith("I0");
-        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero, 18, true)).to.be.revertedWith("I1");
-        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19, true)).to.be.revertedWith("I3");
+        await expect(testContract.connect(bob).addToken(0, tokenAddress, 18)).to.be.revertedWith("I0");
+        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero, 18)).to.be.revertedWith("I1");
+        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19)).to.be.revertedWith("I3");
 
-        await testContract.connect(bob).addToken(tokenId, tokenAddress, 8, true);
+        await testContract.connect(bob).addToken(tokenId, tokenAddress, 8);
         const rt = await testContract.tokens(tokenId);
         expect(rt.registered).equal(true);
         expect(rt.paused).equal(false);
-        expect(rt.standard).equal(true);
         expect(rt.tokenAddress).equal(tokenAddress);
         expect(rt.decimals).equal(8);
         expect(await testContract.tokenIds(tokenAddress)).to.eq(tokenId);
 
         // duplicate register
-        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 8, true)).to.be.revertedWith('I2');
+        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 8)).to.be.revertedWith('I2');
         const anotherTokenId = 2;
-        await expect(testContract.connect(bob).addToken(anotherTokenId, tokenAddress, 8, true)).to.be.revertedWith('I2');
+        await expect(testContract.connect(bob).addToken(anotherTokenId, tokenAddress, 8)).to.be.revertedWith('I2');
     });
 
     it('Set token pause should success', async () => {
