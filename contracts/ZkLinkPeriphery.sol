@@ -471,7 +471,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
 
         // accept tx may be later than block exec tx(with user withdraw op)
-        bytes32 hash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate);
+        bytes32 hash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate);
         require(accepts[accountId][hash] == address(0), "H6");
 
         // ===Effects===
@@ -491,7 +491,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     function withdrawToL1(address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint256 msgValue) external nonReentrant {
         // ===Checks===
         // ensure withdraw data is not executed
-        bytes32 withdrawHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate);
+        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate);
         require(pendingL1Withdraws[withdrawHash] == true, "M0");
 
         // token MUST be registered to ZkLink
