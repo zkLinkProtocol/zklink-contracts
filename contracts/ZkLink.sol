@@ -603,12 +603,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
                 // account request fast withdraw and sub account supply nonce
-                _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
+                _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
                 // request forced exit for target account but initiator sub account supply nonce
                 // forced exit require fast withdraw default and take no fee for fast withdraw
-                _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0, op.withdrawToL1);
+                _executeWithdraw(op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0, op.withdrawToL1);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 increasePendingBalance(op.tokenId, op.owner, op.amount);
@@ -621,7 +621,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Execute fast withdraw or normal withdraw according by fastWithdraw flag
-    function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 withdrawToL1) internal {
+    function _executeWithdraw(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 withdrawToL1) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
         require(rt.registered, "o0");
@@ -634,10 +634,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             pendingL1Withdraws[withdrawHash] = true;
             emit WithdrawalPendingL1(withdrawHash);
         } else {
-            address acceptor = accepts[accountId][withdrawHash];
+            address acceptor = accepts[withdrawHash];
             if (acceptor == address(0)) {
                 // receiver act as a acceptor
-                accepts[accountId][withdrawHash] = owner;
+                accepts[withdrawHash] = owner;
                 increasePendingBalance(tokenId, owner, amount);
             } else {
                 increasePendingBalance(tokenId, acceptor, amount);
