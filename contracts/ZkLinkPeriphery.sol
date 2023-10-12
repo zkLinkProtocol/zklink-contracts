@@ -487,7 +487,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
     /// @param subAccountIdOfNonce SubAccount that supply nonce
     /// @param nonce SubAccount nonce, used to produce unique accept info
-    function withdrawToL1(address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external nonReentrant {
+    /// @param msgValue Eth value when call gateway
+    function withdrawToL1(address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint256 msgValue) external nonReentrant {
         // ===Checks===
         // ensure withdraw data is not executed
         bytes32 withdrawHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate);
@@ -503,10 +504,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Interactions===
         // transfer token to gateway
         if (rt.tokenAddress == ETH_ADDRESS) {
-            gateway.withdrawETH{value: amount}(owner, withdrawHash);
+            // msgValue >= amount check is done in gateway
+            gateway.withdrawETH{value: msgValue}(owner, amount, withdrawHash);
         } else {
             IERC20(rt.tokenAddress).safeApprove(address(gateway), amount);
-            gateway.withdrawERC20(owner, rt.tokenAddress, amount, withdrawHash);
+            gateway.withdrawERC20{value: msgValue}(owner, rt.tokenAddress, amount, withdrawHash);
         }
         emit WithdrawalL1(withdrawHash);
     }
