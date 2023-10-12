@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./zksync/ReentrancyGuard.sol";
 import "./zksync/Events.sol";
 import "./Storage.sol";
@@ -11,6 +13,7 @@ import "./zksync/Utils.sol";
 /// @title ZkLink periphery contract
 /// @author zk.link
 contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
+    using SafeERC20 for IERC20;
     // =================User interface=================
 
     /// @notice Checks if Exodus mode must be entered. If true - enters exodus mode and emits ExodusMode event.
@@ -140,10 +143,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (bool success, ) = _owner.call{value: amount}("");
             require(success, "b2");
         } else {
-            // We will allow withdrawals of `value` such that:
-            // `value` <= user pending balance
-            // `value` can be bigger then `amount` requested if token takes fee from sender in addition to `amount` requested
-            amount = transferERC20(IERC20(tokenAddress), _owner, amount, withdrawBalance, rt.standard);
+            IERC20(tokenAddress).safeTransfer(_owner, amount);
         }
 
         // improve withdrawn amount decimals
@@ -176,8 +176,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param _tokenId Token id
     /// @param _tokenAddress Token address
     /// @param _decimals Token decimals of layer one
-    /// @param _standard If token is a standard erc20
-    function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals, bool _standard) public onlyGovernor {
+    function addToken(uint16 _tokenId, address _tokenAddress, uint8 _decimals) external onlyGovernor {
         // token id MUST be in a valid range
         require(_tokenId > 0 && _tokenId <= MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
@@ -192,26 +191,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
         rt.decimals = _decimals;
-        rt.standard = _standard;
         tokens[_tokenId] = rt;
         tokenIds[_tokenAddress] = _tokenId;
         emit NewToken(_tokenId, _tokenAddress, _decimals);
-    }
-
-    struct Token {
-        uint16 tokenId; // token id defined by zkLink
-        address tokenAddress; // token address in L1
-        uint8 decimals; // token decimals in L1
-        bool standard; // if token a pure erc20 or not
-    }
-
-    /// @notice Add tokens to the list of networks tokens
-    /// @param _tokenList Token list
-    function addTokens(Token[] calldata _tokenList) external {
-        for (uint i; i < _tokenList.length; i++) {
-            Token memory _token = _tokenList[i];
-            addToken(_token.tokenId, _token.tokenAddress, _token.decimals, _token.standard);
-        }
     }
 
     /// @notice Pause token deposits for the given token
@@ -424,7 +406,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (success, ) = msg.sender.call{value: amountReturn}("");
             require(success, "E1");
         }
-        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive, amountReceive);
+        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
     }
 
     /// @notice Acceptor accept a erc20 token fast withdraw, acceptor will get a fee for profit
@@ -437,35 +419,18 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
     /// @param subAccountIdOfNonce SubAccount that supply nonce
     /// @param nonce SubAccount nonce, used to produce unique accept info
-    /// @param amountTransfer Amount that transfer from acceptor to receiver
-    /// may be a litter larger than the amount receiver received
-    function acceptERC20(address acceptor, uint32 accountId, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint128 amountTransfer) external nonReentrant {
+    function acceptERC20(address acceptor, uint32 accountId, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external nonReentrant {
         // ===Checks===
         (uint128 amountReceive, address tokenAddress) =
         _checkAccept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
 
         // ===Interactions===
-        // stack too deep
-        uint128 amountSent;
-        {
-            address _acceptor = acceptor;
-            address _receiver = receiver;
-            uint256 receiverBalanceBefore = IERC20(tokenAddress).balanceOf(_receiver);
-            uint256 acceptorBalanceBefore = IERC20(tokenAddress).balanceOf(_acceptor);
-            IERC20(tokenAddress).transferFrom(_acceptor, _receiver, amountTransfer);
-            uint256 receiverBalanceAfter = IERC20(tokenAddress).balanceOf(_receiver);
-            uint256 acceptorBalanceAfter = IERC20(tokenAddress).balanceOf(_acceptor);
-            uint128 receiverBalanceDiff = SafeCast.toUint128(receiverBalanceAfter - receiverBalanceBefore);
-            require(receiverBalanceDiff >= amountReceive, "F0");
-            amountReceive = receiverBalanceDiff;
-            // amountSent may be larger than amountReceive when the token is a non standard erc20 token
-            amountSent = SafeCast.toUint128(acceptorBalanceBefore - acceptorBalanceAfter);
-        }
+        IERC20(tokenAddress).safeTransferFrom(acceptor, receiver, amountReceive);
         if (msg.sender != acceptor) {
-            require(brokerAllowance(tokenId, acceptor, msg.sender) >= amountSent, "F1");
-            brokerAllowances[tokenId][acceptor][msg.sender] -= amountSent;
+            require(brokerAllowance(tokenId, acceptor, msg.sender) >= amountReceive, "F1");
+            brokerAllowances[tokenId][acceptor][msg.sender] -= amountReceive;
         }
-        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountSent, amountReceive);
+        emit Accept(acceptor, accountId, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
     }
 
     /// @return Return the accept allowance of broker

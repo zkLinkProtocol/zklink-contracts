@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./zksync/ReentrancyGuard.sol";
 import "./Storage.sol";
 import "./zksync/Events.sol";
@@ -15,6 +17,8 @@ import "./zksync/Utils.sol";
 /// @dev add `nonReentrant` to all user external interfaces to avoid a closed loop reentrant attack
 /// @author zk.link
 contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
+    using SafeERC20 for IERC20;
+
     enum ChangePubkeyType {ECRECOVER, CREATE2}
 
     /// @notice Data needed to process onchain operation from block public data.
@@ -224,19 +228,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         if (_tokenAddress != ETH_ADDRESS) {
             // transfer erc20 token from sender to zkLink contract
-            if (rt.standard) {
-                IERC20(_tokenAddress).transferFrom(msg.sender, address(this), _amount);
-            } else {
-                // support non-standard tokens
-                uint256 balanceBefore = IERC20(_tokenAddress).balanceOf(address(this));
-                // NOTE, the balance of this contract will be increased
-                // if the token is not a pure erc20 token, it could do anything within the transferFrom
-                // we MUST NOT use `token.balanceOf(address(this))` in any control structures
-                IERC20(_tokenAddress).transferFrom(msg.sender, address(this), _amount);
-                uint256 balanceAfter = IERC20(_tokenAddress).balanceOf(address(this));
-                // use the balance diff as real amount deposited
-                _amount = SafeCast.toUint128(balanceAfter - balanceBefore);
-            }
+            uint256 balanceBefore = IERC20(_tokenAddress).balanceOf(address(this));
+            IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
+            uint256 balanceAfter = IERC20(_tokenAddress).balanceOf(address(this));
+            // only support pure erc20
+            require(_amount == balanceAfter - balanceBefore, "e6");
         }
 
         // improve decimals before send to layer two

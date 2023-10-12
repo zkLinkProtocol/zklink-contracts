@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "./zksync/Operations.sol";
 import "./zksync/Config.sol";
 import "./interfaces/IVerifier.sol";
-import "./zksync/IERC20.sol";
 import "./zksync/SafeCast.sol";
 
 /// @title ZkLink storage contract
@@ -107,7 +106,6 @@ contract Storage is Config {
         bool paused; // whether token can deposit to ZkLink or not, default is false
         address tokenAddress; // the token address
         uint8 decimals; // the token decimals of layer one
-        bool standard; // we will not check the balance different of zkLink contract after transfer when a token comply with erc20 standard
     }
 
     /// @notice A map of registered token infos
@@ -190,33 +188,6 @@ contract Storage is Config {
     /// @dev for example: extend 0xA1a547358A9Ca8E7b320d7742729e3334Ad96546 and the result is 0x000000000000000000000000a1a547358a9ca8e7b320d7742729e3334ad96546
     function extendAddress(address _address) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(_address)));
-    }
-
-    /// @notice Sends tokens
-    /// @dev NOTE: will revert if transfer call fails or rollup balance difference (before and after transfer) is bigger than _maxAmount
-    /// This function is used to allow tokens to spend zkLink contract balance up to amount that is requested
-    /// @param _token Token address
-    /// @param _to Address of recipient
-    /// @param _amount Amount of tokens to transfer
-    /// @param _maxAmount Maximum possible amount of tokens to transfer to this account
-    /// @param _isStandard If token is a standard erc20
-    /// @return withdrawnAmount The really amount than will be debited from user
-    function transferERC20(IERC20 _token, address _to, uint128 _amount, uint128 _maxAmount, bool _isStandard) internal returns (uint128 withdrawnAmount) {
-        // most tokens are standard, fewer query token balance can save gas
-        if (_isStandard) {
-            _token.transfer(_to, _amount);
-            return _amount;
-        } else {
-            uint256 balanceBefore = _token.balanceOf(address(this));
-            _token.transfer(_to, _amount);
-            uint256 balanceAfter = _token.balanceOf(address(this));
-            uint256 balanceDiff = balanceBefore - balanceAfter;
-            require(balanceDiff > 0, "n1"); // transfer is considered successful only if the balance of the contract decreased after transfer
-            require(balanceDiff <= _maxAmount, "n2"); // rollup balance difference (before and after transfer) is bigger than `_maxAmount`
-
-            // It is safe to convert `balanceDiff` to `uint128` without additional checks, because `balanceDiff <= _maxAmount`
-            return uint128(balanceDiff);
-        }
     }
 
     /// @dev improve decimals when deposit, for example, user deposit 2 USDC in ui, and the decimals of USDC is 6

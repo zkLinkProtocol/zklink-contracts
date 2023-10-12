@@ -79,7 +79,7 @@ describe('Fast withdraw unit tests', function () {
         await token.mintTo(bob.address, l1Amount);
         const amountTransfer = l1Amount.mul(BigNumber.from(MAX_WITHDRAW_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_WITHDRAW_FEE_RATE));
         await token.connect(bob).approve(periphery.address, amountTransfer);
-        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce, amountTransfer);
+        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
 
         const op = {
             "chainId": chainId,

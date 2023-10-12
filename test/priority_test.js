@@ -6,7 +6,7 @@ const {parseEther, parseUnits} = require("ethers/lib/utils");
 
 describe('ZkLink priority queue ops unit tests', function () {
     let zkLink, periphery, ethId,
-        token2, token2Id, token3, token3Id, token4, token4Id, token4Mapping, token5, token5Id,
+        token2, token2Id, token4, token4Id, token4Mapping, token5, token5Id,
         defaultSender, governor;
     let tpn = 0;
     before(async () => {
@@ -16,8 +16,6 @@ describe('ZkLink priority queue ops unit tests', function () {
         ethId = deployedInfo.eth.tokenId;
         token2 = deployedInfo.token2.contract;
         token2Id = deployedInfo.token2.tokenId;
-        token3 = deployedInfo.token3.contract;
-        token3Id = deployedInfo.token3.tokenId;
         token4 = deployedInfo.token4.contract;
         token4Id = deployedInfo.token4.tokenId;
         token4Mapping = USD_TOKEN_ID;
@@ -93,25 +91,6 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token2Id, targetTokenId:token2Id, amount, owner:extendAddress(to) });
-        expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
-    });
-
-    it('deposit non standard erc20 should success', async () => {
-        const to = "0x72847C8Bdc54b338E787352bceC33ba90cD7aFe0";
-        const subAccountId = 0;
-        const amount = 30;
-        const senderFee = 3; // 30 * 0.1
-        const receiverFee = 6; // 30 * 0.2
-        await token3.connect(defaultSender).mint(10000);
-        let senderBalance = await token3.balanceOf(defaultSender.address);
-        let contractBalance = await token3.balanceOf(zkLink.address);
-        await token3.connect(defaultSender).approve(zkLink.address, 100);
-        await zkLink.connect(defaultSender).depositERC20(token3.address, amount, extendAddress(to), subAccountId, false);
-        expect(await token3.balanceOf(zkLink.address)).equal(contractBalance.add(amount-receiverFee));
-        expect(await token3.balanceOf(defaultSender.address)).equal(senderBalance.sub(amount+senderFee));
-
-        const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token3Id, targetTokenId:token3Id, amount:amount-receiverFee, owner:extendAddress(to) });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
