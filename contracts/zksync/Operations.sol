@@ -69,7 +69,7 @@ library Operations {
         uint16 targetTokenId; // the token that user increased in L2
         uint128 amount; // the token amount deposited to L2
         bytes32 owner; // the address that receive deposited token at L2
-    } // 59
+    } // 59 bytes
 
     /// @dev Deserialize deposit pubdata
     function readDepositPubdata(bytes memory _data) internal pure returns (Deposit memory parsed) {
@@ -114,7 +114,7 @@ library Operations {
         uint16 tokenId; // the token that withdraw to L1
         uint16 srcTokenId; // the token that deducted in L2
         uint128 amount; // the token amount that fully withdrawn to owner, ignored at serialization and will be set when the block is submitted
-    } // 59
+    } // 59 bytes
 
     /// @dev Deserialize fullExit pubdata
     function readFullExitPubdata(bytes memory _data) internal pure returns (FullExit memory parsed) {
@@ -165,7 +165,8 @@ library Operations {
         uint32 nonce; // the sub account nonce
         uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by acceptor
         uint8 fastWithdraw; // when this flag is 1, it means fast withdrawal
-    } // 68
+        uint8 withdrawToL1; // when this flag is 1, it means withdraw token to L1
+    } // 69 bytes
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -182,6 +183,7 @@ library Operations {
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
         (offset, parsed.fastWithdraw) = Bytes.readUint8(_data, offset);
+        (offset, parsed.withdrawToL1) = Bytes.readUint8(_data, offset);
     }
 
     struct ForcedExit {
@@ -195,9 +197,10 @@ library Operations {
         uint16 tokenId; // the token that to withdraw
         //uint16 srcTokenId; -- the token that decreased in L2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
+        uint8 withdrawToL1; // when this flag is 1, it means withdraw token to L1
         //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
         address target; // the address to receive token
-    } // 68 bytes
+    } // 69 bytes
 
     function readForcedExitPubdata(bytes memory _data) internal pure returns (ForcedExit memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -211,6 +214,7 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         offset += TOKEN_BYTES;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
+        (offset, parsed.withdrawToL1) = Bytes.readUint8(_data, offset);
         offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.target) = Bytes.readAddress(_data, offset);
     }
