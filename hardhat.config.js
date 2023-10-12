@@ -7,7 +7,8 @@ require("./script/deploy_lz_bridge");
 require("./script/deploy_faucet");
 require("./script/deploy_account_mock");
 require("./script/interact");
-require("./script/deploy_gateway");
+require("./script/deploy_l1_gateway");
+require("./script/deploy_l2_gateway");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig

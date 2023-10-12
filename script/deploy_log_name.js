@@ -30,7 +30,7 @@ const DEPLOY_GAS_ESTIMATE_LOG_PREFIX = "deploy_gas_estimate";
 const DEPLOY_LOG_ADD_ETH = "addETH";
 const DEPLOY_LOG_TOKEN2 = "token2";
 
-// consumed in deploy_gateway.js
+// consumed in deploy_l1_gateway.js or deploy_l2_gateway.js
 const DEPLOY_GATEWAY_LOG_PREFIX = "deploy_gateway";
 const DEPLOY_GATEWAY = "gateway";
 const DEPLOY_GATEWAY_TARGET = "gatewayTarget";
