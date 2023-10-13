@@ -1,6 +1,6 @@
-const { readDeployContract, readDeployLogField} = require('./utils');
+const {readDeployContract, readDeployLogField} = require('./utils');
 const logName = require('./deploy_log_name');
-const { layerZero } = require('./layerzero');
+const {layerZero} = require('./layerzero');
 const {extendAddress} = require("./op_utils");
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals) {
@@ -49,34 +49,34 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
     .addParam("decimals", "The token decimals", 18, types.int, true)
     .addParam("amount", "The deposit amount in ether")
     .setAction(async (taskArgs, hardhat) => {
-            const [sender] = await hardhat.ethers.getSigners();
-            const zkLinkProxy = taskArgs.zklink;
-            const token = taskArgs.token;
-            const decimals = taskArgs.decimals;
-            const amount = taskArgs.amount;
-            console.log('zklink address', zkLinkProxy);
-            console.log('token address', token);
-            console.log('decimals', decimals);
-            console.log('amount', amount);
+        const [sender] = await hardhat.ethers.getSigners();
+        const zkLinkProxy = taskArgs.zklink;
+        const token = taskArgs.token;
+        const decimals = taskArgs.decimals;
+        const amount = taskArgs.amount;
+        console.log('zklink address', zkLinkProxy);
+        console.log('token address', token);
+        console.log('decimals', decimals);
+        console.log('amount', amount);
 
-            const balance = await sender.getBalance();
-            console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
-            const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
-            const erc20 = erc20Factory.attach(token);
-            const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
-            console.log('sender token balance', hardhat.ethers.utils.formatEther(tokenBalance, decimals));
+        const balance = await sender.getBalance();
+        console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
+        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+        const erc20 = erc20Factory.attach(token);
+        const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
+        console.log('sender token balance', hardhat.ethers.utils.formatEther(tokenBalance, decimals));
 
-            const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-            const zkLink = zkLinkFactory.attach(zkLinkProxy);
-            const amountInWei = hardhat.ethers.utils.parseUnits(amount, decimals);
-            const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
-            if (allowance.isZero()) {
-                    console.log('add unlimited allowance');
-                    const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
-                    console.log('approve tx hash', tx.hash);
-            }
-            const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
-            console.log('tx', tx.hash);
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+        const zkLink = zkLinkFactory.attach(zkLinkProxy);
+        const amountInWei = hardhat.ethers.utils.parseUnits(amount, decimals);
+        const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
+        if (allowance.isZero()) {
+            console.log('add unlimited allowance');
+            const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
+            console.log('approve tx hash', tx.hash);
+        }
+        const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
+        console.log('tx', tx.hash);
     });
 
 task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
@@ -327,3 +327,153 @@ task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
         const tx = await peripheryContract.connect(oldGovernor).changeGovernor(governor);
         console.log('tx', tx.hash);
     });
+
+
+task(
+    "setL1RemoteGateway",
+    "Set l2 gateway address to l1 gateway"
+)
+    .addParam("targetNetwork", "target network name")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat;
+
+        const {targetNetwork} = taskArgs;
+        console.log("targetNetwork", targetNetwork);
+
+        // get l2 gateway contract info
+        const {contractName: l2ContractName} = gatewayConfig[targetNetwork];
+        console.log(`
+                logName:${logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName}
+                contractName: ${l2ContractName}
+                env: ${process.env.NET}
+        `)
+        const {deployLogPath, deployLog: l2DeployInfo} = getDeployLog(
+            logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName,
+            targetNetwork
+        );
+        console.log("l2 gateway deploy info:", l2DeployInfo)
+
+
+        // get current network contract info
+        const {contractName: l1ContractName} = gatewayConfig[network.name][targetNetwork]
+        const {deployLog: l1DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName)
+        const contractFactory = await ethers.getContractFactory(l1ContractName)
+        const contract = await contractFactory.attach(l1DeployInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+        const tx = await contract.connect(signer).setRemoteGateway(l2DeployInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx", tx.hash)
+    });
+
+task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
+    .addParam("targetNetwork", "target network name")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat
+        const {targetNetwork} = taskArgs
+        console.log("targetNetwork", targetNetwork)
+
+        // get l1 gateway contract info
+        const {contractName: l1ContractName} = gatewayConfig[targetNetwork][network.name]
+        const {deployLog: l1DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName, targetNetwork)
+        console.log({l1DeployInfo})
+
+        // get l2 gateway contract info
+        const {contractName: l2ContractName} = gatewayConfig[network.name]
+        const {deployLog: l2DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l2ContractName, network.name)
+        console.log({l2DeployInfo})
+        const contractFactory = await ethers.getContractFactory(l2ContractName)
+        const contract = await contractFactory.attach(l2DeployInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+
+        const tx = await contract.connect(signer).setRemoteGateway(l1DeployInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx:", tx.hash)
+    })
+
+task("setZkLinkToL1Gateway", "set zkLink address to l1 gateway")
+    .addParam("l2Network", "l2 network name")
+    .setAction(async (taskArgs, hardhat) => {
+        const {network} = hardhat
+        const {l2Network} = taskArgs
+        console.log("l2Network", l2Network)
+
+        // get zklink contract info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+
+
+        // get l1 network gateway contract
+        const {contractName} = gatewayConfig[network.name][l2Network];
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+        const contractFactory = await ethers.getContractFactory(contractName)
+        const contract = await contractFactory.attach(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+        const tx = await contract.connect(signer).setZkLink(zkLinkProxyAddr)
+        console.log("tx: ", tx.hash)
+    })
+
+task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
+    .setAction(async (taskArgs, hardhat) => {
+        const {network} = hardhat
+        const {l1Network} = taskArgs
+        console.log("l1Network", l1Network)
+
+        // get zklink contract info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+
+        // get l2 network gateway contract
+        const {contractName} = gatewayConfig[network.name]
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+        const contractFactory = await ethers.getContractFactory(contractName)
+        const contract = contractFactory.attach(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+
+        const tx = await contract.connect(signer).setZkLink(zkLinkProxyAddr)
+        console.log("tx: ", tx.hash)
+    })
+
+task("setL1GatewayToZkLink", "set gateway address to zklink")
+    .addParam("l2Network", "l2 network name")
+    .setAction(async (taskArgs, hardhat) => {
+        const {network} = hardhat
+        const {l2Network} = taskArgs
+        console.log("l2Network", l2Network)
+
+        // get gateway deploy info
+        const {contractName} = gatewayConfig[network.name][l2Network]
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+
+        // get zklink deploy info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink')
+        const contract = zkLinkFactory.attach(zkLinkProxyAddr)
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+        const tx = await contract.connect(signer).setGateway(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx:", tx.hash)
+    })
+
+task("setL2GatewayToZkLink", "set gateway address to zklink")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat
+
+        // get gateway deploy info
+        const {contractName} = gatewayConfig[network.name]
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+
+        // get zklink deploy info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink')
+        const contract = zkLinkFactory.attach(zkLinkProxyAddr)
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+        const tx = await contract.connect(signer).setGateway(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx:", tx.hash)
+    })
