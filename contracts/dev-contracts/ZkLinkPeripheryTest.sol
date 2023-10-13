@@ -10,12 +10,12 @@ contract ZkLinkPeripheryTest is ZkLinkPeriphery {
         networkGovernor = governor;
     }
 
-    function setAcceptor(uint32 accountId, bytes32 hash, address acceptor) external {
-        accepts[accountId][hash] = acceptor;
+    function setAcceptor(bytes32 hash, address acceptor) external {
+        accepts[hash] = acceptor;
     }
 
-    function getAcceptor(uint32 accountId, bytes32 hash) external view returns (address) {
-        return accepts[accountId][hash];
+    function getAcceptor(bytes32 hash) external view returns (address) {
+        return accepts[hash];
     }
 
     function mockProveBlock(StoredBlockInfo memory storedBlockInfo) external {

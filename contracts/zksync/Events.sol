@@ -51,11 +51,7 @@ interface Events {
     );
 
     /// @notice Event emitted when acceptor accept a fast withdraw
-    event Accept(address indexed acceptor, uint32 indexed accountId, address indexed receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint128 amountReceive);
-
-    /// @notice Event emitted when set broker allowance
-    event BrokerApprove(uint16 indexed tokenId, address indexed owner, address indexed spender, uint128 amount);
-
+    event Accept(address indexed acceptor, address indexed receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, uint128 amountReceive);
     /// @notice Token added to ZkLink net
     /// @dev log token decimals on this chain to let L2 know(token decimals maybe different on different chains)
     event NewToken(uint16 indexed tokenId, address indexed token, uint8 decimals);

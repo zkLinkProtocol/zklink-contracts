@@ -98,15 +98,9 @@ contract Storage is Config {
     mapping(bytes32 => uint256) internal synchronizedChains;
 
     /// @dev Accept infos of fast withdraw of account
-    /// uint32 is the account id
-    /// byte32 is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
-    /// address is the acceptor
-    mapping(uint32 => mapping(bytes32 => address)) public accepts;
-
-    /// @dev Broker allowance used in accept, acceptor can authorize broker to do accept
-    /// @dev Similar to the allowance of transfer in ERC20
-    /// @dev The struct of this map is (tokenId => acceptor => broker => allowance)
-    mapping(uint16 => mapping(address => mapping(address => uint128))) internal brokerAllowances;
+    /// @dev key is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
+    /// @dev value is the acceptor
+    mapping(bytes32 => address) public accepts;
 
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;
@@ -216,7 +210,8 @@ contract Storage is Config {
     }
 
     /// @dev Return accept record hash for fast withdraw
-    function getFastWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
+    /// @dev (accountIdOfNonce, subAccountIdOfNonce, nonce) ensures the uniqueness of withdraw hash
+    function getWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate));
     }
 

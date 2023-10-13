@@ -469,19 +469,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
                 if (chainId == CHAIN_ID) {
                     Operations.Withdraw memory withdrawData = Operations.readWithdrawPubdata(opPubData);
-                    if (withdrawData.withdrawToL1 == 1) {
-                        // local chain MUST support withdraw to L1
-                        require(address(gateway) != address(0), "p0");
-                    }
+                    verifyWithdraw(withdrawData.tokenId, withdrawData.amount, withdrawData.withdrawToL1);
                 }
             } else if (opType == Operations.OpType.ForcedExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
                 if (chainId == CHAIN_ID) {
                     Operations.ForcedExit memory forcedExitData = Operations.readForcedExitPubdata(opPubData);
-                    if (forcedExitData.withdrawToL1 == 1) {
-                        // local chain MUST support withdraw to L1
-                        require(address(gateway) != address(0), "p0");
-                    }
+                    verifyWithdraw(forcedExitData.tokenId, forcedExitData.amount, forcedExitData.withdrawToL1);
                 }
             } else if (opType == Operations.OpType.FullExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
@@ -526,6 +520,22 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 newBlockPubDataHash,
                 offsetsCommitmentHash
             ));
+    }
+
+    /// @notice Checks that withdraw params is correct
+    function verifyWithdraw(uint16 tokenId, uint128 amount, uint8 withdrawToL1) internal view {
+        // token MUST be registered
+        RegisteredToken storage rt = tokens[tokenId];
+        require(rt.registered, "p0");
+
+        // withdraw amount MUST without dust
+        uint128 recoverAmount = recoveryDecimals(amount, rt.decimals);
+        require(improveDecimals(recoverAmount, rt.decimals) == amount, "p1");
+
+        // local chain MUST support withdraw to L1
+        if (withdrawToL1 == 1) {
+            require(address(gateway) != address(0), "p2");
+        }
     }
 
     /// @notice Checks that change operation is correct
@@ -593,12 +603,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             if (opType == Operations.OpType.Withdraw) {
                 Operations.Withdraw memory op = Operations.readWithdrawPubdata(pubData);
                 // account request fast withdraw and sub account supply nonce
-                _executeWithdraw(op.accountId, op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.fastWithdraw, op.withdrawToL1);
+                _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
             } else if (opType == Operations.OpType.ForcedExit) {
                 Operations.ForcedExit memory op = Operations.readForcedExitPubdata(pubData);
                 // request forced exit for target account but initiator sub account supply nonce
                 // forced exit require fast withdraw default and take no fee for fast withdraw
-                _executeWithdraw(op.targetAccountId, op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0, 1, op.withdrawToL1);
+                _executeWithdraw(op.initiatorAccountId, op.initiatorSubAccountId, op.initiatorNonce, op.target, op.tokenId, op.amount, 0, op.withdrawToL1);
             } else if (opType == Operations.OpType.FullExit) {
                 Operations.FullExit memory op = Operations.readFullExitPubdata(pubData);
                 increasePendingBalance(op.tokenId, op.owner, op.amount);
@@ -611,38 +621,26 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Execute fast withdraw or normal withdraw according by fastWithdraw flag
-    function _executeWithdraw(uint32 accountId, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 fastWithdraw, uint8 withdrawToL1) internal {
+    function _executeWithdraw(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 withdrawToL1) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
         require(rt.registered, "o0");
 
+        // recover withdraw amount
+        uint128 recoverAmount = recoveryDecimals(amount, rt.decimals);
+        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, recoverAmount, fastWithdrawFeeRate);
         if (withdrawToL1 == 1) {
             // store L1 withdraw data hash to wait relayer consuming it
-            // (accountIdOfNonce, subAccountIdOfNonce, nonce) ensures the uniqueness of withdraw hash
-            uint128 acceptAmount = recoveryDecimals(amount, rt.decimals);
-            bytes32 withdrawHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, acceptAmount, fastWithdrawFeeRate);
             pendingL1Withdraws[withdrawHash] = true;
             emit WithdrawalPendingL1(withdrawHash);
         } else {
-            if (fastWithdraw == 1) {
-                // recover withdraw amount
-                uint128 acceptAmount = recoveryDecimals(amount, rt.decimals);
-                uint128 dustAmount = amount - improveDecimals(acceptAmount, rt.decimals);
-                bytes32 fwHash = getFastWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, acceptAmount, fastWithdrawFeeRate);
-                address acceptor = accepts[accountId][fwHash];
-                if (acceptor == address(0)) {
-                    // receiver act as a acceptor
-                    accepts[accountId][fwHash] = owner;
-                    increasePendingBalance(tokenId, owner, amount);
-                } else {
-                    increasePendingBalance(tokenId, acceptor, amount - dustAmount);
-                    // add dust to owner
-                    if (dustAmount > 0) {
-                        increasePendingBalance(tokenId, owner, dustAmount);
-                    }
-                }
-            } else {
+            address acceptor = accepts[withdrawHash];
+            if (acceptor == address(0)) {
+                // receiver act as a acceptor
+                accepts[withdrawHash] = owner;
                 increasePendingBalance(tokenId, owner, amount);
+            } else {
+                increasePendingBalance(tokenId, acceptor, amount);
             }
         }
     }
