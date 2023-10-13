@@ -432,27 +432,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Interactions===
         IERC20(tokenAddress).safeTransferFrom(acceptor, receiver, amountReceive);
-        if (msg.sender != acceptor) {
-            require(brokerAllowance(tokenId, acceptor, msg.sender) >= amountReceive, "F1");
-            brokerAllowances[tokenId][acceptor][msg.sender] -= amountReceive;
-        }
         emit Accept(acceptor, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
-    }
-
-    /// @return Return the accept allowance of broker
-    function brokerAllowance(uint16 tokenId, address acceptor, address broker) public view returns (uint128) {
-        return brokerAllowances[tokenId][acceptor][broker];
-    }
-
-    /// @notice Give allowance to broker to call accept
-    /// @param tokenId token that transfer to the receiver of accept request from acceptor or broker
-    /// @param broker who are allowed to do accept by acceptor(the msg.sender)
-    /// @param amount the accept allowance of broker
-    function brokerApprove(uint16 tokenId, address broker, uint128 amount) external returns (bool) {
-        require(broker != address(0), "G");
-        brokerAllowances[tokenId][msg.sender][broker] = amount;
-        emit BrokerApprove(tokenId, msg.sender, broker, amount);
-        return true;
     }
 
     function _checkAccept(address acceptor, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) internal active returns (uint128 amountReceive, address tokenAddress) {
