@@ -14,10 +14,9 @@ import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
-import {IL2Gateway} from "../interfaces/IL2Gateway.sol";
 
 
-contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL2Gateway, IL2Gateway {
+contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL2Gateway {
     using SafeERC20 for IERC20;
 
     /// @dev Address represent eth when deposit or withdraw
