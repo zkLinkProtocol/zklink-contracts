@@ -7,11 +7,12 @@ import "./zksync/Config.sol";
 import "./interfaces/IVerifier.sol";
 import "./interfaces/IL2Gateway.sol";
 import "./zksync/SafeCast.sol";
+import "./ZkLinkAcceptor.sol";
 
 /// @title ZkLink storage contract
 /// @dev Be carefully to change the order of variables
 /// @author zk.link
-contract Storage is Config {
+contract Storage is ZkLinkAcceptor, Config {
     /// @dev Used to safely call `delegatecall`, immutable state variables don't occupy storage slot
     address internal immutable self = address(this);
 
@@ -96,11 +97,6 @@ contract Storage is Config {
     // the key is the `syncHash` of `StoredBlockInfo`
     // the value is the `synchronizedChains` of `syncHash` collected from all other chains
     mapping(bytes32 => uint256) internal synchronizedChains;
-
-    /// @dev Accept infos of fast withdraw of account
-    /// @dev key is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate))
-    /// @dev value is the acceptor
-    mapping(bytes32 => address) public accepts;
 
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;
@@ -207,12 +203,6 @@ contract Storage is Config {
     function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
         // overflow is impossible,  `_decimals` has been checked when register token
         return _amount / SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals));
-    }
-
-    /// @dev Return accept record hash for fast withdraw
-    /// @dev (accountIdOfNonce, subAccountIdOfNonce, nonce) ensures the uniqueness of withdraw hash
-    function getWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate));
     }
 
     /// @notice Performs a delegatecall to the contract implementation

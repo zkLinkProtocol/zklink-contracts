@@ -383,95 +383,20 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         totalBlocksSynchronized = blockNumber;
     }
 
-    // =======================Fast withdraw and Accept======================
-
-    /// @notice Acceptor accept a eth fast withdraw, acceptor will get a fee for profit
-    /// @param receiver User receive token from acceptor (the owner of withdraw operation)
-    /// @param amount The amount of withdraw operation
-    /// @param withdrawFeeRate Fast withdraw fee rate taken by acceptor
-    /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
-    /// @param subAccountIdOfNonce SubAccount that supply nonce
-    /// @param nonce SubAccount nonce, used to produce unique accept info
-    function acceptETH(address payable receiver, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable nonReentrant {
-        // ===Checks===
-        uint16 tokenId = tokenIds[ETH_ADDRESS];
-        (uint128 amountReceive, ) =
-        _checkAccept(msg.sender, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
-
-        // ===Interactions===
-        // make sure msg value >= amountReceive
-        uint256 amountReturn = msg.value - amountReceive;
-        // msg.sender should set a reasonable gas limit when call this function
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = receiver.call{value: amountReceive}("");
-        require(success, "E0");
-        // if send too more eth then return back to msg sender
-        if (amountReturn > 0) {
-            // it's safe to use call to msg.sender and can send all gas left to it
-            // solhint-disable-next-line avoid-low-level-calls
-            (success, ) = msg.sender.call{value: amountReturn}("");
-            require(success, "E1");
-        }
-        emit Accept(msg.sender, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
-    }
-
-    /// @notice Acceptor accept a erc20 token fast withdraw, acceptor will get a fee for profit
-    /// @param receiver User receive token from acceptor (the owner of withdraw operation)
-    /// @param tokenId Token id
-    /// @param amount The amount of withdraw operation
-    /// @param withdrawFeeRate Fast withdraw fee rate taken by acceptor
-    /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
-    /// @param subAccountIdOfNonce SubAccount that supply nonce
-    /// @param nonce SubAccount nonce, used to produce unique accept info
-    function acceptERC20(address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external nonReentrant {
-        // ===Checks===
-        (uint128 amountReceive, address tokenAddress) =
-        _checkAccept(msg.sender, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
-
-        // ===Interactions===
-        IERC20(tokenAddress).safeTransferFrom(msg.sender, receiver, amountReceive);
-        emit Accept(msg.sender, receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
-    }
-
-    function _checkAccept(address acceptor, address receiver, uint16 tokenId, uint128 amount, uint16 withdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) internal active returns (uint128 amountReceive, address tokenAddress) {
-        // acceptor and receiver MUST be set and MUST not be the same
-        require(acceptor != address(0), "H0");
-        require(receiver != address(0), "H1");
-        require(receiver != acceptor, "H2");
-        // token MUST be registered to ZkLink
-        RegisteredToken memory rt = tokens[tokenId];
-        require(rt.registered, "H3");
-        tokenAddress = rt.tokenAddress;
-        // feeRate MUST be valid and MUST not be 100%
-        require(withdrawFeeRate < MAX_ACCEPT_FEE_RATE, "H4");
-        amountReceive = amount * (MAX_ACCEPT_FEE_RATE - withdrawFeeRate) / MAX_ACCEPT_FEE_RATE;
-
-        // accept tx may be later than block exec tx(with user withdraw op)
-        bytes32 hash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate);
-        require(accepts[hash] == address(0), "H6");
-
-        // ===Effects===
-        accepts[hash] = acceptor;
-    }
-
     // =======================Withdraw to L1======================
     /// @notice Withdraw token to L1 for user by gateway
     /// @param owner User receive token on L1
-    /// @param tokenId Token id
+    /// @param token Token address
     /// @param amount The amount(recovered decimals) of withdraw operation
     /// @param fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
     /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
     /// @param subAccountIdOfNonce SubAccount that supply nonce
     /// @param nonce SubAccount nonce, used to produce unique accept info
-    function withdrawToL1(address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable nonReentrant {
+    function withdrawToL1(address owner, address token, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable nonReentrant {
         // ===Checks===
         // ensure withdraw data is not executed
-        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, amount, fastWithdrawFeeRate);
+        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, token, amount, fastWithdrawFeeRate);
         require(pendingL1Withdraws[withdrawHash] == true, "M0");
-
-        // token MUST be registered to ZkLink
-        RegisteredToken memory rt = tokens[tokenId];
-        require(rt.registered, "M1");
 
         // ===Effects===
         pendingL1Withdraws[withdrawHash] = false;
@@ -479,11 +404,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Interactions===
         // transfer token to gateway
         // send msg.value as bridge fee to gateway
-        if (rt.tokenAddress == ETH_ADDRESS) {
+        if (token == ETH_ADDRESS) {
             gateway.withdrawETH{value: msg.value + amount}(owner, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         } else {
-            IERC20(rt.tokenAddress).safeApprove(address(gateway), amount);
-            gateway.withdrawERC20{value: msg.value}(owner, rt.tokenAddress, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
+            IERC20(token).safeApprove(address(gateway), amount);
+            gateway.withdrawERC20{value: msg.value}(owner, token, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         }
         emit WithdrawalL1(withdrawHash);
     }

@@ -7,23 +7,16 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 import {LineaGateway} from "./LineaGateway.sol";
+import "../ZkLinkAcceptor.sol";
 
-contract LineaL1Gateway is LineaGateway, ILineaL1Gateway {
+contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
     using SafeERC20 for IERC20;
-
-    /// @dev Address represent eth when deposit or withdraw
-    address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @notice L2 claim message gas fee users should pay for
     uint64 public fee;
 
     /// @notice Used to prevent off-chain monitoring events from being lost
     uint192 public txNonce;
-
-    /// @dev Accept infos of fast withdraw of account
-    /// @dev key is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, token, amount, fastWithdrawFeeRate))
-    /// @dev value is the acceptor
-    mapping(bytes32 => address) public accepts;
 
     function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
@@ -110,11 +103,5 @@ contract LineaL1Gateway is LineaGateway, ILineaL1Gateway {
             accepts[withdrawHash] = _owner;
         }
         return receiver;
-    }
-
-    /// @dev Return accept record hash for fast withdraw
-    /// @dev (accountIdOfNonce, subAccountIdOfNonce, nonce) ensures the uniqueness of withdraw hash
-    function getWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, address nativeToken, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, nativeToken, amount, fastWithdrawFeeRate));
     }
 }

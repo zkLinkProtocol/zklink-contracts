@@ -628,7 +628,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         // recover withdraw amount
         uint128 recoverAmount = recoveryDecimals(amount, rt.decimals);
-        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, tokenId, recoverAmount, fastWithdrawFeeRate);
+        bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, rt.tokenAddress, recoverAmount, fastWithdrawFeeRate);
         if (withdrawToL1 == 1) {
             // store L1 withdraw data hash to wait relayer consuming it
             pendingL1Withdraws[withdrawHash] = true;
