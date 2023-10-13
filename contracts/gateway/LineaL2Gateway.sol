@@ -9,13 +9,19 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
+import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
+import {IL2Gateway} from "../interfaces/IL2Gateway.sol";
 
-contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL2Gateway {
+
+contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL2Gateway, IL2Gateway {
     using SafeERC20 for IERC20;
+
+    /// @dev Address represent eth when deposit or withdraw
+    address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @notice Linea message service address on Linea
     IMessageService public messageService;
@@ -41,6 +47,11 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     /// @dev Modifier to make sure the original sender is LineaL1Gateway.
     modifier onlyRemoteGateway() {
         require(messageService.sender() == remoteGateway, "Not remote gateway");
+        _;
+    }
+
+    modifier onlyZkLink() {
+        require(msg.sender == address(zkLinkContract), "Not zklink contract");
         _;
     }
 
@@ -106,6 +117,64 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         // deposit erc20 to zkLink
         zkLinkContract.depositERC20(IERC20(targetToken), uint104(_amount), _zkLinkAddress, _subAccountId, _mapping);
         emit ClaimedDepositERC20(targetToken, _amount, _zkLinkAddress, _subAccountId, _mapping);
+    }
+
+    /// @notice Withdraw ETH to L1 for owner
+    /// @param _owner The address received eth on L1
+    /// @param _amount The eth amount received
+    /// @param _accountIdOfNonce Account that supply nonce, may be different from accountId
+    /// @param _subAccountIdOfNonce SubAccount that supply nonce
+    /// @param _nonce SubAccount nonce, used to produce unique accept info
+    /// @param _fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
+    function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink {
+        require(msg.value == _amount + messageService.minimumFeeInWei(), "Invalid fee");
+
+        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimWithdrawETHCallback, (_owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate));
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), 0, callData);
+    }
+
+    /// @notice Withdraw ERC20 token to L1 for owner
+    /// @dev gateway need to pay fee to message service
+    /// @param _owner The address received token on L1
+    /// @param _token The token address on L2
+    /// @param _amount The token amount received
+    /// @param _accountIdOfNonce Account that supply nonce, may be different from accountId
+    /// @param _subAccountIdOfNonce SubAccount that supply nonce
+    /// @param _nonce SubAccount nonce, used to produce unique accept info
+    /// @param _fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
+    function withdrawERC20(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink {
+        uint256 coinbaseFee = messageService.minimumFeeInWei();
+        require(msg.value == coinbaseFee * 2, "Invalid fee");
+
+        // transfer token from sender to LineaL1Gateway
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+
+        // approve bridge
+        // bridge token to remoteGateway(the first message send to Linea)
+        // find the native token
+        bool isUSDC;
+        address nativeToken;
+        if (_token == usdcBridge.usdc()) {
+            IERC20(_token).safeApprove(address(usdcBridge), _amount);
+            usdcBridge.depositTo{value: coinbaseFee}(_amount, remoteGateway);
+            isUSDC = true;
+            nativeToken = _token;
+        } else {
+            IERC20(_token).safeApprove(address(tokenBridge), _amount);
+            tokenBridge.bridgeToken{value: coinbaseFee}(_token, _amount, remoteGateway);
+            isUSDC = false;
+            nativeToken = tokenBridge.bridgedToNativeToken(_token);
+            if (nativeToken == address(0)) {
+                nativeToken = _token;
+            }
+        }
+
+        // send depositERC20 command to LineaL2Gateway(the second message send to Linea)
+        bytes memory executeData = abi.encodeCall(
+            ILineaL1Gateway.claimWithdrawERC20Callback,
+            (isUSDC, nativeToken, _owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate)
+        );
+        messageService.sendMessage{value: coinbaseFee}(remoteGateway, 0, executeData);
     }
 
     /// @notice Set remote Gateway address
