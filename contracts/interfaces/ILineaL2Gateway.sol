@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-interface ILineaL2Gateway {
+import {IL2Gateway} from "./IL2Gateway.sol";
+
+interface ILineaL2Gateway is IL2Gateway {
     event ClaimedDepositETH(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount);
     event ClaimedDepositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping);
     event SetRemoteGateway(address remoteGateWay);
