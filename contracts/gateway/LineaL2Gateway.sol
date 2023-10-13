@@ -69,12 +69,12 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @dev ETH is transferred from LineaL1Gateway to LineaL2Gateway and then deposit to zkLink for user
-    function claimDepositETH(uint256 _value, bytes calldata _callData, uint256 _nonce) external override nonReentrant {
+    function claimDepositETH(uint256 _value, bytes calldata _callData, uint256 _nonce) external override nonReentrant whenNotPaused {
         // no fee on origin chain
         messageService.claimMessage(remoteGateway, address(this), 0, _value, payable(msg.sender), _callData, _nonce);
     }
 
-    function claimDepositETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway whenNotPaused {
+    function claimDepositETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
         require(msg.value == _amount, "claim eth value not match");
 
         zkLinkContract.depositETH{value: _amount}(_zkLinkAddress, _subAccountId);
@@ -82,7 +82,7 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     }
 
     /// @dev ERC20 token is transferred from LineaL1Gateway to LineaL2Gateway and then deposit to zkLink for user
-    function claimDepositERC20(address _remoteBridge, address _bridge, bytes calldata _bridgeCallData, uint256 _bridgeNonce, bytes calldata _cbCallData, uint256 _cbNonce) external override nonReentrant {
+    function claimDepositERC20(address _remoteBridge, address _bridge, bytes calldata _bridgeCallData, uint256 _bridgeNonce, bytes calldata _cbCallData, uint256 _cbNonce) external override nonReentrant whenNotPaused {
         // when depositERC20 of LineaL1Gateway is called, the message service on L1 will generate two consecutive nonce messages.
         require(_cbNonce == _bridgeNonce + 1, "Claim erc20 message nonce is not continuous");
 
@@ -95,7 +95,7 @@ contract LineaL2Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         messageService.claimMessage(remoteGateway, address(this), 0, 0, payable(msg.sender), _cbCallData, _cbNonce);
     }
 
-    function claimDepositERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway whenNotPaused {
+    function claimDepositERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway {
         // find target token on Linea
         address targetToken;
         if (_isUSDC) {

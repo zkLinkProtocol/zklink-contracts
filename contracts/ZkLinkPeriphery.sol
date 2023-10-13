@@ -480,10 +480,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // transfer token to gateway
         // send msg.value as bridge fee to gateway
         if (rt.tokenAddress == ETH_ADDRESS) {
-            gateway.withdrawETH{value: msg.value + amount}(owner, amount, withdrawHash);
+            gateway.withdrawETH{value: msg.value + amount}(owner, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         } else {
             IERC20(rt.tokenAddress).safeApprove(address(gateway), amount);
-            gateway.withdrawERC20{value: msg.value}(owner, rt.tokenAddress, amount, withdrawHash);
+            gateway.withdrawERC20{value: msg.value}(owner, rt.tokenAddress, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         }
         emit WithdrawalL1(withdrawHash);
     }

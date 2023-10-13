@@ -38,6 +38,18 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     /// @notice Linea USDC bridge on L1
     IUSDCBridge public usdcBridge;
 
+    /// @dev Modifier to make sure the caller is the known message service.
+    modifier onlyMessageService() {
+        require(msg.sender == address(messageService), "Not message service");
+        _;
+    }
+
+    /// @dev Modifier to make sure the original sender is LineaL1Gateway.
+    modifier onlyRemoteGateway() {
+        require(messageService.sender() == remoteGateway, "Not remote gateway");
+        _;
+    }
+
     function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -105,6 +117,14 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
 
         emit Deposit(txNonce, _token, _amount, _zkLinkAddress, _subAccountId, _mapping);
         txNonce++;
+    }
+
+    function claimWithdrawETHCallback(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyMessageService onlyRemoteGateway {
+
+    }
+
+    function claimWithdrawERC20Callback(bool _isUSDC, address _nativeToken, address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external override onlyMessageService onlyRemoteGateway {
+
     }
 
     /// @notice Set deposit fee
