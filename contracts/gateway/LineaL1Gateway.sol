@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
-import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
-import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
+import {LineaGateway} from "./LineaGateway.sol";
 
-contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaL1Gateway {
+contract LineaL1Gateway is LineaGateway, ILineaL1Gateway {
     using SafeERC20 for IERC20;
 
     /// @dev Address represent eth when deposit or withdraw
@@ -26,49 +20,17 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     /// @notice Used to prevent off-chain monitoring events from being lost
     uint192 public txNonce;
 
-    /// @notice Linea message service on L1
-    IMessageService public messageService;
-
-    /// @notice Remote Gateway address on Linea
-    address public remoteGateway;
-
-    /// @notice Linea token bridge on L1
-    ITokenBridge public tokenBridge;
-
-    /// @notice Linea USDC bridge on L1
-    IUSDCBridge public usdcBridge;
-
-    /// @dev Modifier to make sure the caller is the known message service.
-    modifier onlyMessageService() {
-        require(msg.sender == address(messageService), "Not message service");
-        _;
-    }
-
-    /// @dev Modifier to make sure the original sender is LineaL1Gateway.
-    modifier onlyRemoteGateway() {
-        require(messageService.sender() == remoteGateway, "Not remote gateway");
-        _;
-    }
-
-    function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-        __ReentrancyGuard_init();
-        __Pausable_init();
-
-        messageService = _messageService;
-        tokenBridge = _tokenBridge;
-        usdcBridge = _usdcBridge;
-    }
-
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    /// @dev Accept infos of fast withdraw of account
+    /// @dev key is keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, token, amount, fastWithdrawFeeRate))
+    /// @dev value is the acceptor
+    mapping(bytes32 => address) public accepts;
 
     function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
-        require(msg.value > fee, "msg value too low");
+        require(msg.value > fee, "Value too low");
         uint256 amount = msg.value - fee;
 
-        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimDepositETHCallback, (_zkLinkAddress, _subAccountId, amount));
+        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimETHCallback, (_zkLinkAddress, _subAccountId, amount));
         // transfer no fee to Linea
         messageService.sendMessage{value: amount}(remoteGateway, 0, callData);
 
@@ -77,77 +39,53 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
     }
 
     function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override nonReentrant whenNotPaused {
-        require(msg.value == fee, "invalid msg value");
-        require(_amount > 0, "invalid token amount");
+        require(msg.value == fee, "Invalid msg value");
+        require(_amount > 0, "Invalid token amount");
 
         // transfer token from sender to LineaL1Gateway
         uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-
-        // approve bridge
-        // bridge token to remoteGateway(the first message send to Linea)
-        // find the native token
-        bool isUSDC;
-        address nativeToken;
-        if (_token == usdcBridge.usdc()) {
-            IERC20(_token).safeApprove(address(usdcBridge), _amount);
-            usdcBridge.depositTo(_amount, remoteGateway);
-            isUSDC = true;
-            nativeToken = _token;
-        } else {
-            IERC20(_token).safeApprove(address(tokenBridge), _amount);
-            tokenBridge.bridgeToken(_token, _amount, remoteGateway);
-            isUSDC = false;
-            nativeToken = tokenBridge.bridgedToNativeToken(_token);
-            if (nativeToken == address(0)) {
-                nativeToken = _token;
-            }
-        }
-
         // only support pure erc20 token
         uint256 balanceAfter = IERC20(_token).balanceOf(address(this));
-        require(balanceAfter == balanceBefore, "only support pure erc20 token");
+        require(balanceAfter - balanceBefore == _amount, "Only support pure erc20 token");
+
+        // bridge token to remoteGateway(the first message send to Linea)
+        // no need to pay fee to message service
+        (bool isUSDC, address nativeToken) = bridgeERC20ToRemoteGateway(_token, _amount, 0);
 
         // send depositERC20 command to LineaL2Gateway(the second message send to Linea)
-        bytes memory executeData = abi.encodeCall(
-            ILineaL2Gateway.claimDepositERC20Callback,
-            (isUSDC, nativeToken, _amount, _zkLinkAddress, _subAccountId, _mapping)
-        );
+        bytes memory executeData = abi.encodeCall(ILineaL2Gateway.claimERC20Callback, (isUSDC, nativeToken, _amount, _zkLinkAddress, _subAccountId, _mapping));
         messageService.sendMessage(remoteGateway, 0, executeData);
 
         emit Deposit(txNonce, _token, _amount, _zkLinkAddress, _subAccountId, _mapping);
         txNonce++;
     }
 
-    function claimWithdrawETHCallback(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyMessageService onlyRemoteGateway {
+    function claimETHCallback(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyMessageService onlyRemoteGateway {
+        require(msg.value == _amount, "Claim eth value not match");
 
+        // send eth to receiver
+        address receiver = getWithdrawClaimReceiver(_owner, ETH_ADDRESS, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = receiver.call{value: _amount}("");
+        require(success, "Claim eth failed");
+        emit ClaimedWithdrawETH(receiver, _amount);
     }
 
-    function claimWithdrawERC20Callback(bool _isUSDC, address _nativeToken, address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external override onlyMessageService onlyRemoteGateway {
+    function claimERC20Callback(bool _isUSDC, address _nativeToken, address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external override onlyMessageService onlyRemoteGateway {
+        // find target token on L1
+        address targetToken = getTargetToken(_isUSDC, _nativeToken);
 
+        // send token to receiver
+        address receiver = getWithdrawClaimReceiver(_owner, targetToken, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
+        IERC20(targetToken).safeTransfer(receiver, _amount);
+        emit ClaimedWithdrawERC20(receiver, targetToken, _amount);
     }
 
     /// @notice Set deposit fee
     function setFee(uint64 _fee) external onlyOwner {
         fee = _fee;
         emit SetFee(_fee);
-    }
-
-    /// @notice Set remote Gateway address
-    /// @param _remoteGateway remote gateway address
-    function setRemoteGateway(address _remoteGateway) external onlyOwner {
-        remoteGateway = _remoteGateway;
-        emit SetRemoteGateway(_remoteGateway);
-    }
-
-    /// @dev Pause the contract, can only be called by the owner
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /// @dev Unpause the contract, can only be called by the owner
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     /// @notice Withdraw fees
@@ -158,5 +96,25 @@ contract LineaL1Gateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardU
         require(success, "withdraw fee failed");
 
         emit WithdrawFee(_receiver, _amount);
+    }
+
+    /// @dev Return the receiver of withdraw claim
+    /// @dev If acceptor accepted this withdraw then return acceptor or return owner
+    function getWithdrawClaimReceiver(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) internal returns (address) {
+        bytes32 withdrawHash = getWithdrawHash(_accountIdOfNonce, _subAccountIdOfNonce, _nonce, _owner, _token, _amount, _fastWithdrawFeeRate);
+        address acceptor = accepts[withdrawHash];
+        address receiver = acceptor;
+        if (acceptor == address(0)) {
+            // receiver act as a acceptor
+            receiver = _owner;
+            accepts[withdrawHash] = _owner;
+        }
+        return receiver;
+    }
+
+    /// @dev Return accept record hash for fast withdraw
+    /// @dev (accountIdOfNonce, subAccountIdOfNonce, nonce) ensures the uniqueness of withdraw hash
+    function getWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, address nativeToken, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, nativeToken, amount, fastWithdrawFeeRate));
     }
 }
