@@ -86,12 +86,6 @@ contract Config {
     /// @dev Enable commit a compressed block
     bool internal constant ENABLE_COMMIT_COMPRESSED_BLOCK = $(ENABLE_COMMIT_COMPRESSED_BLOCK);
 
-    /// @dev Address represent eth when deposit or withdraw
-    address internal constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
-    /// @dev When set fee = 100, it means 1%
-    uint16 internal constant MAX_ACCEPT_FEE_RATE = 10000;
-
     /// @dev Token decimals is a fixed value at layer two in ZkLink
     uint8 internal constant TOKEN_DECIMALS_OF_LAYER2 = 18;
 
