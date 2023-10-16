@@ -334,67 +334,67 @@ task(
   "setL1RemoteGateway",
   "Set l2 gateway address to l1 gateway"
 )
-  .addParam("targetNetwork", "target network name")
+  .addParam("l2Network", "l2 network name that gateway deployed")
   .setAction(async (taskArgs, hardhat) => {
     const {ethers, network} = hardhat;
 
-    const {targetNetwork} = taskArgs;
-    console.log("targetNetwork", targetNetwork);
+    const {l2Network} = taskArgs;
+    console.log("l2Network", l2Network);
 
     // get l2 gateway contract info
-    const {contractName: l2ContractName} = gatewayConfig[targetNetwork];
+    const {contractName: l2ContractName} = gatewayConfig[l2Network];
     console.log(`
                 logName:${logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName}
                 contractName: ${l2ContractName}
                 env: ${process.env.NET}
         `)
-    const {deployLogPath, deployLog: l2DeployInfo} = getDeployLog(
+    const {deployLogPath, deployLog: l2GatewayDeployedInfo} = getDeployLog(
       logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName,
-      targetNetwork
+      l2Network
     );
-    console.log("l2 gateway deploy info:", l2DeployInfo)
+    console.log("l2 gateway deploy info:", l2GatewayDeployedInfo)
 
 
     // get current network contract info
-    const {contractName: l1ContractName} = gatewayConfig[network.name][targetNetwork]
-    const {deployLog: l1DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName)
+    const {contractName: l1ContractName} = gatewayConfig[network.name][l2Network]
+    const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName)
     const contractFactory = await ethers.getContractFactory(l1ContractName)
-    const contract = await contractFactory.attach(l1DeployInfo[logName.DEPLOY_GATEWAY])
+    const contract = await contractFactory.attach(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
 
     // get signer
     const signer = (await ethers.getSigners())[0]
-    const tx = await contract.connect(signer).setRemoteGateway(l2DeployInfo[logName.DEPLOY_GATEWAY])
+    const tx = await contract.connect(signer).setRemoteGateway(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
     console.log("tx", tx.hash)
   });
 
 task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
-  .addParam("targetNetwork", "target network name")
+  .addParam("l1Network", "l1 network name that gateway deployed")
   .setAction(async (taskArgs, hardhat) => {
     const {ethers, network} = hardhat
-    const {targetNetwork} = taskArgs
-    console.log("targetNetwork", targetNetwork)
+    const {l1Network} = taskArgs
+    console.log("l1Network", l1Network)
 
     // get l1 gateway contract info
-    const {contractName: l1ContractName} = gatewayConfig[targetNetwork][network.name]
-    const {deployLog: l1DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName, targetNetwork)
-    console.log({l1DeployInfo})
+    const {contractName: l1ContractName} = gatewayConfig[l1Network][network.name]
+    const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName, l1Network)
+    console.log({l1GatewayDeployedInfo})
 
     // get l2 gateway contract info
     const {contractName: l2ContractName} = gatewayConfig[network.name]
-    const {deployLog: l2DeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l2ContractName, network.name)
-    console.log({l2DeployInfo})
+    const {deployLog: l2GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l2ContractName, network.name)
+    console.log({l2GatewayDeployedInfo})
     const contractFactory = await ethers.getContractFactory(l2ContractName)
-    const contract = await contractFactory.attach(l2DeployInfo[logName.DEPLOY_GATEWAY])
+    const contract = await contractFactory.attach(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
 
     // get signer
     const signer = (await ethers.getSigners())[0]
 
-    const tx = await contract.connect(signer).setRemoteGateway(l1DeployInfo[logName.DEPLOY_GATEWAY])
+    const tx = await contract.connect(signer).setRemoteGateway(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
     console.log("tx:", tx.hash)
   })
 
 task("setZkLinkToL1Gateway", "set zkLink address to l1 gateway")
-  .addParam("l2Network", "l2 network name")
+  .addParam("l2Network", "l2 network name that gateway deployed")
   .setAction(async (taskArgs, hardhat) => {
     const {network} = hardhat
     const {l2Network} = taskArgs
@@ -439,7 +439,7 @@ task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
   })
 
 task("setL1GatewayToZkLink", "set gateway address to zklink")
-  .addParam("l2Network", "l2 network name")
+  .addParam("l2Network", "l2 network name that gateway deployed")
   .setAction(async (taskArgs, hardhat) => {
     const {network} = hardhat
     const {l2Network} = taskArgs
