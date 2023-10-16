@@ -342,25 +342,17 @@ task(
         console.log("l2Network", l2Network);
 
         // get l2 gateway contract info
-        if (!gatewayConfig[l2Network]) throw Error("l2 gateway config not found")
-        const {contractName: l2ContractName} = gatewayConfig[l2Network];
-        console.log(`
-                logName:${logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName}
-                contractName: ${l2ContractName}
-                env: ${process.env.NET}
-        `)
-        const {deployLogPath, deployLog: l2GatewayDeployedInfo} = getDeployLog(
-            logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName,
+        const {deployLog: l2GatewayDeployedInfo} = getDeployLog(
+            logName.DEPLOY_L2_GATEWAY_LOG_PREFIX,
             l2Network
         );
         console.log("l2 gateway deploy info:", l2GatewayDeployedInfo)
-
 
         // get current network contract info
         if (!gatewayConfig[network.name][l2Network]) throw Error("l1 gateway config not found")
         const {contractName: l1ContractName} = gatewayConfig[network.name][l2Network]
         console.log("l1 contract name",l1ContractName)
-        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName)
+        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + l2Network)
         console.log("l1 gateway deployed info",l1GatewayDeployedInfo)
         const contractFactory = await ethers.getContractFactory(l1ContractName)
         const contract = await contractFactory.attach(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
@@ -383,16 +375,14 @@ task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
         console.log("l1Network", l1Network)
 
         // get l1 gateway contract info
-        if (!gatewayConfig[l1Network][network.name]) throw Error("l1 gateway config not found")
-        const {contractName: l1ContractName} = gatewayConfig[l1Network][network.name]
-        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName, l1Network)
-        console.log({l1GatewayDeployedInfo})
+        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + network.name, l1Network)
+        console.log("l1GatewayDeployedInfo:",l1GatewayDeployedInfo)
 
         // get l2 gateway contract info
         if (!gatewayConfig[network.name]) throw Error("l2 gateway config not found")
         const {contractName: l2ContractName} = gatewayConfig[network.name]
-        const {deployLog: l2GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l2ContractName, network.name)
-        console.log({l2GatewayDeployedInfo})
+        const {deployLog: l2GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, network.name)
+        console.log("l2GatewayDeployedInfo:",l2GatewayDeployedInfo)
         const contractFactory = await ethers.getContractFactory(l2ContractName)
         const contract = await contractFactory.attach(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
 
@@ -413,7 +403,8 @@ task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
         // get l2 network gateway contract
         if (!gatewayConfig[network.name]) throw Error("gateway config not found")
         const {contractName} = gatewayConfig[network.name]
-        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX)
+        console.log("l2GatewayDeployInfo: ",gatewayDeployInfo)
         const contractFactory = await ethers.getContractFactory(contractName)
         const contract = contractFactory.attach(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
 
@@ -431,7 +422,8 @@ task("setL2GatewayToZkLink", "set gateway address to zklink")
         // get gateway deploy info
         if (!gatewayConfig[network.name]) throw Error("gateway config not found")
         const {contractName} = gatewayConfig[network.name]
-        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX)
+        console.log("l2GatewayDeployInfo:",gatewayDeployInfo)
 
         // get zklink deploy info
         const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);

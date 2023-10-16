@@ -31,7 +31,8 @@ const DEPLOY_LOG_ADD_ETH = "addETH";
 const DEPLOY_LOG_TOKEN2 = "token2";
 
 // consumed in deploy_l1_gateway.js or deploy_l2_gateway.js
-const DEPLOY_GATEWAY_LOG_PREFIX = "deploy_gateway";
+const DEPLOY_L1_GATEWAY_LOG_PREFIX = "deploy_l1_gateway";
+const DEPLOY_L2_GATEWAY_LOG_PREFIX = "deploy_l2_gateway";
 const DEPLOY_GATEWAY = "gateway";
 const DEPLOY_GATEWAY_TARGET = "gatewayTarget";
 
@@ -62,7 +63,8 @@ module.exports = {
   DEPLOY_GAS_ESTIMATE_LOG_PREFIX,
   DEPLOY_LOG_ADD_ETH,
   DEPLOY_LOG_TOKEN2,
-  DEPLOY_GATEWAY_LOG_PREFIX,
+  DEPLOY_L1_GATEWAY_LOG_PREFIX,
+  DEPLOY_L2_GATEWAY_LOG_PREFIX,
   DEPLOY_GATEWAY,
   DEPLOY_GATEWAY_TARGET,
 };

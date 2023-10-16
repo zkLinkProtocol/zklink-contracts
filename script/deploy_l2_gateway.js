@@ -21,7 +21,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
     `);
 
     const { deployLogPath, deployLog } = createOrGetDeployLog(
-      logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName
+      logName.DEPLOY_L2_GATEWAY_LOG_PREFIX
     );
     console.log("load deployLog:", deployLog);
 
@@ -56,10 +56,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
       deployLog[logName.DEPLOY_GATEWAY_TARGET] = impl;
 
       // verify contract
-      if (
-        !(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) ||
-        !taskArgs.skipVerify
-      ) {
+      if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
         console.log("start verify contract");
         await verifyContractCode(hardhat, impl, []);
         deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
