@@ -1,7 +1,8 @@
-const { readDeployContract, readDeployLogField} = require('./utils');
+const { readDeployContract, readDeployLogField, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
 const { layerZero } = require('./layerzero');
 const {extendAddress} = require("./op_utils");
+const gatewayConfig = require("./gateway")
 
 async function governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals) {
     console.log('Adding new ERC20 token to network: ', tokenAddr);
@@ -327,3 +328,118 @@ task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
         const tx = await peripheryContract.connect(oldGovernor).changeGovernor(governor);
         console.log('tx', tx.hash);
     });
+
+
+task(
+    "setL1RemoteGateway",
+    "Set l2 gateway address to l1 gateway"
+)
+    .addParam("l2Network", "l2 network name that gateway deployed")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat;
+
+        const {l2Network} = taskArgs;
+        console.log("l2Network", l2Network);
+
+        // get l2 gateway contract info
+        if (!gatewayConfig[l2Network]) throw Error("l2 gateway config not found")
+        const {contractName: l2ContractName} = gatewayConfig[l2Network];
+        console.log(`
+                logName:${logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName}
+                contractName: ${l2ContractName}
+                env: ${process.env.NET}
+        `)
+        const {deployLogPath, deployLog: l2GatewayDeployedInfo} = getDeployLog(
+            logName.DEPLOY_GATEWAY_LOG_PREFIX + '_' + l2ContractName,
+            l2Network
+        );
+        console.log("l2 gateway deploy info:", l2GatewayDeployedInfo)
+
+
+        // get current network contract info
+        if (!gatewayConfig[network.name][l2Network]) throw Error("l1 gateway config not found")
+        const {contractName: l1ContractName} = gatewayConfig[network.name][l2Network]
+        console.log("l1 contract name",l1ContractName)
+        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName)
+        console.log("l1 gateway deployed info",l1GatewayDeployedInfo)
+        const contractFactory = await ethers.getContractFactory(l1ContractName)
+        const contract = await contractFactory.attach(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+        console.log("l1 gateway address",l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        if ((await ethers.getSigners()).length === 0) throw Error("Please config account in network config")
+        const signer = (await ethers.getSigners())[0]
+        console.log("l2 gateway address",l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+        const tx = await contract.connect(signer).setRemoteGateway(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+        await tx.wait()
+        console.log("tx", tx.hash)
+    });
+
+task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
+    .addParam("l1Network", "l1 network name that gateway deployed")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat
+        const {l1Network} = taskArgs
+        console.log("l1Network", l1Network)
+
+        // get l1 gateway contract info
+        if (!gatewayConfig[l1Network][network.name]) throw Error("l1 gateway config not found")
+        const {contractName: l1ContractName} = gatewayConfig[l1Network][network.name]
+        const {deployLog: l1GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l1ContractName, l1Network)
+        console.log({l1GatewayDeployedInfo})
+
+        // get l2 gateway contract info
+        if (!gatewayConfig[network.name]) throw Error("l2 gateway config not found")
+        const {contractName: l2ContractName} = gatewayConfig[network.name]
+        const {deployLog: l2GatewayDeployedInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + l2ContractName, network.name)
+        console.log({l2GatewayDeployedInfo})
+        const contractFactory = await ethers.getContractFactory(l2ContractName)
+        const contract = await contractFactory.attach(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+
+        const tx = await contract.connect(signer).setRemoteGateway(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx:", tx.hash)
+    })
+
+task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
+    .setAction(async (taskArgs, hardhat) => {
+        const {network} = hardhat
+
+        // get zklink contract info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+
+        // get l2 network gateway contract
+        if (!gatewayConfig[network.name]) throw Error("gateway config not found")
+        const {contractName} = gatewayConfig[network.name]
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+        const contractFactory = await ethers.getContractFactory(contractName)
+        const contract = contractFactory.attach(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+
+        const tx = await contract.connect(signer).setZkLink(zkLinkProxyAddr)
+        console.log("tx: ", tx.hash)
+    })
+
+task("setL2GatewayToZkLink", "set gateway address to zklink")
+    .setAction(async (taskArgs, hardhat) => {
+        const {ethers, network} = hardhat
+
+        // get gateway deploy info
+        if (!gatewayConfig[network.name]) throw Error("gateway config not found")
+        const {contractName} = gatewayConfig[network.name]
+        const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_GATEWAY_LOG_PREFIX + "_" + contractName)
+
+        // get zklink deploy info
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery')
+        const contract = zkLinkFactory.attach(zkLinkProxyAddr)
+
+        // get signer
+        const signer = (await ethers.getSigners())[0]
+        const tx = await contract.connect(signer).setGateway(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
+        console.log("tx:", tx.hash)
+    })

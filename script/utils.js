@@ -44,8 +44,8 @@ function createOrGetDeployLog(name) {
     return {deployLogPath, deployLog};
 }
 
-function getDeployLog(name) {
-    const deployLogPath = `log/${name}_${process.env.NET}.log`;
+function getDeployLog(name, env = process.env.NET) {
+    const deployLogPath = `log/${name}_${env}.log`;
     console.log('deploy log path', deployLogPath);
     if (!fs.existsSync(deployLogPath)) {
         throw 'deploy log not exist';
