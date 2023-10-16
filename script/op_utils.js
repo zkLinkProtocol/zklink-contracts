@@ -21,11 +21,11 @@ const OP_FORCE_EXIT_CHUNKS = 3;
 const OP_ORDER_MATCHING_CHUNKS = 4;
 const OP_DEPOSIT_SIZE = 59;
 const OP_TRANSFER_TO_NEW_SIZE = 52;
-const OP_WITHDRAW_SIZE = 68;
+const OP_WITHDRAW_SIZE = 69;
 const OP_TRANSFER_SIZE = 20;
 const OP_FULL_EXIT_SIZE = 59;
 const OP_CHANGE_PUBKEY_SIZE = 67;
-const OP_FORCE_EXIT_SIZE = 68;
+const OP_FORCE_EXIT_SIZE = 69;
 const OP_ORDER_MATCHING_SIZE = 77;
 const ADDRESS_PREFIX_ZERO_BYTES = "0x000000000000000000000000";
 
@@ -42,9 +42,9 @@ function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, am
         [OP_DEPOSIT,chainId,0,subAccountId,tokenId,targetTokenId,amount,owner]);
 }
 
-function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, fastWithdraw }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8"],
-        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate, fastWithdraw]);
+function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, fastWithdraw, withdrawToL1 }) {
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8","uint8"],
+        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate, fastWithdraw, withdrawToL1]);
     const pubdataArray = ethers.utils.arrayify(pubdata);
     console.assert(pubdataArray.length === OP_WITHDRAW_SIZE, "wrong withdraw pubdata");
     return pubdata;
@@ -63,9 +63,9 @@ function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
-function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, initiatorNonce, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, target }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint32","uint8","uint16","uint16","uint128","bytes32"],
-        [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,initiatorNonce,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,target]);
+function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, initiatorNonce, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, withdrawToL1, target }) {
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint32","uint8","uint16","uint16","uint128","uint8","bytes32"],
+        [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,initiatorNonce,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,withdrawToL1,target]);
     const pubdataArray = ethers.utils.arrayify(pubdata);
     console.assert(pubdataArray.length === OP_FORCE_EXIT_SIZE, "wrong forcedexit pubdata");
     return pubdata;
@@ -163,8 +163,8 @@ function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,c
     return {ethWitness, owner};
 }
 
-function calAcceptHash(receiver, tokenId, amount, withdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
-    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","uint16","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, tokenId, amount, withdrawFeeRate]));
+function calAcceptHash(receiver, token, amount, fastWithdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
+    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","address","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, token, amount, fastWithdrawFeeRate]));
 }
 
 function getRandomInt(max) {

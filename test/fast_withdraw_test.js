@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy} = require('./utils');
+const { deploy, MAX_ACCEPT_FEE_RATE} = require('./utils');
 const { calAcceptHash, extendAddress} = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 const {BigNumber} = require("ethers");
@@ -31,6 +31,7 @@ describe('Fast withdraw unit tests', function () {
         const nonce = 0;
         const fastWithdrawFeeRate = 50;
         const fastWithdraw = 0;
+        const withdrawToL1 = 0;
 
         const op = {
             "chainId": chainId,
@@ -42,7 +43,8 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw
+            "fastWithdraw":fastWithdraw,
+            "withdrawToL1":withdrawToL1
         }
 
         await token2.mintTo(zkLink.address, amount);
@@ -54,32 +56,29 @@ describe('Fast withdraw unit tests', function () {
         expect(b1.sub(b0)).to.eq(amount);
     });
 
-    it('fast withdraw and accept finish, token should be sent to acceptor and dust should be sent to owner', async () => {
+    it('fast withdraw and accept finish, token should be sent to acceptor', async () => {
         const chainId = 1;
         const accountId = 1;
         const subAccountId = 1;
         const token = token5;
         const tokenId = token5Id;
-        const l2Amount = parseEther("10.0000005"); // 10000000500000000000
         const l1Amount = parseUnits("10", 6); // 10000000
-        const l2AmountOfAcceptor = parseEther("10"); // 10000000000000000000
-        const l2DustAmountOfOwner = parseEther("0.0000005"); // 500000000000
+        const l2Amount = parseEther("10"); // 10000000000000000000
         const fee = 0;
         const owner = alice.address;
         const nonce = 1;
         const fastWithdrawFeeRate = 50;
         const fastWithdraw = 1;
-        const MAX_WITHDRAW_FEE_RATE = 10000;
+        const withdrawToL1 = 0;
 
         const bobBalance0 = await token.balanceOf(bob.address);
         const bobPendingBalance0 = await periphery.getPendingBalance(extendAddress(bob.address), tokenId);
         const aliceBalance0 = await token.balanceOf(alice.address);
-        const alicePendingBalance0 = await periphery.getPendingBalance(extendAddress(alice.address), tokenId);
 
         await token.mintTo(bob.address, l1Amount);
-        const amountTransfer = l1Amount.mul(BigNumber.from(MAX_WITHDRAW_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_WITHDRAW_FEE_RATE));
+        const amountTransfer = l1Amount.mul(BigNumber.from(MAX_ACCEPT_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_ACCEPT_FEE_RATE));
         await token.connect(bob).approve(periphery.address, amountTransfer);
-        await periphery.connect(bob).acceptERC20(bob.address, accountId, owner, tokenId, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+        await periphery.connect(bob).acceptERC20(owner, token.address, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
 
         const op = {
             "chainId": chainId,
@@ -91,19 +90,18 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw
+            "fastWithdraw":fastWithdraw,
+            "withdrawToL1":withdrawToL1
         }
 
         await zkLink.testExecuteWithdraw(op);
 
         const aliceBalance1 = await token.balanceOf(alice.address);
-        const alicePendingBalance1 = await periphery.getPendingBalance(extendAddress(alice.address), tokenId);
         const bobBalance1 = await token.balanceOf(bob.address);
         const bobPendingBalance1 = await periphery.getPendingBalance(extendAddress(bob.address), tokenId);
         expect(aliceBalance1.sub(aliceBalance0)).to.eq(amountTransfer); // owner receive amountTransfer = l1Amount - fee
         expect(bobBalance1.sub(bobBalance0)).to.eq(l1Amount.sub(amountTransfer)); // l1Amount - amountTransfer is the profit of acceptor
-        expect(bobPendingBalance1.sub(bobPendingBalance0)).to.eq(l2AmountOfAcceptor); // acceptor pending balance increase
-        expect(alicePendingBalance1.sub(alicePendingBalance0)).to.eq(l2DustAmountOfOwner); // owner pending balance increase dust amount
+        expect(bobPendingBalance1.sub(bobPendingBalance0)).to.eq(l2Amount); // acceptor pending balance increase
     });
 
     it('fast withdraw but accept not finish, token should be sent to owner as normal', async () => {
@@ -111,12 +109,14 @@ describe('Fast withdraw unit tests', function () {
         const accountId = 1;
         const subAccountId = 1;
         const tokenId = token2Id;
+        const token = token2;
         const amount = parseEther("10");
         const fee = 0;
         const owner = alice.address;
         const nonce = 2;
         const fastWithdrawFeeRate = 50;
         const fastWithdraw = 1;
+        const withdrawToL1 = 0;
 
         const aliceBalance0 = await token2.balanceOf(alice.address);
 
@@ -130,7 +130,8 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw
+            "fastWithdraw":fastWithdraw,
+            "withdrawToL1":withdrawToL1
         }
 
         await token2.mintTo(zkLink.address, amount);
@@ -139,7 +140,7 @@ describe('Fast withdraw unit tests', function () {
         await periphery.withdrawPendingBalance(alice.address, tokenId, amount);
         const aliceBalance1 = await token2.balanceOf(alice.address);
         expect(aliceBalance1.sub(aliceBalance0)).to.eq(amount);
-        const hash = calAcceptHash(owner, tokenId, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
-        expect(await periphery.getAcceptor(accountId, hash)).to.eq(owner);
+        const hash = calAcceptHash(owner, token.address, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+        expect(await periphery.getAcceptor(hash)).to.eq(owner);
     });
 });

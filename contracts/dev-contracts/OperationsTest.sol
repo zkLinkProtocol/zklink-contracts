@@ -39,6 +39,7 @@ contract OperationsTest {
         require(_example.nonce == parsed.nonce, "nonce");
         require(_example.fastWithdrawFeeRate == parsed.fastWithdrawFeeRate, "fr");
         require(_example.fastWithdraw == parsed.fastWithdraw, "fw");
+        require(_example.withdrawToL1 == parsed.withdrawToL1, "l1");
     }
 
     function testFullExitPubdata(Operations.FullExit calldata _example, bytes calldata _pubdata) external pure {
@@ -71,6 +72,7 @@ contract OperationsTest {
         require(_example.targetAccountId == parsed.targetAccountId, "taid");
         require(_example.tokenId == parsed.tokenId, "tcc");
         require(_example.amount == parsed.amount, "amn");
+        require(_example.withdrawToL1 == parsed.withdrawToL1, "l1");
         require(_example.target == parsed.target, "tar");
     }
 

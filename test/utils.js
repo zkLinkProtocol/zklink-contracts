@@ -24,6 +24,8 @@ const USD_TOKEN_ID = 1;
 const MIN_USD_STABLE_TOKEN_ID = 17;
 const MAX_USD_STABLE_TOKEN_ID = 31;
 const MAX_PROOF_COMMITMENT = "0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+const MAX_ACCEPT_FEE_RATE = 10000;
+const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
 async function calFee(tx) {
     let gasPrice = tx.gasPrice;
@@ -134,5 +136,7 @@ module.exports = {
     USD_TOKEN_ID,
     MIN_USD_STABLE_TOKEN_ID,
     MAX_USD_STABLE_TOKEN_ID,
-    MAX_PROOF_COMMITMENT
+    MAX_PROOF_COMMITMENT,
+    MAX_ACCEPT_FEE_RATE,
+    ETH_ADDRESS
 };
