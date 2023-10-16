@@ -1,6 +1,6 @@
-const {readDeployContract, readDeployLogField, getDeployLog} = require('./utils');
+const { readDeployContract, readDeployLogField, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
-const {layerZero} = require('./layerzero');
+const { layerZero } = require('./layerzero');
 const {extendAddress} = require("./op_utils");
 const gatewayConfig = require("./gateway")
 
@@ -50,34 +50,34 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
     .addParam("decimals", "The token decimals", 18, types.int, true)
     .addParam("amount", "The deposit amount in ether")
     .setAction(async (taskArgs, hardhat) => {
-        const [sender] = await hardhat.ethers.getSigners();
-        const zkLinkProxy = taskArgs.zklink;
-        const token = taskArgs.token;
-        const decimals = taskArgs.decimals;
-        const amount = taskArgs.amount;
-        console.log('zklink address', zkLinkProxy);
-        console.log('token address', token);
-        console.log('decimals', decimals);
-        console.log('amount', amount);
+            const [sender] = await hardhat.ethers.getSigners();
+            const zkLinkProxy = taskArgs.zklink;
+            const token = taskArgs.token;
+            const decimals = taskArgs.decimals;
+            const amount = taskArgs.amount;
+            console.log('zklink address', zkLinkProxy);
+            console.log('token address', token);
+            console.log('decimals', decimals);
+            console.log('amount', amount);
 
-        const balance = await sender.getBalance();
-        console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
-        const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
-        const erc20 = erc20Factory.attach(token);
-        const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
-        console.log('sender token balance', hardhat.ethers.utils.formatEther(tokenBalance, decimals));
+            const balance = await sender.getBalance();
+            console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
+            const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
+            const erc20 = erc20Factory.attach(token);
+            const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
+            console.log('sender token balance', hardhat.ethers.utils.formatEther(tokenBalance, decimals));
 
-        const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-        const zkLink = zkLinkFactory.attach(zkLinkProxy);
-        const amountInWei = hardhat.ethers.utils.parseUnits(amount, decimals);
-        const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
-        if (allowance.isZero()) {
-            console.log('add unlimited allowance');
-            const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
-            console.log('approve tx hash', tx.hash);
-        }
-        const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
-        console.log('tx', tx.hash);
+            const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
+            const zkLink = zkLinkFactory.attach(zkLinkProxy);
+            const amountInWei = hardhat.ethers.utils.parseUnits(amount, decimals);
+            const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
+            if (allowance.isZero()) {
+                    console.log('add unlimited allowance');
+                    const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
+                    console.log('approve tx hash', tx.hash);
+            }
+            const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
+            console.log('tx', tx.hash);
     });
 
 task("setDestinations", "Set layerzero bridge destinations (only support testnet)")

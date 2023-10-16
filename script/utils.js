@@ -1,6 +1,6 @@
 const fs = require("fs");
-const {Wallet: ZkSyncWallet, Provider: ZkSyncProvider} = require("zksync-web3");
-const {Deployer: ZkSyncDeployer} = require("@matterlabs/hardhat-zksync-deploy");
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 async function verifyContractCode(hardhat, address, constructorArguments) {
     // contract code may be not exist after tx send to chain
