@@ -14,8 +14,8 @@ contract ZkLinkPeripheryTest is ZkLinkPeriphery {
         accepts[hash] = acceptor;
     }
 
-    function getAcceptor(bytes32 hash) external view returns (address) {
-        return accepts[hash];
+    function setPendingL1Withdraw(bytes32 hash, bool exist) external {
+        pendingL1Withdraws[hash] = exist;
     }
 
     function mockProveBlock(StoredBlockInfo memory storedBlockInfo) external {

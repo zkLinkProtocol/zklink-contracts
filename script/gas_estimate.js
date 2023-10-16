@@ -24,7 +24,7 @@ const {
     getOrderMatchingPubdata,
     createEthWitnessOfECRECOVER,
     createEthWitnessOfCREATE2,
-    calAcceptHash,
+    calWithdrawHash,
     OP_DEPOSIT,
     OP_FULL_EXIT,
     OP_TRANSFER,
@@ -219,7 +219,7 @@ class TestSetUp {
             const fastWithdraw = params.fastWithdraw;
             if (fastWithdraw && chainId === CHAIN_ID) {
                 nonce = nonce + params.i;
-                const hash = calAcceptHash(owner, tokenAddress, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+                const hash = calWithdrawHash(owner, tokenAddress, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
                 const acceptor = params.acceptor;
                 await this.periphery.setAcceptor(hash,acceptor);
             }

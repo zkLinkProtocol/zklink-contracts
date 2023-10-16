@@ -6,6 +6,9 @@ import "../ZkLink.sol";
 
 contract ZkLinkTest is ZkLink {
 
+    receive() external payable {
+    }
+
     function setExodus(bool _exodusMode) external {
         exodusMode = _exodusMode;
     }
@@ -35,6 +38,10 @@ contract ZkLinkTest is ZkLink {
         bytes32[] memory onchainOperationPubdataHashs
     ) {
         return collectOnchainOps(_newBlockData);
+    }
+
+    function testVerifyWithdraw(uint16 tokenId, uint128 amount, uint8 withdrawToL1) external view {
+        verifyWithdraw(tokenId, amount, withdrawToL1);
     }
 
     function testExecuteWithdraw(Operations.Withdraw memory op) external {

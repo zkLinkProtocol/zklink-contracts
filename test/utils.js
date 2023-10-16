@@ -72,7 +72,7 @@ async function deploy() {
 
     // add some tokens
     const ethId = 33;
-    const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+    const ethAddress = ETH_ADDRESS;
     await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
@@ -88,6 +88,10 @@ async function deploy() {
     const token5 = await stdFactory.deploy("Token5", "T5", 6);
     const token5Id = 36;
     await peripheryProxy.connect(governor).addToken(token5Id, token5.address, 6);
+
+    // L2 gateway
+    const gatewayFactory = await hardhat.ethers.getContractFactory('L2GatewayMock');
+    const gateway = await gatewayFactory.deploy();
 
     return {
         zkLink: zkLinkProxy,
@@ -114,7 +118,8 @@ async function deploy() {
         token5: {
             tokenId: token5Id,
             contract: token5,
-        }
+        },
+        gateway: gateway
     }
 }
 

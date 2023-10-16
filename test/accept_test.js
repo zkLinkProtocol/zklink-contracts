@@ -1,7 +1,7 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
 const { deploy, MAX_ACCEPT_FEE_RATE, ETH_ADDRESS } = require('./utils');
-const { calAcceptHash } = require('../script/op_utils');
+const { calWithdrawHash } = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
 
 describe('Accept unit tests', function () {
@@ -31,7 +31,7 @@ describe('Accept unit tests', function () {
             .to.be.revertedWith("H3");
 
         // accept exist
-        const hash = calAcceptHash(bob.address, ETH_ADDRESS, 100, 100, 10, 0, 1);
+        const hash = calWithdrawHash(bob.address, ETH_ADDRESS, 100, 100, 10, 0, 1);
         await periphery.setAcceptor(hash, alice.address);
         await expect(periphery.connect(alice).acceptETH(bob.address, 100, 100, 10, 0, 1))
             .to.be.revertedWith("H4");
@@ -47,8 +47,8 @@ describe('Accept unit tests', function () {
         await expect(periphery.connect(alice).acceptETH(bob.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountReceive}))
             .to.be.emit(periphery, "Accept")
             .withArgs(alice.address, bob.address, ETH_ADDRESS, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
-        let hash = calAcceptHash(bob.address, ETH_ADDRESS, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
-        expect(await periphery.getAcceptor(hash)).to.be.eq(alice.address);
+        let hash = calWithdrawHash(bob.address, ETH_ADDRESS, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
+        expect(await periphery.accepts(hash)).to.be.eq(alice.address);
 
         // send value not enough
         nonce = 2;
@@ -66,7 +66,7 @@ describe('Accept unit tests', function () {
 
         // send eth to a contract that has no receive or fallback function
         nonce = 3;
-        await expect(periphery.connect(alice).acceptETH(periphery.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountReceive}))
+        await expect(periphery.connect(alice).acceptETH(token2.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, {value: amountReceive}))
             .to.be.reverted;
     });
 
@@ -82,8 +82,8 @@ describe('Accept unit tests', function () {
         await expect(periphery.connect(bob).acceptERC20(alice.address, token2.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce))
             .to.be.emit(periphery, "Accept")
             .withArgs(bob.address, alice.address, token2.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce, amountReceive);
-        let hash = calAcceptHash(alice.address, token2.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
-        expect(await periphery.getAcceptor(hash)).to.be.eq(bob.address);
+        let hash = calWithdrawHash(alice.address, token2.address, amount, feeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
+        expect(await periphery.accepts(hash)).to.be.eq(bob.address);
         expect(await token2.balanceOf(alice.address)).to.be.eq(amountReceive);
 
         // approve value not enough

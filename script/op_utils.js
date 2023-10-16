@@ -163,7 +163,7 @@ function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,c
     return {ethWitness, owner};
 }
 
-function calAcceptHash(receiver, token, amount, fastWithdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
+function calWithdrawHash(receiver, token, amount, fastWithdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
     return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","address","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, token, amount, fastWithdrawFeeRate]));
 }
 
@@ -188,7 +188,7 @@ module.exports = {
     hashBytesToBytes20,
     createEthWitnessOfECRECOVER,
     createEthWitnessOfCREATE2,
-    calAcceptHash,
+    calWithdrawHash,
     getRandomInt,
     OP_DEPOSIT,
     OP_WITHDRAW,
