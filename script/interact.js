@@ -75,9 +75,11 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
                     console.log('add unlimited allowance');
                     const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
                     console.log('approve tx hash', tx.hash);
+                    await tx.wait()
             }
             const tx = await zkLink.connect(sender).depositERC20(token, amountInWei, extendAddress(sender.address), 0, false);
             console.log('tx', tx.hash);
+            await tx.wait()
     });
 
 task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
@@ -113,6 +115,7 @@ task("setDestinations", "Set layerzero bridge destinations (only support testnet
             const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, dest);
             const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
             console.log('tx', tx.hash);
+            await tx.wait()
         } catch (error) {
             console.log('Set bridge destination failed: ' + error);
         }
@@ -143,6 +146,7 @@ task("addBridge", "Add bridge to zkLink")
         console.log('add bridge to zkLink...');
         const tx = await peripheryContract.connect(governor).addBridge(bridgeAddr);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 task("mintFaucetToken", "Mint faucet token for testnet")
@@ -169,6 +173,7 @@ task("mintFaucetToken", "Mint faucet token for testnet")
         console.log('Mint token...')
         const tx = await tokenContract.connect(governor).mintTo(accountAddr, amount);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 task("transferOwnership", "Transfer faucet token ownership")
@@ -192,6 +197,7 @@ task("transferOwnership", "Transfer faucet token ownership")
         console.log('Transfer ownership...')
         const tx = await tokenContract.connect(governor).transferOwnership(accountAddr);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or testnet")
@@ -221,6 +227,7 @@ task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or te
         const zkLink = zkLinkPeripheryFactory.attach(zkLinkProxy);
         const tx = await zkLink.connect(sender).setAuthPubkeyHash(pubkeyHash, nonce);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 task("zkLinkStatus", "Query zkLink status")
@@ -301,6 +308,7 @@ task("transferMastershipOfUpgradeGatekeeper", "Set the master of UpgradeGatekeep
         console.log('Set new master for gatekeeper...');
         const tx = await gatekeeperContract.connect(oldMaster).transferMastership(master);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
@@ -327,6 +335,7 @@ task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
         console.log('Set new network governor for zklink...');
         const tx = await peripheryContract.connect(oldGovernor).changeGovernor(governor);
         console.log('tx', tx.hash);
+        await tx.wait()
     });
 
 
@@ -363,8 +372,8 @@ task(
         const signer = (await ethers.getSigners())[0]
         console.log("l2 gateway address",l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
         const tx = await contract.connect(signer).setRemoteGateway(l2GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
-        await tx.wait()
         console.log("tx", tx.hash)
+        await tx.wait()
     });
 
 task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
@@ -391,6 +400,7 @@ task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
 
         const tx = await contract.connect(signer).setRemoteGateway(l1GatewayDeployedInfo[logName.DEPLOY_GATEWAY])
         console.log("tx:", tx.hash)
+        await tx.wait()
     })
 
 task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
@@ -413,6 +423,7 @@ task("setZkLinkToL2Gateway", "set zkLink address to l2 gateway")
 
         const tx = await contract.connect(signer).setZkLink(zkLinkProxyAddr)
         console.log("tx: ", tx.hash)
+        await tx.wait()
     })
 
 task("setL2GatewayToZkLink", "set gateway address to zklink")
@@ -434,4 +445,5 @@ task("setL2GatewayToZkLink", "set gateway address to zklink")
         const signer = (await ethers.getSigners())[0]
         const tx = await contract.connect(signer).setGateway(gatewayDeployInfo[logName.DEPLOY_GATEWAY])
         console.log("tx:", tx.hash)
+        await tx.wait()
     })
