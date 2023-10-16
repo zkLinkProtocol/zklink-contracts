@@ -1,6 +1,6 @@
 const { expect } = require('chai');
 const { deploy, MAX_ACCEPT_FEE_RATE} = require('./utils');
-const { calAcceptHash, extendAddress} = require('../script/op_utils');
+const { calWithdrawHash, extendAddress} = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 const {BigNumber} = require("ethers");
 
@@ -140,7 +140,7 @@ describe('Fast withdraw unit tests', function () {
         await periphery.withdrawPendingBalance(alice.address, tokenId, amount);
         const aliceBalance1 = await token2.balanceOf(alice.address);
         expect(aliceBalance1.sub(aliceBalance0)).to.eq(amount);
-        const hash = calAcceptHash(owner, token.address, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
-        expect(await periphery.getAcceptor(hash)).to.eq(owner);
+        const hash = calWithdrawHash(owner, token.address, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+        expect(await periphery.accepts(hash)).to.eq(owner);
     });
 });

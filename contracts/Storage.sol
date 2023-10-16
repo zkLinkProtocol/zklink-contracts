@@ -70,7 +70,7 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @dev Store withdraw data hash that need to be relayed to L1 by gateway
     /// @dev The key is the withdraw data hash
     /// @dev The value is a flag to indicating whether withdraw exists
-    mapping(bytes32 => bool) internal pendingL1Withdraws;
+    mapping(bytes32 => bool) public pendingL1Withdraws;
 
     /// @notice Flag indicates that a user has exited a certain token balance in the exodus mode
     /// @dev The struct of this map is (accountId => subAccountId => withdrawTokenId => deductTokenId => performed)
