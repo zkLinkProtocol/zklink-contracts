@@ -55,6 +55,7 @@ task("deployL1Gateway", "Deploy L1 Gateway")
         await instance.deployed();
 
         console.log("deployed success:", instance.address);
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
       }
 
       const impl = await getImplementationAddress(
@@ -64,17 +65,19 @@ task("deployL1Gateway", "Deploy L1 Gateway")
 
       console.log("impl address:", impl);
       deployLog[logName.DEPLOY_GATEWAY_TARGET] = impl;
+      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
       // verify contract
       if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
           console.log("start verify contract");
           await verifyContractCode(hardhat, impl, []);
           deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
       }
     } catch (error) {
       console.error("error:", error);
+      throw error
     } finally {
-      console.log("write deploy log", deployLog);
-      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+      console.log("finally log", deployLog);
     }
   });
