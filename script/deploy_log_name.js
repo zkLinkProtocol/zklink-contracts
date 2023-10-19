@@ -36,6 +36,11 @@ const DEPLOY_L2_GATEWAY_LOG_PREFIX = "deploy_l2_gateway";
 const DEPLOY_GATEWAY = "gateway";
 const DEPLOY_GATEWAY_TARGET = "gatewayTarget";
 
+// consumed in deploy_multicall
+const DEPLOY_MULTICALL_LOG_PREFIX = "deploy_multicall"
+const DEPLOY_MULTICALL = "multicall"
+const DEPLOY_MULTICALL_VERIFIED = "multicallVerified"
+
 module.exports = {
   DEPLOY_ZKLINK_LOG_PREFIX,
   DEPLOY_LOG_DEPLOYER,
@@ -67,4 +72,7 @@ module.exports = {
   DEPLOY_L2_GATEWAY_LOG_PREFIX,
   DEPLOY_GATEWAY,
   DEPLOY_GATEWAY_TARGET,
+  DEPLOY_MULTICALL_LOG_PREFIX,
+  DEPLOY_MULTICALL,
+  DEPLOY_MULTICALL_VERIFIED
 };
