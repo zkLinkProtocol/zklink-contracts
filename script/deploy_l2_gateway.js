@@ -42,9 +42,12 @@ task("deployL2Gateway", "Deploy L2 Gateway")
         });
         deployLog[logName.DEPLOY_GATEWAY] = instance.address;
         console.log("instance address and wait deployed:", instance.address);
-        await instance.deployed();
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
+        const receipt = await instance.deployTransaction.wait()
         console.log("deployed success:", instance.address);
+        deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = receipt.transactionHash
+        deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = receipt.blockNumber
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
       }
 
