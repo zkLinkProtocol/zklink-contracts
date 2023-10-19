@@ -32,4 +32,14 @@ interface IZkLink {
 
     /// @notice Combine the `progress` of the other chains of a `syncHash` with self
     function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external;
+
+    /// @notice Withdraw token to L1 for user by gateway
+    /// @param owner User receive token on L1
+    /// @param token Token address
+    /// @param amount The amount(recovered decimals) of withdraw operation
+    /// @param fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
+    /// @param accountIdOfNonce Account that supply nonce, may be different from accountId
+    /// @param subAccountIdOfNonce SubAccount that supply nonce
+    /// @param nonce SubAccount nonce, used to produce unique accept info
+    function withdrawToL1(address owner, address token, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable;
 }
