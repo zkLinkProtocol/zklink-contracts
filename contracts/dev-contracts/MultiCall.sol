@@ -22,15 +22,6 @@ contract MultiCall {
     }
 
     event WithdrawFailed(uint256 index, bytes error);
-    event WithdrawToL1(
-        address owner,
-        address token,
-        uint128 amount,
-        uint16 fastWithdrawFeeRate,
-        uint32 accountIdOfNonce,
-        uint8 subAccountIdOfNonce,
-        uint32 nonce
-    );
     event Call(address target, bytes _calldata, bool success, bytes result);
 
     function multiStaticCall(
