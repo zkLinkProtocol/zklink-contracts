@@ -59,7 +59,7 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
 
         // send withdrawERC20 command to LineaL1Gateway(the second message send to L1)
         bytes memory executeData = abi.encodeCall(ILineaL1Gateway.claimERC20Callback, (isUSDC, nativeToken, _owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate));
-        messageService.sendMessage{value: coinbaseFee}(remoteGateway, 0, executeData);
+        messageService.sendMessage{value: coinbaseFee}(remoteGateway, coinbaseFee, executeData);
     }
 
     /// @notice Set zkLink address
