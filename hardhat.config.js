@@ -10,6 +10,8 @@ require("./script/interact");
 require("./script/deploy_l1_gateway");
 require("./script/deploy_l2_gateway");
 require("./script/deloy_multicall")
+require("./script/upgrade_l2_gateway")
+require("./script/upgrade_l1_gateway")
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
