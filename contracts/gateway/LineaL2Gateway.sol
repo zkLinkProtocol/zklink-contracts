@@ -40,7 +40,6 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
     }
 
     function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {
-        // ensure msg value can satisfy the need to send two bridge messages
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == _amount + coinbaseFee, "Invalid fee");
 
