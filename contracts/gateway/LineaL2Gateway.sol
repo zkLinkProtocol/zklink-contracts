@@ -40,10 +40,12 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
     }
 
     function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {
-        require(msg.value == _amount + messageService.minimumFeeInWei(), "Invalid fee");
+        // ensure msg value can satisfy the need to send two bridge messages
+        uint256 coinbaseFee = messageService.minimumFeeInWei();
+        require(msg.value == _amount + coinbaseFee, "Invalid fee");
 
         bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimETHCallback, (_owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate));
-        messageService.sendMessage{value: msg.value}(address(remoteGateway), 0, callData);
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
     }
 
     function withdrawERC20(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {
