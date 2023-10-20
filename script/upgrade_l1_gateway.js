@@ -30,13 +30,8 @@ task("upgradeL1Gateway","upgrade l1 gateway")
 
     const contractFactory = await ethers.getContractFactory(contractName)
     const instance = await upgrades.upgradeProxy(deployLog[logName.DEPLOY_GATEWAY],contractFactory)
-    console.log("proxy address",instance.address)
-    deployLog[logName.DEPLOY_GATEWAY] = instance.address
-    fs.writeFileSync(deployLogPath,JSON.stringify(deployLog))
 
-    const receipt = await instance.deployTransaction.wait()
-    deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = receipt.transactionHash
-    deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = receipt.blockNumber
+    await instance.deployTransaction.wait()
     const impl = await getImplementationAddress(ethers.provider,instance.address)
     deployLog[logName.DEPLOY_GATEWAY_TARGET] = impl
     console.log("impl:",impl)
