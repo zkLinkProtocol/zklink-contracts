@@ -123,14 +123,26 @@ describe('ZkLink change pubkey unit tests', function () {
     });
 
     it('verifyChangePubkeyECRECOVER should be success', async () => {
-        const pubKeyHash = "0xdbd9c8235e4fc9d5b9b7bb201f1133e8a28c0edd";
-        const nonce = 0;
-        const accountId = 2;
-        const owner = "0xd09Ad14080d4b257a819a4f579b8485Be88f086c";
-        const changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
-        const signature = "efd0d9c6beb00310535bb51ee58745adb547e7d875d5823892365a6450caf6c559a6a4bfd83bf336ac59cf83e97948dbf607bf2aecd24f6829c3deac20ecdb601b";
-        const witness = "0x00" + signature;
-        const result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
+        // pubKeyHash has no prefix zero
+        let pubKeyHash = "0xdbd9c8235e4fc9d5b9b7bb201f1133e8a28c0edd";
+        let nonce = 0;
+        let accountId = 2;
+        let owner = "0xd09Ad14080d4b257a819a4f579b8485Be88f086c";
+        let changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
+        let signature = "efd0d9c6beb00310535bb51ee58745adb547e7d875d5823892365a6450caf6c559a6a4bfd83bf336ac59cf83e97948dbf607bf2aecd24f6829c3deac20ecdb601b";
+        let witness = "0x00" + signature;
+        let result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
+        expect(result).eq(true);
+
+        // pubKeyHash has prefix zero
+        pubKeyHash = "0x0043a38170c9fe8ff718bb86435814468a616044";
+        nonce = 0;
+        accountId = 5;
+        owner = "0x72efa702385d5e2a338344056a2bafc391eb7ba6";
+        changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
+        signature = "946cdf8391fd348412ebf0f875be9c48a2512fdf1916cbf235a27f688de40a7574d45616a9684358ea71c3e25df2cc9f58df269c8370d8bb3739e9cfbba6a34b1c";
+        witness = "0x00" + signature;
+        result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
         expect(result).eq(true);
     });
 });

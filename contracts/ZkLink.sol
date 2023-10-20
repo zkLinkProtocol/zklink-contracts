@@ -553,7 +553,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Checks that signature is valid for pubkey change message
     function verifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool) {
         (, bytes memory signature) = Bytes.read(_ethWitness, 1, 65); // offset is 1 because we skip type of ChangePubkey
-        bytes memory message = abi.encodePacked("ChangePubKey\nPubKeyHash: ", Strings.toHexString(uint160(_changePk.pubKeyHash)), "\nNonce: ", Strings.toString(_changePk.nonce), "\nAccountId: ", Strings.toString(_changePk.accountId));
+        bytes memory message = abi.encodePacked("ChangePubKey\nPubKeyHash: ", Strings.toHexString(uint160(_changePk.pubKeyHash), 20), "\nNonce: ", Strings.toString(_changePk.nonce), "\nAccountId: ", Strings.toString(_changePk.accountId));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n", Strings.toString(message.length), message));
         address recoveredAddress = Utils.recoverAddressFromEthSignature(signature, messageHash);
         return recoveredAddress == _changePk.owner;
