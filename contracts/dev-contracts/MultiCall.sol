@@ -16,12 +16,17 @@ contract MultiCall {
         uint256 value;
     }
 
+    struct WithdrawPendingBalanceInfo {
+        address payable owner;
+        uint16 tokenId;
+        uint128 amount;
+    }
+
     struct Result {
         bool success;
         bytes returnData;
     }
 
-    event WithdrawFailed(uint256 index, bytes error);
     event Call(address target, bytes _calldata, bool success, bytes result);
 
     function multiStaticCall(
@@ -80,24 +85,15 @@ contract MultiCall {
 
     function batchWithdrawPendingBalance(
         IZkLink zkLinkInstance,
-        address payable[] memory owners,
-        uint16[] memory tokenIds,
-        uint128[] memory amounts
-    ) external returns (uint8 res) {
-        require(owners.length == tokenIds.length, 'invalid data');
-        require(owners.length == amounts.length, 'invalid data2');
-        res = 0;
-        for (uint8 i = 0; i < owners.length; i++) {
-            (bool success, bytes memory reason) = address(zkLinkInstance).call(
-                abi.encodeWithSignature(
-                    "withdrawPendingBalance(address,uint16,uint128)",
-                    owners[i],tokenIds[i],amounts[i]
-                )
+        WithdrawPendingBalanceInfo[] calldata _withdrawDatas
+    ) external {
+        for (uint i; i < _withdrawDatas.length; i++) {
+            WithdrawPendingBalanceInfo memory withdrawInfo = _withdrawDatas[i];
+            zkLinkInstance.withdrawPendingBalance(
+                withdrawInfo.owner,
+                withdrawInfo.tokenId,
+                withdrawInfo.amount
             );
-
-            if (!success) {
-                emit WithdrawFailed(i, reason);
-            }
         }
     }
 }

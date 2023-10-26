@@ -42,4 +42,13 @@ interface IZkLink {
     /// @param subAccountIdOfNonce SubAccount that supply nonce
     /// @param nonce SubAccount nonce, used to produce unique accept info
     function withdrawToL1(address owner, address token, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) external payable;
+
+    /// @notice  Withdraws tokens from zkLink contract to the owner
+    /// @param _owner Address of the tokens owner
+    /// @param _tokenId Token id
+    /// @param _amount Amount to withdraw to request.
+    /// @return The actual withdrawn amount
+    /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
+    /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
+    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external returns (uint128);
 }
