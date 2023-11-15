@@ -405,7 +405,13 @@ describe('Block commit unit tests', function () {
 
             extraBlock.publicDataHash = keccak256(arrayify(commitBlock.publicData));
             extraBlock.offsetCommitmentHash = keccak256(arrayify(expected.offsetsCommitment));
-            extraBlock.onchainOperationPubdataHashs = expected.onchainOperationPubdataHashs;
+            // only need to commit onchain pubdata hash of chain [2,3,4]
+            extraBlock.onchainOperationPubdataHashs = [
+                expected.onchainOperationPubdataHashs[2],
+                expected.onchainOperationPubdataHashs[3],
+                expected.onchainOperationPubdataHashs[4],
+            ];
+
             const r1 = await zkLink.testCommitOneBlock(preBlock, compressedBlock, true, extraBlock);
 
             expect(r1.blockNumber).to.eql(r0.blockNumber);
