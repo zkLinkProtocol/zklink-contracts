@@ -228,11 +228,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         if (_tokenAddress != ETH_ADDRESS) {
             // transfer erc20 token from sender to zkLink contract
-            uint256 balanceBefore = IERC20(_tokenAddress).balanceOf(address(this));
             IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _amount);
-            uint256 balanceAfter = IERC20(_tokenAddress).balanceOf(address(this));
-            // only support pure erc20
-            require(_amount == balanceAfter - balanceBefore, "e6");
         }
 
         // improve decimals before send to layer two
@@ -342,15 +338,22 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // Create block commitment for verification proof
         bytes32 commitment = _compressed ? bytes32(0) : createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
 
-        // Create synchronization hash for cross chain block verify
         if (_compressed) {
-            require(_newBlockExtra.onchainOperationPubdataHashs.length == MAX_CHAIN_ID + 1, "g3");
+            // Fill other chain pubdata hash
+            uint nextPubdataHashIndex = 0;
             for(uint i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-                if (i != CHAIN_ID) {
-                    onchainOperationPubdataHashs[i] = _newBlockExtra.onchainOperationPubdataHashs[i];
+                if (i == CHAIN_ID) {
+                    continue;
+                }
+                uint256 chainIndex = 1 << i - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
+                if (chainIndex & ALL_CHAINS == chainIndex) {
+                    require(nextPubdataHashIndex < _newBlockExtra.onchainOperationPubdataHashs.length, "g3");
+                    onchainOperationPubdataHashs[i] = _newBlockExtra.onchainOperationPubdataHashs[nextPubdataHashIndex];
+                    nextPubdataHashIndex += 1;
                 }
             }
         }
+        // Create synchronization hash for cross chain block verify
         bytes32 syncHash = createSyncHash(_previousBlock.syncHash, commitmentForSync, onchainOperationPubdataHashs);
 
         return StoredBlockInfo(
