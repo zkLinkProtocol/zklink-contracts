@@ -30,7 +30,7 @@ const {
     OP_FORCE_EXIT_CHUNKS,
     extendAddress
 } = require('../script/op_utils');
-const { keccak256, arrayify, hexlify, concat, parseEther, sha256} = require("ethers/lib/utils");
+const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
 
 describe('Block commit unit tests', function () {
     let deployedInfo;
@@ -403,12 +403,17 @@ describe('Block commit unit tests', function () {
             compressedBlock.publicData = pubdataOfChain1;
             compressedBlock.onchainOperations = opsOfChain1;
 
-            extraBlock.publicDataHash = sha256(arrayify(commitBlock.publicData));
-            extraBlock.offsetCommitmentHash = sha256(arrayify(expected.offsetsCommitment));
+            extraBlock.publicDataHash = keccak256(arrayify(commitBlock.publicData));
+            extraBlock.offsetCommitmentHash = keccak256(arrayify(expected.offsetsCommitment));
             extraBlock.onchainOperationPubdataHashs = expected.onchainOperationPubdataHashs;
             const r1 = await zkLink.testCommitOneBlock(preBlock, compressedBlock, true, extraBlock);
 
-            expect(r1).to.eql(r0);
+            expect(r1.blockNumber).to.eql(r0.blockNumber);
+            expect(r1.priorityOperations).to.eql(r0.priorityOperations);
+            expect(r1.pendingOnchainOperationsHash).to.eql(r0.pendingOnchainOperationsHash);
+            expect(r1.timestamp).to.eql(r0.timestamp);
+            expect(r1.stateHash).to.eql(r0.stateHash);
+            expect(r1.syncHash).to.eql(r0.syncHash);
         });
     });
 });
