@@ -337,8 +337,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         ) =
         collectOnchainOps(_newBlock);
 
+        // Create block commitment for sync block cross chain
+        bytes32 commitmentForSync = createBlockCommitmentForSync(_previousBlock, _newBlock, _compressed, _newBlockExtra, onchainOpsOffsetCommitment);
         // Create block commitment for verification proof
-        bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, _compressed, _newBlockExtra, onchainOpsOffsetCommitment);
+        bytes32 commitment = _compressed ? bytes32(0) : createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
 
         // Create synchronization hash for cross chain block verify
         if (_compressed) {
@@ -349,7 +351,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 }
             }
         }
-        bytes32 syncHash = createSyncHash(_previousBlock.syncHash, commitment, onchainOperationPubdataHashs);
+        bytes32 syncHash = createSyncHash(_previousBlock.syncHash, commitmentForSync, onchainOperationPubdataHashs);
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
@@ -508,9 +510,25 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @dev Creates block commitment from its data
     /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
-    function createBlockCommitment(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtraData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
-        bytes32 offsetsCommitmentHash = !_compressed ? sha256(offsetsCommitment) : _newBlockExtraData.offsetCommitmentHash;
-        bytes32 newBlockPubDataHash = !_compressed ? sha256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
+    function createBlockCommitmentForSync(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtraData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
+        bytes32 offsetsCommitmentHash = !_compressed ? keccak256(offsetsCommitment) : _newBlockExtraData.offsetCommitmentHash;
+        bytes32 newBlockPubDataHash = !_compressed ? keccak256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
+        commitment = keccak256(abi.encodePacked(
+            uint256(_newBlockData.blockNumber),
+            uint256(_newBlockData.feeAccount),
+            _previousBlock.stateHash,
+            _newBlockData.newStateHash,
+            uint256(_newBlockData.timestamp),
+            newBlockPubDataHash,
+            offsetsCommitmentHash
+        ));
+    }
+
+    /// @dev Creates block commitment from its data
+    /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
+    function createBlockCommitment(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
+        bytes32 offsetsCommitmentHash = sha256(offsetsCommitment);
+        bytes32 newBlockPubDataHash = sha256(_newBlockData.publicData);
         commitment = sha256(abi.encodePacked(
                 uint256(_newBlockData.blockNumber),
                 uint256(_newBlockData.feeAccount),
