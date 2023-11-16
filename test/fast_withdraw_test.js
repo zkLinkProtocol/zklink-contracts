@@ -30,7 +30,6 @@ describe('Fast withdraw unit tests', function () {
         const owner = bob.address;
         const nonce = 0;
         const fastWithdrawFeeRate = 50;
-        const fastWithdraw = 0;
         const withdrawToL1 = 0;
 
         const op = {
@@ -43,7 +42,6 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw,
             "withdrawToL1":withdrawToL1
         }
 
@@ -68,7 +66,6 @@ describe('Fast withdraw unit tests', function () {
         const owner = alice.address;
         const nonce = 1;
         const fastWithdrawFeeRate = 50;
-        const fastWithdraw = 1;
         const withdrawToL1 = 0;
 
         const bobBalance0 = await token.balanceOf(bob.address);
@@ -90,7 +87,6 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw,
             "withdrawToL1":withdrawToL1
         }
 
@@ -115,7 +111,6 @@ describe('Fast withdraw unit tests', function () {
         const owner = alice.address;
         const nonce = 2;
         const fastWithdrawFeeRate = 50;
-        const fastWithdraw = 1;
         const withdrawToL1 = 0;
 
         const aliceBalance0 = await token2.balanceOf(alice.address);
@@ -130,7 +125,6 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":fastWithdraw,
             "withdrawToL1":withdrawToL1
         }
 

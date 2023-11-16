@@ -40,10 +40,6 @@ contract ZkLinkTest is ZkLink {
         return collectOnchainOps(_newBlockData);
     }
 
-    function testVerifyWithdraw(uint16 tokenId, uint128 amount, uint8 withdrawToL1) external view {
-        verifyWithdraw(tokenId, amount, withdrawToL1);
-    }
-
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
         _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
     }

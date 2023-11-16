@@ -38,7 +38,6 @@ contract OperationsTest {
         require(_example.owner == parsed.owner, "own");
         require(_example.nonce == parsed.nonce, "nonce");
         require(_example.fastWithdrawFeeRate == parsed.fastWithdrawFeeRate, "fr");
-        require(_example.fastWithdraw == parsed.fastWithdraw, "fw");
         require(_example.withdrawToL1 == parsed.withdrawToL1, "l1");
     }
 

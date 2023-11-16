@@ -472,16 +472,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         } else {
             if (opType == Operations.OpType.Withdraw) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
-                if (chainId == CHAIN_ID) {
-                    Operations.Withdraw memory withdrawData = Operations.readWithdrawPubdata(opPubData);
-                    verifyWithdraw(withdrawData.tokenId, withdrawData.amount, withdrawData.withdrawToL1);
-                }
             } else if (opType == Operations.OpType.ForcedExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
-                if (chainId == CHAIN_ID) {
-                    Operations.ForcedExit memory forcedExitData = Operations.readForcedExitPubdata(opPubData);
-                    verifyWithdraw(forcedExitData.tokenId, forcedExitData.amount, forcedExitData.withdrawToL1);
-                }
             } else if (opType == Operations.OpType.FullExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
                 if (chainId == CHAIN_ID) {
@@ -541,22 +533,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 newBlockPubDataHash,
                 offsetsCommitmentHash
             ));
-    }
-
-    /// @notice Checks that withdraw params is correct
-    function verifyWithdraw(uint16 tokenId, uint128 amount, uint8 withdrawToL1) internal view {
-        // token MUST be registered
-        RegisteredToken storage rt = tokens[tokenId];
-        require(rt.registered, "p0");
-
-        // withdraw amount MUST without dust
-        uint128 recoverAmount = recoveryDecimals(amount, rt.decimals);
-        require(improveDecimals(recoverAmount, rt.decimals) == amount, "p1");
-
-        // local chain MUST support withdraw to L1
-        if (withdrawToL1 == 1) {
-            require(address(gateway) != address(0), "p2");
-        }
     }
 
     /// @notice Checks that change operation is correct
@@ -641,7 +617,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
     }
 
-    /// @dev Execute fast withdraw or normal withdraw according by fastWithdraw flag
+    /// @dev The circuit will check whether there is dust in the amount
     function _executeWithdraw(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, uint16 tokenId, uint128 amount, uint16 fastWithdrawFeeRate, uint8 withdrawToL1) internal {
         // token MUST be registered
         RegisteredToken storage rt = tokens[tokenId];
