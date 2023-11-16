@@ -46,9 +46,21 @@ const layerZero = {
         chainId: 184,
         address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
     },
+    OPBNB: {
+        chainId: 202,
+        address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
+    },
+    SCROLL: {
+        chainId: 214,
+        address: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7'
+    },
     GOERLI: {
         chainId: 10121,
         address: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23'
+    },
+    SEPOLIA: {
+        chainId: 10161,
+        address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
     },
     BSCTEST: {
         chainId: 10102,
@@ -93,6 +105,10 @@ const layerZero = {
     MANTLETEST: {
         chainId: 10181,
         address: '0x2cA20802fd1Fd9649bA8Aa7E50F0C82b479f35fe'
+    },
+    OPBNBTEST: {
+        chainId: 10202,
+        address: '0x83c73Da98cf733B03315aFa8758834b36a195b87'
     }
 }
 

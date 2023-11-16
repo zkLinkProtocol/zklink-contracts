@@ -62,7 +62,6 @@ describe('ZkLink change pubkey unit tests', function () {
             "timestamp":1,
             "onchainOperations":onchainOperations,
             "blockNumber":1,
-            "feeAccount":0
         };
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
@@ -86,7 +85,6 @@ describe('ZkLink change pubkey unit tests', function () {
             "timestamp":1,
             "onchainOperations":onchainOperations,
             "blockNumber":1,
-            "feeAccount":0
         };
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
@@ -114,7 +112,6 @@ describe('ZkLink change pubkey unit tests', function () {
             "timestamp":1,
             "onchainOperations":onchainOperations,
             "blockNumber":1,
-            "feeAccount":0
         };
         const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
         expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));

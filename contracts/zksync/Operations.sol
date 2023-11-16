@@ -18,7 +18,12 @@ library Operations {
         FullExit, // 5 L1 Op
         ChangePubKey, // 6 L2 Op
         ForcedExit, // 7 L2 Op
-        OrderMatching // 8 L2 Op
+        OrderMatching, // 8 L2 Op
+        ContractMatching, // 9 L2 Op
+        Liquidation, // 10 L2 Op
+        AutoDeleveraging, // 11 L2 Op
+        UpdateGlobalVar, // 12 L2 Op
+        Funding // 13 L2 Op
     }
 
     // Byte lengths
