@@ -164,9 +164,8 @@ library Operations {
         address owner; // the address to receive token
         uint32 nonce; // the sub account nonce
         uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by acceptor
-        uint8 fastWithdraw; // when this flag is 1, it means fast withdrawal
         uint8 withdrawToL1; // when this flag is 1, it means withdraw token to L1
-    } // 69 bytes
+    } // 68 bytes
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
@@ -182,7 +181,6 @@ library Operations {
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
-        (offset, parsed.fastWithdraw) = Bytes.readUint8(_data, offset);
         (offset, parsed.withdrawToL1) = Bytes.readUint8(_data, offset);
     }
 

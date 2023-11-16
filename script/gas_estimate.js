@@ -216,14 +216,13 @@ class TestSetUp {
             let nonce = params.nonce;
             const fastWithdrawFeeRate = params.fastWithdrawFeeRate;
             const withdrawToL1 = params.withdrawToL1;
-            const fastWithdraw = params.fastWithdraw;
-            if (fastWithdraw && chainId === CHAIN_ID) {
+            if (fastWithdrawFeeRate > 0 && chainId === CHAIN_ID) {
                 nonce = nonce + params.i;
                 const hash = calWithdrawHash(owner, tokenAddress, amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
                 const acceptor = params.acceptor;
                 await this.periphery.setAcceptor(hash,acceptor);
             }
-            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner:extendAddress(owner),nonce,fastWithdrawFeeRate,fastWithdraw,withdrawToL1};
+            const opParams = {chainId:chainId,accountId,subAccountId:0,tokenId,srcTokenId:tokenId,amount,fee:0,owner:extendAddress(owner),nonce,fastWithdrawFeeRate,withdrawToL1};
             const op = getWithdrawPubdata(opParams);
             if (chainId === CHAIN_ID) {
                 processable = true;
@@ -435,7 +434,7 @@ async function main() {
     tokenId = testSetUp.token2Id;
     tokenAddress = testSetUp.token2.address;
 
-    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:0, fastWithdrawFeeRate:0, fastWithdraw:0, withdrawToL1:0};
+    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:0, fastWithdrawFeeRate:0, withdrawToL1:0};
     b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurNormalWithdrawERC20CommitCost: " + opCost.commitCost);
@@ -451,7 +450,7 @@ async function main() {
     owner = testSetUp.alice.address;
     tokenId = testSetUp.ethId;
     tokenAddress = ETH_ADDRESS;
-    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:0, fastWithdrawFeeRate:0, fastWithdraw:0, withdrawToL1:0};
+    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:0, fastWithdrawFeeRate:0, withdrawToL1:0};
     b0 = await testSetUp.periphery.getPendingBalance(extendAddress(owner), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurNormalWithdrawETHCommitCost: " + opCost.commitCost);
@@ -474,7 +473,7 @@ async function main() {
     tokenId = testSetUp.token2Id;
     tokenAddress = testSetUp.token2.address;
     let acceptor = testSetUp.bob.address;
-    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:1, fastWithdrawFeeRate:50, fastWithdraw:1, withdrawToL1:0, acceptor: acceptor};
+    params = {chainId:CHAIN_ID, opType:OP_WITHDRAW, amount, owner, tokenId, tokenAddress, nonce:1, fastWithdrawFeeRate:50, withdrawToL1:0, acceptor: acceptor};
     b0 = await testSetUp.periphery.getPendingBalance(extendAddress(acceptor), tokenId);
     opCost = await estimateOpFee(testSetUp, samples, params, commitBaseCost, executeBaseCost);
     console.log("CurFastWithdrawCommitCost: " + opCost.commitCost);

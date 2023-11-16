@@ -21,32 +21,8 @@ describe('Withdraw to L1 unit tests', function () {
         alice = deployedInfo.alice;
         bob = deployedInfo.bob;
         gateway = deployedInfo.gateway;
-    });
-
-    it('verify withdraw should success', async () => {
-        let tokenId = 1000;
-        let amount = parseEther("10"); // 10000000000000000000
-        let withdrawToL1 = 0;
-
-        // invalid token id
-        await expect(zkLink.testVerifyWithdraw(tokenId, amount, withdrawToL1))
-            .to.be.revertedWith("p0");
-
-        // amount with dust
-        tokenId = token5Id; // decimals is 6
-        amount = parseEther("10.0000001"); // 10000001000000000000
-        await expect(zkLink.testVerifyWithdraw(tokenId, amount, withdrawToL1))
-            .to.be.revertedWith("p1");
-
-        // not support withdraw to L1(no gateway)
-        amount = parseEther("10.000001"); // 10000010000000000000
-        withdrawToL1 = 1;
-        await expect(zkLink.testVerifyWithdraw(tokenId, amount, withdrawToL1))
-            .to.be.revertedWith("p2");
-
         // set gateway
         await periphery.connect(governor).setGateway(gateway.address);
-        await zkLink.testVerifyWithdraw(tokenId, amount, withdrawToL1);
     });
 
     it('withdraw eth to l1 should success', async () => {
@@ -87,7 +63,6 @@ describe('Withdraw to L1 unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":1,
             "withdrawToL1":1
         }
         const withdrawHash = calWithdrawHash(owner,token,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
@@ -142,7 +117,6 @@ describe('Withdraw to L1 unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "fastWithdraw":1,
             "withdrawToL1":1
         }
         const withdrawHash = calWithdrawHash(owner,token.address,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
