@@ -39,7 +39,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint256 timestamp;
         OnchainOperationData[] onchainOperations;
         uint32 blockNumber;
-        uint32 feeAccount;
     }
 
     struct CompressedBlockExtraInfo {
@@ -510,7 +509,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         bytes32 newBlockPubDataHash = !_compressed ? keccak256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
         commitment = keccak256(abi.encodePacked(
             uint256(_newBlockData.blockNumber),
-            uint256(_newBlockData.feeAccount),
+            uint256(DEFAULT_FEE_ACCOUNT_ID),
             _previousBlock.stateHash,
             _newBlockData.newStateHash,
             uint256(_newBlockData.timestamp),
@@ -526,7 +525,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         bytes32 newBlockPubDataHash = sha256(_newBlockData.publicData);
         commitment = sha256(abi.encodePacked(
                 uint256(_newBlockData.blockNumber),
-                uint256(_newBlockData.feeAccount),
+                uint256(DEFAULT_FEE_ACCOUNT_ID),
                 _previousBlock.stateHash,
                 _newBlockData.newStateHash,
                 uint256(_newBlockData.timestamp),

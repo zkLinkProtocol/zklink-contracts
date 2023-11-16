@@ -77,7 +77,6 @@ class TestSetUp {
             timestamp:Math.ceil(Date.now()/1000),
             onchainOperations:onchainOperations,
             blockNumber:newBlockNumber,
-            feeAccount:0 // it's real in zkLink, not mock
         };
     }
 

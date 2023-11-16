@@ -54,7 +54,6 @@ describe('Block commit unit tests', function () {
             timestamp:1652422395,
             onchainOperations:[],
             blockNumber:10,
-            feeAccount:0
         };
     });
 
@@ -360,7 +359,6 @@ describe('Block commit unit tests', function () {
             timestamp:1652422395,
             onchainOperations:[],
             blockNumber:11,
-            feeAccount:0
         };
         const extraBlock = {
             publicDataHash:ZERO_BYTES32,
