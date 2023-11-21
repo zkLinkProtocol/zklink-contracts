@@ -7,6 +7,7 @@ import "./ILayerZeroEndpoint.sol";
 import "./ILayerZeroUserApplicationConfig.sol";
 import "./LayerZeroStorage.sol";
 import "../zksync/ReentrancyGuard.sol";
+import "../interfaces/ISyncService.sol";
 
 /// @title LayerZero bridge implementation of non-blocking model
 /// @dev if message is blocking we should call `retryPayload` of endpoint to retry
@@ -15,16 +16,7 @@ import "../zksync/ReentrancyGuard.sol";
 /// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
 /// * lzReceive reverted unexpected, and we can fix bug and deploy a new contract to fix it.
 /// @author zk.link
-contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
-
-    // to avoid stack too deep
-    struct LzBridgeParams {
-        uint16 dstChainId; // the destination chainId
-        address payable refundAddress; // native fees refund address if msg.value is too large
-        address zroPaymentAddress; // if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
-        bytes adapterParams; // see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    }
-
+contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
     modifier onlyEndpoint {
         require(msg.sender == address(endpoint), "Require endpoint");
         _;
@@ -32,6 +24,11 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
 
     modifier onlyGovernor {
         require(msg.sender == zklink.networkGovernor(), "Caller is not governor");
+        _;
+    }
+
+    modifier onlyZkLink {
+        require(msg.sender == address(zklink), "Caller is not zkLink");
         _;
     }
 
@@ -65,95 +62,143 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         endpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
+    /// @notice Set mapping of zkLink chainId and lz chainId
+    /// @param zkLinkChainId zkLink chain id
+    /// @param lzChainId LayerZero chain id
+    function setChainIdMap(uint8 zkLinkChainId, uint16 lzChainId) external onlyGovernor {
+        zkLinkChainIdToLZChainId[zkLinkChainId] = lzChainId;
+        lzChainIdToZKLinkChainId[lzChainId] = zkLinkChainId;
+        emit UpdateChainIdMap(zkLinkChainId, lzChainId);
+    }
+
     /// @notice Set bridge destination
     /// @param dstChainId LayerZero chain id on other chains
     /// @param contractAddr LayerZeroBridge contract address on other chains
     function setDestination(uint16 dstChainId, bytes calldata contractAddr) external onlyGovernor {
-        require(dstChainId != endpoint.getChainId(), "Invalid dstChainId");
         destinations[dstChainId] = contractAddr;
         emit UpdateDestination(dstChainId, contractAddr);
     }
 
-    /// @notice Estimate bridge ZkLink Block fees
-    /// @param lzChainId the destination chainId
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice Estimate send sync hash fee
+    /// @param blockNumber the height of stored block
     /// @param syncHash the sync hash of stored block
-    /// @param progress the sync progress
-    /// @param useZro if true user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
-    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function estimateZkLinkBlockBridgeFees(
-        uint16 lzChainId,
-        bytes32 syncHash,
-        uint256 progress,
-        bool useZro,
-        bytes calldata adapterParams
-    ) external view returns (uint nativeFee, uint zroFee) {
-        bytes memory payload = buildZkLinkBlockBridgePayload(syncHash, progress);
-        return endpoint.estimateFees(lzChainId, address(this), payload, useZro, adapterParams);
+    function estimateSendSyncHashFee(uint32 blockNumber, bytes32 syncHash) external view returns (uint nativeFee, uint zroFee) {
+        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
+        checkDstChainId(dstChainId);
+        bytes memory payload = buildSyncHashPayload(blockNumber, syncHash);
+        return endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
     }
 
-    /// @notice Bridge ZkLink block to other chain
-    /// @param storedBlockInfo the block proved but not executed at the current chain
-    /// @param dstChainIds dst chains to bridge, empty array will be reverted
-    /// @param refundAddress native fees refund address if msg.value is too large
-    /// @param zroPaymentAddress if not zero user will use ZRO token to pay layerzero protocol fees(not oracle or relayer fees)
-    /// @param adapterParams see https://layerzero.gitbook.io/docs/guides/advanced/relayer-adapter-parameters
-    function bridgeZkLinkBlock(
-        IZkLink.StoredBlockInfo calldata storedBlockInfo,
-        uint16[] memory dstChainIds,
-        address payable refundAddress,
-        address zroPaymentAddress,
-        bytes memory adapterParams
-    ) external nonReentrant payable {
+    function sendSyncHash(uint32 blockNumber, bytes32 syncHash) external override onlyZkLink payable {
         // ===Checks===
-        require(dstChainIds.length > 0, "No dst chain");
+        // send msg to master chain
+        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
+        bytes memory trustedRemote = checkDstChainId(dstChainId);
 
         // ===Interactions===
-        bytes32 syncHash = storedBlockInfo.syncHash;
-        uint256 progress = zklink.getSynchronizedProgress(storedBlockInfo);
+        // send LayerZero message
+        bytes memory path = abi.encodePacked(trustedRemote, address(this));
+        bytes memory payload = buildSyncHashPayload(blockNumber, syncHash);
+        // fee = value - refund
+        uint256 originMsgValue = msg.value;
+        uint256 originBalance= tx.origin.balance;
+        // solhint-disable-next-line check-send-result
+        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
+        // log the fee payed to layerzero
+        emit SynchronizationFee(originMsgValue - (tx.origin.balance - originBalance));
+    }
 
+    function buildSyncHashPayload(uint32 blockNumber, bytes32 syncHash) internal pure returns (bytes memory payload) {
+        payload = abi.encode(blockNumber, syncHash);
+    }
+
+    function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
+        // unpack payload
+        uint8 masterChainId = lzChainIdToZKLinkChainId[srcChainId];
+        require(masterChainId == MASTER_CHAIN_ID, "require master chain");
+        uint32 blockNumber = abi.decode(payload, (uint32));
+        zklink.receiveBlockConfirmation(blockNumber);
+    }
+    // #endif
+
+    // #if CHAIN_ID == MASTER_CHAIN_ID
+    /// @notice Estimate the total fee of sending confirm block message to all slaver chains
+    /// @param blockNumber the height of stored block
+    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee, uint totalZroFee) {
+        totalNativeFee = 0;
+        totalZroFee = 0;
+        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
+            uint8 chainId = i + 1;
+            if (chainId == CHAIN_ID) {
+                continue;
+            }
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                uint16 dstChainId = zkLinkChainIdToLZChainId[chainId];
+                checkDstChainId(dstChainId);
+                bytes memory payload = buildConfirmPayload(blockNumber);
+                (uint nativeFee, uint zroFee) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
+                totalNativeFee += nativeFee;
+                totalZroFee += zroFee;
+            }
+        }
+    }
+
+    function confirmBlock(uint32 blockNumber) external override onlyZkLink payable {
         uint256 originMsgValue = msg.value;
         uint256 originBalance = address(this).balance - originMsgValue; // underflow is impossible
-        // before refund, we send all balance of this contract and set refund address to this contract
-        for (uint i = 0; i < dstChainIds.length; ++i) { // overflow is impossible
-            _bridgeZkLinkBlockProgress(syncHash, progress, dstChainIds[i], payable(address(this)), zroPaymentAddress, adapterParams, address(this).balance);
+
+        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
+            uint8 chainId = i + 1;
+            if (chainId == CHAIN_ID) {
+                continue;
+            }
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                _sendConfirmationMessage(blockNumber, chainId);
+            }
         }
-        // left value should be greater equal than originBalance and refund left value to `refundAddress`
+        // left value should be greater equal than originBalance and refund left value to `msg.origin`
         require(address(this).balance >= originBalance, "Msg value is not enough for bridge");
         uint256 leftMsgValue = address(this).balance - originBalance;  // underflow is impossible
         if (leftMsgValue > 0) {
             // solhint-disable-next-line  avoid-low-level-calls
-            (bool success, ) = refundAddress.call{value: leftMsgValue}("");
+            (bool success, ) = tx.origin.call{value: leftMsgValue}("");
             require(success, "Refund failed");
         }
         // log the fee payed to layerzero
         emit SynchronizationFee(originMsgValue - leftMsgValue);
     }
 
-    function _bridgeZkLinkBlockProgress(
-        bytes32 syncHash,
-        uint256 progress,
-        uint16 dstChainId,
-        address payable refundAddress,
-        address zroPaymentAddress,
-        bytes memory adapterParams,
-        uint256 bridgeFee
-    ) internal {
+    /// @dev Send confirmation message to a slaver chain
+    /// @dev Take fee from this contract and refund fee to this contract
+    function _sendConfirmationMessage(uint32 blockNumber, uint8 zkLinkChainId) internal {
         // ===Checks===
+        uint16 dstChainId = zkLinkChainIdToLZChainId[zkLinkChainId];
         bytes memory trustedRemote = checkDstChainId(dstChainId);
-
-        // endpoint will check `refundAddress`, `zroPaymentAddress` and `adapterParams`
-
-        // ===Effects===
-        uint64 nonce = endpoint.getOutboundNonce(dstChainId, address(this));
-        emit SendSynchronizationProgress(dstChainId, nonce + 1, syncHash, progress);
 
         // ===Interactions===
         // send LayerZero message
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
-        bytes memory payload = buildZkLinkBlockBridgePayload(syncHash, progress);
+        bytes memory payload = buildConfirmPayload(blockNumber);
+        // before refund, we send all balance of this contract and set refund address to this contract
         // solhint-disable-next-line check-send-result
-        endpoint.send{value:bridgeFee}(dstChainId, path, payload, refundAddress, zroPaymentAddress, adapterParams);
+        endpoint.send{value:address(this).balance}(dstChainId, path, payload, payable(address(this)), address(0), new bytes(0));
     }
+
+    function buildConfirmPayload(uint32 blockNumber) internal pure returns (bytes memory payload) {
+        payload = abi.encode(blockNumber);
+    }
+
+    function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
+        // unpack payload
+        uint8 slaverChainId = lzChainIdToZKLinkChainId[srcChainId];
+        require(slaverChainId > 0, "zkLink chain id not config");
+        (uint32 blockNumber, bytes32 syncHash) = abi.decode(payload, (uint32, bytes32));
+        zklink.receiveSyncHash(blockNumber, slaverChainId, syncHash);
+    }
+    // #endif
 
     /// @notice Receive the bytes payload from the source chain via LayerZero
     /// @dev lzReceive can only be called by endpoint
@@ -193,19 +238,8 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ILayerZeroReceive
         _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
 
-    function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 nonce, bytes calldata payload) internal {
-        // unpack payload
-        (bytes32 syncHash, uint256 progress) = abi.decode(payload, (bytes32, uint256));
-        emit ReceiveSynchronizationProgress(srcChainId, nonce, syncHash, progress);
-        zklink.receiveSynchronizationProgress(syncHash, progress);
-    }
-
     function checkDstChainId(uint16 dstChainId) internal view returns (bytes memory trustedRemote) {
         trustedRemote = destinations[dstChainId];
         require(trustedRemote.length > 0, "Trust remote not exist");
-    }
-
-    function buildZkLinkBlockBridgePayload(bytes32 syncHash, uint256 progress) internal pure returns (bytes memory payload) {
-        payload = abi.encode(syncHash, progress);
     }
 }

@@ -26,19 +26,19 @@ contract ZkLinkTest is ZkLink {
         addPriorityRequest(_opType, _pubData);
     }
 
-    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) external view returns (StoredBlockInfo memory storedNewBlock) {
-        return commitOneBlock(_previousBlock, _newBlock, _compressed, _newBlockExtra);
-    }
+//    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) external view returns (StoredBlockInfo memory storedNewBlock) {
+//        return commitOneBlock(_previousBlock, _newBlock, _compressed, _newBlockExtra);
+//    }
 
-    function testCollectOnchainOps(CommitBlockInfo memory _newBlockData) external view
-    returns (
-        bytes32 processableOperationsHash,
-        uint64 priorityOperationsProcessed,
-        bytes memory offsetsCommitment,
-        bytes32[] memory onchainOperationPubdataHashs
-    ) {
-        return collectOnchainOps(_newBlockData);
-    }
+//    function testCollectOnchainOps(CommitBlockInfo memory _newBlockData) external view
+//    returns (
+//        bytes32 processableOperationsHash,
+//        uint64 priorityOperationsProcessed,
+//        bytes memory offsetsCommitment,
+//        bytes32[] memory onchainOperationPubdataHashs
+//    ) {
+//        return collectOnchainOps(_newBlockData);
+//    }
 
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
         _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);

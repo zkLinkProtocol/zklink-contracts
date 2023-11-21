@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "./zksync/Operations.sol";
 import "./zksync/Config.sol";
 import "./interfaces/IVerifier.sol";
+import "./interfaces/ISyncService.sol";
 import "./interfaces/IL2Gateway.sol";
 import "./zksync/SafeCast.sol";
 import "./ZkLinkAcceptor.sol";
@@ -93,10 +94,9 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @dev Stored hashed StoredBlockInfo for some block number
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
-    /// @dev if `synchronizedChains` | CHAIN_INDEX equals to `ALL_CHAINS` defined in `Config.sol` then blocks at `blockHeight` and before it can be executed
-    // the key is the `syncHash` of `StoredBlockInfo`
-    // the value is the `synchronizedChains` of `syncHash` collected from all other chains
-    mapping(bytes32 => uint256) internal synchronizedChains;
+    /// @dev Store sync hash for slaver chains
+    /// blockNumber => chainId => syncHash
+    mapping(uint32 => mapping(uint8 => bytes32)) internal synchronizedChains;
 
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;
@@ -114,18 +114,10 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
 
-    /// @dev We can set `enableBridgeTo` and `enableBridgeTo` to false to disable bridge when `bridge` is compromised
-    struct BridgeInfo {
-        address bridge;
-        bool enableBridgeTo;
-        bool enableBridgeFrom;
-    }
+    /// @notice A service that sending and receiving cross chain sync message
+    ISyncService public syncService;
 
-    /// @notice bridges
-    BridgeInfo[] public bridges;
-    // 0 is reversed for non-exist bridge, existing bridges are indexed from 1
-    mapping(address => uint256) public bridgeIndex;
-
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice block stored data
     /// @dev `blockNumber`,`timestamp`,`stateHash`,`commitment` are the same on all chains
     /// `priorityOperations`,`pendingOnchainOperationsHash` is different for each chain
@@ -136,8 +128,24 @@ contract Storage is ZkLinkAcceptor, Config {
         uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
         bytes32 stateHash; // Root hash of the rollup state
         bytes32 commitment; // Verified input for the ZkLink circuit
+        SyncHash[] syncHashs; // Used for cross chain block verify
+    }
+    struct SyncHash {
+        uint8 chainId;
+        bytes32 syncHash;
+    }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice block stored data
+    struct StoredBlockInfo {
+        uint32 blockNumber; // Rollup block number
+        uint32 preCommittedBlockNumber; // The pre not empty block number committed
+        uint64 priorityOperations; // Number of priority operations processed
+        bytes32 pendingOnchainOperationsHash; // Hash of all operations that must be processed after verify
         bytes32 syncHash; // Used for cross chain block verify
     }
+    // #endif
 
     /// @notice Checks that current state not is exodus mode
     modifier active() {
@@ -165,6 +173,12 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice Check if msg sender is a validator
     modifier onlyValidator() {
         require(validators[msg.sender], "4");
+        _;
+    }
+
+    /// @notice Check if msg sender is sync service
+    modifier onlySyncService() {
+        require(msg.sender == address(syncService), "6");
         _;
     }
 

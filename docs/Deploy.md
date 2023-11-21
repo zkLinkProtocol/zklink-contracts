@@ -15,10 +15,10 @@ The example configuration file path is `etc/EXAMPLE.json`
     "UPGRADE_NOTICE_PERIOD": 0,
     "PRIORITY_EXPIRATION": 0,
     "CHAIN_ID": 1,
-    "ENABLE_COMMIT_COMPRESSED_BLOCK": true,
     "MIN_CHAIN_ID": 1,
     "MAX_CHAIN_ID": 4,
-    "ALL_CHAINS": 15
+    "ALL_CHAINS": 15,
+    "MASTER_CHAIN_ID": 1
   }
 }
 ```
@@ -27,7 +27,7 @@ The example configuration file path is `etc/EXAMPLE.json`
 
 * `CHAIN_ID` is the id defined in zkLink network(not the blockchain id). You need to set the `CHAIN_ID` according to the actual deployment situation.
 
-* `ENABLE_COMMIT_COMPRESSED_BLOCK` is switch to enable block committed with compressed mode.
+* `MASTER_CHAIN_ID` is the chain to submit complete blocks.
 
 * `BLOCK_PERIOD` is average the block generation time, for example, in ethereum mainnet it's value is `12 seconds`.
 
