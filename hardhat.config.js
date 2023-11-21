@@ -1,6 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-solpp");
-require("@openzeppelin/hardhat-upgrades");
 require("./script/deploy_zklink");
 require("./script/upgrade_zklink");
 require("./script/deploy_lz_bridge");
@@ -12,6 +11,10 @@ require("./script/deploy_l2_gateway");
 require("./script/deloy_multicall")
 require("./script/upgrade_l2_gateway")
 require("./script/upgrade_l1_gateway")
+
+if (!process.env.NET.toUpperCase().includes('ZKSYNC')) {
+  require("@openzeppelin/hardhat-upgrades");
+}
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
