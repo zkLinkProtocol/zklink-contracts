@@ -29,6 +29,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
     }
 
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Withdraws token from ZkLink to root chain in case of exodus mode. User must provide proof that he owns funds
     /// @param _storedBlockInfo Last verified block
     /// @param _owner Owner of the account
@@ -53,6 +54,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         increaseBalanceToWithdraw(_owner, _withdrawTokenId, _amount);
         emit WithdrawalPending(_withdrawTokenId, _owner, _amount);
     }
+    // #endif
 
     /// @notice Accrues users balances from deposit priority requests in Exodus mode
     /// @dev WARNING: Only for Exodus mode
@@ -219,62 +221,23 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
     }
 
-    /// @notice Add a new bridge
-    /// @param bridge the bridge contract
-    /// @return the index of new bridge
-    function addBridge(address bridge) external onlyGovernor returns (uint256) {
-        require(bridge != address(0), "L0");
-        // the index of non-exist bridge is zero
-        require(bridgeIndex[bridge] == 0, "L1");
-
-        BridgeInfo memory info = BridgeInfo({
-            bridge: bridge,
-            enableBridgeTo: true,
-            enableBridgeFrom: true
-        });
-        bridges.push(info);
-        bridgeIndex[bridge] = bridges.length;
-        emit AddBridge(bridge, bridges.length);
-
-        return bridges.length;
-    }
-
-    /// @notice Update bridge info
-    /// @dev If we want to remove a bridge(not compromised), we should firstly set `enableBridgeTo` to false
-    /// and wait all messages received from this bridge and then set `enableBridgeFrom` to false.
-    /// But when a bridge is compromised, we must set both `enableBridgeTo` and `enableBridgeFrom` to false immediately
-    /// @param index the bridge info index
-    /// @param enableBridgeTo if set to false, bridge to will be disabled
-    /// @param enableBridgeFrom if set to false, bridge from will be disabled
-    function updateBridge(uint256 index, bool enableBridgeTo, bool enableBridgeFrom) external onlyGovernor {
-        require(index < bridges.length, "M");
-        BridgeInfo memory info = bridges[index];
-        info.enableBridgeTo = enableBridgeTo;
-        info.enableBridgeFrom = enableBridgeFrom;
-        bridges[index] = info;
-        emit UpdateBridge(index, enableBridgeTo, enableBridgeFrom);
-    }
-
-    function isBridgeToEnabled(address bridge) external view returns (bool) {
-        uint256 index = bridgeIndex[bridge] - 1;
-        return bridges[index].enableBridgeTo;
-    }
-
-    function isBridgeFromEnabled(address bridge) public view returns (bool) {
-        uint256 index = bridgeIndex[bridge] - 1;
-        return bridges[index].enableBridgeFrom;
+    /// @notice Set sync service address
+    /// @param _syncService new sync service address
+    function setSyncService(ISyncService _syncService) external onlyGovernor {
+        syncService = _syncService;
+        emit SetSyncService(address(_syncService));
     }
 
     /// @notice Set gateway address
     /// @param _gateway gateway address
     function setGateway(IL2Gateway _gateway) external onlyGovernor {
-        // allow setting gateway to zero address to disable withdraw to L1
         gateway = _gateway;
         emit SetGateway(address(_gateway));
     }
 
     // =======================Block interface======================
 
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
     struct ProofInput {
         uint256[] recursiveInput;
@@ -343,45 +306,77 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
+        uint32 blocksCommitted = totalBlocksCommitted;
+        uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted - totalBlocksExecuted);
+        uint64 revertedPriorityRequests = 0;
+
+        uint32 latestSynchronizedBlockNumber = totalBlocksSynchronized;
+        for (uint32 i = 0; i < blocksToRevert; ++i) {
+            StoredBlockInfo memory storedBlockInfo = _blocksToRevert[i];
+            require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "c"); // incorrect stored block info
+            latestSynchronizedBlockNumber = storedBlockInfo.preCommittedBlockNumber;
+
+            delete storedBlockHashes[blocksCommitted];
+
+            --blocksCommitted;
+            revertedPriorityRequests = revertedPriorityRequests + storedBlockInfo.priorityOperations;
+        }
+
+        totalBlocksCommitted = blocksCommitted;
+        totalCommittedPriorityRequests = totalCommittedPriorityRequests - revertedPriorityRequests;
+        totalBlocksSynchronized = latestSynchronizedBlockNumber;
+
+        emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
+    }
+    // #endif
 
     // =======================Cross chain block synchronization======================
 
-    /// @notice Combine the `progress` of the other chains of a `syncHash` with self
-    function receiveSynchronizationProgress(bytes32 syncHash, uint256 progress) external {
-        require(isBridgeFromEnabled(msg.sender), "C");
-
-        synchronizedChains[syncHash] = synchronizedChains[syncHash] | progress;
-    }
-
-    /// @notice Get synchronized progress of current chain known
-    function getSynchronizedProgress(StoredBlockInfo memory _block) public view returns (uint256 progress) {
-        // `ALL_CHAINS` will be upgraded when we add a new chain
-        // and all blocks that confirm synchronized will return the latest progress flag
-        if (_block.blockNumber <= totalBlocksSynchronized) {
-            progress = ALL_CHAINS;
-        } else {
-            progress = synchronizedChains[_block.syncHash];
-            // combine the current chain if it has proven this block
-            if (_block.blockNumber <= totalBlocksProven &&
-                hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber]) {
-                progress |= CHAIN_INDEX;
-            } else {
-                // to prevent bridge from delivering a wrong progress
-                progress &= ~CHAIN_INDEX;
-            }
-        }
+    // #if CHAIN_ID == MASTER_CHAIN_ID
+    function receiveSyncHash(uint32 blockNumber, uint8 chainId, bytes32 syncHash) external onlySyncService {
+        synchronizedChains[blockNumber][chainId] = syncHash;
+        emit ReceiveSyncHash(blockNumber, chainId, syncHash);
     }
 
     /// @notice Check if received all syncHash from other chains at the block height
-    function syncBlocks(StoredBlockInfo memory _block) external nonReentrant {
-        uint256 progress = getSynchronizedProgress(_block);
-        require(progress == ALL_CHAINS, "D0");
-
+    function confirmBlock(StoredBlockInfo memory _block) external onlyValidator payable {
         uint32 blockNumber = _block.blockNumber;
-        require(blockNumber > totalBlocksSynchronized, "D1");
+        require(blockNumber > totalBlocksSynchronized && blockNumber <= totalBlocksProven, "n0");
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[blockNumber], "n1");
+
+        for (uint8 i = 0; i < _block.syncHashs.length; ++i) {
+            SyncHash memory sync = _block.syncHashs[i];
+            bytes32 remoteSyncHash = synchronizedChains[blockNumber][sync.chainId];
+            require(remoteSyncHash == sync.syncHash, "n2");
+        }
+
+        // send confirm message to slaver chains
+        syncService.confirmBlock{value:msg.value}(blockNumber);
 
         totalBlocksSynchronized = blockNumber;
+        emit BlockSynced(blockNumber);
     }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice Send sync hash to master chain
+    function sendSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber], "j0");
+        syncService.sendSyncHash{value:msg.value}(_block.blockNumber, _block.syncHash);
+        emit SendSyncHash(_block.blockNumber, _block.syncHash);
+    }
+
+    function receiveBlockConfirmation(uint32 blockNumber) external onlySyncService {
+        if (blockNumber > totalBlocksSynchronized) {
+            totalBlocksSynchronized = blockNumber;
+            emit BlockSynced(blockNumber);
+        }
+    }
+    // #endif
 
     // =======================Withdraw to L1======================
     /// @notice Withdraw token to L1 for user by gateway

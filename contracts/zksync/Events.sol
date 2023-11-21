@@ -14,6 +14,9 @@ interface Events {
     /// @notice Event emitted when a block is proven
     event BlockProven(uint32 indexed blockNumber);
 
+    /// @notice Event emitted when a block is synced
+    event BlockSynced(uint32 indexed blockNumber);
+
     /// @notice Event emitted when a block is executed
     event BlockExecuted(uint32 indexed blockNumber);
 
@@ -63,14 +66,21 @@ interface Events {
     /// @notice Token pause status update
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
-    /// @notice New bridge added
-    event AddBridge(address indexed bridge, uint256 bridgeIndex);
-
-    /// @notice Bridge update
-    event UpdateBridge(uint256 indexed bridgeIndex, bool enableBridgeTo, bool enableBridgeFrom);
+    /// @notice Sync service changed
+    event SetSyncService(address indexed newSyncService);
 
     /// @notice Gateway address changed
     event SetGateway(address indexed newGateway);
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice Event emitted when send sync hash to master chain
+    event SendSyncHash(uint32 blockNumber, bytes32 syncHash);
+    // #endif
+
+    // #if CHAIN_ID == MASTER_CHAIN_ID
+    /// @notice Event emitted when receive sync hash from a slaver chain
+    event ReceiveSyncHash(uint32 blockNumber, uint8 slaverChainId, bytes32 syncHash);
+    // #endif
 }
 
 /// @title Upgrade events

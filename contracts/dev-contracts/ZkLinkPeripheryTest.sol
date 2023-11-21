@@ -31,7 +31,7 @@ contract ZkLinkPeripheryTest is ZkLinkPeriphery {
         totalOpenPriorityRequests = _totalOpenPriorityRequests;
     }
 
-    function setSyncProgress(bytes32 syncHash, uint256 progress) external {
-        synchronizedChains[syncHash] = progress;
+    function setSyncProgress(uint32 blockNumber, uint8 chainId, bytes32 syncHash) external {
+        synchronizedChains[blockNumber][chainId] = syncHash;
     }
 }
