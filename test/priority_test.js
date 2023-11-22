@@ -1,6 +1,6 @@
 const hardhat = require('hardhat');
 const { expect } = require('chai');
-const { deploy, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID, MAX_ACCOUNT_ID} = require('./utils');
+const { deploy, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID, MAX_ACCOUNT_ID, CHAIN_ID} = require('./utils');
 const { hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, extendAddress} = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers/lib/utils");
 
@@ -73,7 +73,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         expect(balance1.sub(balance0)).eq(amount);
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:ethId, targetTokenId:ethId, amount, owner:extendAddress(to) });
+        const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:ethId, targetTokenId:ethId, amount, owner:extendAddress(to) });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
@@ -90,7 +90,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         expect(await token2.balanceOf(defaultSender.address)).equal(senderBalance.sub(amount));
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token2Id, targetTokenId:token2Id, amount, owner:extendAddress(to) });
+        const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token2Id, targetTokenId:token2Id, amount, owner:extendAddress(to) });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
@@ -107,7 +107,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         expect(await token4.balanceOf(defaultSender.address)).equal(senderBalance.sub(amount));
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token4Id, targetTokenId:token4Mapping, amount, owner:extendAddress(to) });
+        const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token4Id, targetTokenId:token4Mapping, amount, owner:extendAddress(to) });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
@@ -125,7 +125,7 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const amountInPubdata = parseEther("30"); // 30 * 10 ^18
-        const encodePubdata = getDepositPubdata({ chainId:1, accountId:0, subAccountId, tokenId:token5Id, targetTokenId:token5Id, amount:amountInPubdata, owner:extendAddress(to) });
+        const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token5Id, targetTokenId:token5Id, amount:amountInPubdata, owner:extendAddress(to) });
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
@@ -158,7 +158,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         await zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId, false);
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getFullExitPubdata({ chainId:1, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:ethId, srcTokenId:ethId, amount:0});
+        const encodePubdata = getFullExitPubdata({ chainId:CHAIN_ID, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:ethId, srcTokenId:ethId, amount:0});
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 
@@ -168,7 +168,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         await zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, token4Id, true);
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
-        const encodePubdata = getFullExitPubdata({ chainId:1, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:token4Id, srcTokenId:token4Mapping, amount:0});
+        const encodePubdata = getFullExitPubdata({ chainId:CHAIN_ID, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:token4Id, srcTokenId:token4Mapping, amount:0});
         expect(hashedPubdata).eq(hashBytesToBytes20(encodePubdata));
     });
 });

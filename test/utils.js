@@ -3,10 +3,9 @@ const hardhat = require("hardhat");
 const MAX_ACCOUNT_ID = 16777215;
 const MAX_SUB_ACCOUNT_ID = 31;
 const MIN_CHAIN_ID = 1;
-const MAX_CHAIN_ID = 4;
-const CHAIN_ID = 1; // chain id of UnitTest env
-const CHAIN_ID_INDEX = 1;
-const ALL_CHAINS = 15;
+const MAX_CHAIN_ID = hardhat.config.solpp.defs.MAX_CHAIN_ID;
+const CHAIN_ID = hardhat.config.solpp.defs.CHAIN_ID;
+const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
 const FEE_ACCOUNT_ADDRESS = "0x740f4464a56abe0294067f890d32c599bb0ccf0d";
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const EMPTY_STRING_KECCAK = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
@@ -26,6 +25,8 @@ const MAX_USD_STABLE_TOKEN_ID = 31;
 const MAX_PROOF_COMMITMENT = "0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 const MAX_ACCEPT_FEE_RATE = 10000;
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+// master or slaver chain
+const IS_MASTER_CHAIN = hardhat.config.solpp.defs.CHAIN_ID === hardhat.config.solpp.defs.MASTER_CHAIN_ID;
 
 async function calFee(tx) {
     let gasPrice = tx.gasPrice;
@@ -43,22 +44,18 @@ async function deploy() {
     const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
     const periphery = await peripheryFactory.deploy();
     // zkLink
-    hardhat.config.solpp.defs.PERIPHERY_ADDRESS = periphery.address;
-    console.log(`set PERIPHERY_ADDRESS to ${periphery.address} and compile contracts...`);
-    await hardhat.run(`compile`);
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
-    const zkLink = await zkLinkFactory.deploy();
+    const zkLink = await zkLinkFactory.deploy(periphery.address);
 
     // deployer
     const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
+    const zkLinkInitParams = IS_MASTER_CHAIN ?
+        hardhat.ethers.utils.defaultAbiCoder.encode(["bytes32"], [GENESIS_ROOT]) :
+        hardhat.ethers.utils.defaultAbiCoder.encode(["uint32"], [0]);
     const deployer = await deployerFactory.deploy(
         verifier.address,
         zkLink.address,
-        0, // blockNumber
-        0, // timestamp
-        hardhat.ethers.utils.arrayify(GENESIS_ROOT), // stateHash
-        hardhat.ethers.utils.arrayify(ZERO_BYTES32), // commitment
-        hardhat.ethers.utils.arrayify(EMPTY_STRING_KECCAK), // syncHash
+        zkLinkInitParams,
         validator.address,
         governor.address,
         feeAccount.address
@@ -123,15 +120,21 @@ async function deploy() {
     }
 }
 
+function createSlaverChainSyncHash(preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, newBlockTimestamp, onchainOperationPubdataHash) {
+    return hardhat.ethers.utils.keccak256(hardhat.ethers.utils.solidityPack(["bytes32","uint32","bytes32","uint256","bytes32"],
+        [preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, newBlockTimestamp, onchainOperationPubdataHash]));
+}
+
 module.exports = {
     calFee,
     deploy,
+    createSlaverChainSyncHash,
+    IS_MASTER_CHAIN,
     MAX_ACCOUNT_ID,
     MAX_SUB_ACCOUNT_ID,
     MIN_CHAIN_ID,
     MAX_CHAIN_ID,
     CHAIN_ID,
-    CHAIN_ID_INDEX,
     ALL_CHAINS,
     FEE_ACCOUNT_ADDRESS,
     ZERO_BYTES32,

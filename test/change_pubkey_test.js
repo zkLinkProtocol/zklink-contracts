@@ -1,9 +1,7 @@
 const { ethers } = require("hardhat");
 const { expect } = require('chai');
 const { deploy } = require('./utils');
-const { getChangePubkeyPubdata, paddingChunk, createEthWitnessOfECRECOVER, createEthWitnessOfCREATE2,
-    OP_CHANGE_PUBKEY_CHUNKS, extendAddress
-} = require('../script/op_utils');
+const { createEthWitnessOfCREATE2 } = require('../script/op_utils');
 
 describe('ZkLink change pubkey unit tests', function () {
     let zkLink, periphery, alice;
@@ -48,50 +46,6 @@ describe('ZkLink change pubkey unit tests', function () {
         expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(ethers.utils.keccak256(newPubkeyHash));
     });
 
-    it('verify onchain pubkey should be success', async () => {
-        const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId:1, subAccountId:4, pubKeyHash, owner:extendAddress(alice.address), nonce, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
-        const onchainOperations = [{
-            "ethWitness":"0x",
-            "publicDataOffset":0
-        }];
-        const commitBlockInfo = {
-            "newStateHash":"0x0000000000000000000000000000000000000000000000000000000000000001",
-            "publicData":pubdataPadding,
-            "timestamp":1,
-            "onchainOperations":onchainOperations,
-            "blockNumber":1,
-        };
-        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
-        expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
-        expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x010000');
-    });
-
-    it('verify ECRECOVER should be success', async () => {
-        const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        const accountId = 15;
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:5, pubKeyHash, owner:extendAddress(alice.address), nonce, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
-        const ethWitness = createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,alice);
-        const onchainOperations = [{
-            "ethWitness":ethWitness,
-            "publicDataOffset":0
-        }];
-        const commitBlockInfo = {
-            "newStateHash":"0x0000000000000000000000000000000000000000000000000000000000000001",
-            "publicData":pubdataPadding,
-            "timestamp":1,
-            "onchainOperations":onchainOperations,
-            "blockNumber":1,
-        };
-        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
-        expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
-        expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x010000');
-    });
-
     it('verify CREATE2 should be success', async () => {
         const pubKeyHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         const accountId = 15;
@@ -99,24 +53,10 @@ describe('ZkLink change pubkey unit tests', function () {
         const saltArg = "0x1100000000000000000000000000000000000000000000000000000000000000";
         const codeHash = "0x00ff000000000000000000000000000000000000000000000000000000000000";
         const {ethWitness, owner} = createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash);
-        const pubdata = getChangePubkeyPubdata({chainId:1, accountId, subAccountId:0, pubKeyHash, owner:extendAddress(owner), nonce:0, tokenId:0, fee:0});
-        const pubdataPadding = paddingChunk(pubdata, OP_CHANGE_PUBKEY_CHUNKS);
-
-        const onchainOperations = [{
-            "ethWitness":ethWitness,
-            "publicDataOffset":0
-        }];
-        const commitBlockInfo = {
-            "newStateHash":"0x0000000000000000000000000000000000000000000000000000000000000001",
-            "publicData":pubdataPadding,
-            "timestamp":1,
-            "onchainOperations":onchainOperations,
-            "blockNumber":1,
-        };
-        const result = await zkLink.testCollectOnchainOps(commitBlockInfo);
-        expect(result.processableOperationsHash).eq(ethers.utils.keccak256("0x"));
-        expect(result.priorityOperationsProcessed).eq(0);
-        expect(result.offsetsCommitment).eq('0x010000');
+        let nonce = 0;
+        let changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
+        let result = await zkLink.testVerifyChangePubkey(ethWitness, changePubKey);
+        expect(result).eq(true);
     });
 
     it('verifyChangePubkeyECRECOVER should be success', async () => {
@@ -128,7 +68,7 @@ describe('ZkLink change pubkey unit tests', function () {
         let changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
         let signature = "efd0d9c6beb00310535bb51ee58745adb547e7d875d5823892365a6450caf6c559a6a4bfd83bf336ac59cf83e97948dbf607bf2aecd24f6829c3deac20ecdb601b";
         let witness = "0x00" + signature;
-        let result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
+        let result = await zkLink.testVerifyChangePubkey(witness, changePubKey);
         expect(result).eq(true);
 
         // pubKeyHash has prefix zero
@@ -139,7 +79,7 @@ describe('ZkLink change pubkey unit tests', function () {
         changePubKey = {chainId:1,pubKeyHash,nonce,accountId,owner};
         signature = "946cdf8391fd348412ebf0f875be9c48a2512fdf1916cbf235a27f688de40a7574d45616a9684358ea71c3e25df2cc9f58df269c8370d8bb3739e9cfbba6a34b1c";
         witness = "0x00" + signature;
-        result = await zkLink.testVerifyChangePubkeyECRECOVER(witness, changePubKey);
+        result = await zkLink.testVerifyChangePubkey(witness, changePubKey);
         expect(result).eq(true);
     });
 });

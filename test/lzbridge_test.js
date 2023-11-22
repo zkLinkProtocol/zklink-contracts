@@ -21,13 +21,18 @@ describe('LayerZero bridge unit tests', function () {
         lzBridgeInETH = await lzBridgeFactory.deploy(zklinkInETH.address, lzInETH.address);
     });
 
+    it('only network governor can set chain id map', async () => {
+        await expect(lzBridgeInETH.connect(alice).setChainIdMap(1, lzChainIdInETH))
+            .to.be.revertedWith('Caller is not governor');
+
+        await expect(lzBridgeInETH.connect(networkGovernor).setChainIdMap(1, lzChainIdInETH))
+            .to.be.emit(lzBridgeInETH, "UpdateChainIdMap")
+            .withArgs(1, lzChainIdInETH);
+    });
+
     it('only network governor can set destination', async () => {
         await expect(lzBridgeInETH.connect(alice).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
             .to.be.revertedWith('Caller is not governor');
-
-        // can not set dst to the current chain
-        await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInETH, lzBridgeInBSC.address))
-            .to.be.revertedWith('Invalid dstChainId');
 
         await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
             .to.be.emit(lzBridgeInETH, "UpdateDestination")

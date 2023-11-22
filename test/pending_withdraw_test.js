@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy} = require('./utils');
+const { deploy, CHAIN_ID} = require('./utils');
 const { writeDepositPubdata, extendAddress} = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
 
@@ -32,7 +32,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         // increase pending balance
         const depositAmount = parseEther("1.0");
         await zkLink.connect(defaultSender).depositETH(extendAddress(alice.address), 0, {value: depositAmount});
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:ethId, targetTokenId:ethId, amount:depositAmount, owner:extendAddress(alice.address) });
+        const pubdata = writeDepositPubdata({ chainId:CHAIN_ID, subAccountId:0, tokenId:ethId, targetTokenId:ethId, amount:depositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);
@@ -61,7 +61,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         await token2.connect(defaultSender).mint(depositAmount);
         await token2.connect(defaultSender).approve(zkLink.address, depositAmount);
         await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, extendAddress(alice.address), 0, false);
-        const pubdata = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:extendAddress(alice.address) });
+        const pubdata = writeDepositPubdata({ chainId:CHAIN_ID, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
         await zkLink.setExodus(false);

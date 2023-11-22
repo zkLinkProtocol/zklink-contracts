@@ -1,7 +1,12 @@
 const { expect } = require('chai');
-const { deploy} = require('./utils');
+const { IS_MASTER_CHAIN, deploy} = require('./utils');
 const { writeDepositPubdata, extendAddress} = require('../script/op_utils');
 const {parseEther} = require("ethers/lib/utils");
+
+if (!IS_MASTER_CHAIN) {
+    console.log("ZkLink exodus unit tests only support master chain");
+    return;
+}
 
 describe('ZkLink exodus unit tests', function () {
     let deployedInfo;
@@ -27,7 +32,7 @@ describe('ZkLink exodus unit tests', function () {
             "timestamp":1652422395,
             "stateHash":"0xbb66ffc06a476f05a218f6789ca8946e4f0cf29f1efc2e4d0f9a8e70f0326313",
             "commitment":"0x6104d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184",
-            "syncHash":"0xab04d07f7c285404dc58dd0b37894b20c4193a231499a20e4056d119fc2c1184"
+            "syncHashs":[]
         };
     });
 
