@@ -17,7 +17,7 @@ interface IZkLink {
     function depositERC20(IERC20 _token, uint104 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external;
 
     /// @notice Receive block sync hash from slaver chain
-    function receiveSyncHash(uint32 blockNumber, uint8 chainId, bytes32 syncHash) external;
+    function receiveSyncHash(uint8 chainId, bytes32 syncHash) external;
 
     /// @notice Receive block confirmation from master chain
     function receiveBlockConfirmation(uint32 blockNumber) external;

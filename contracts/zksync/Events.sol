@@ -74,12 +74,12 @@ interface Events {
 
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Event emitted when send sync hash to master chain
-    event SendSyncHash(uint32 blockNumber, bytes32 syncHash);
+    event SendSyncHash(bytes32 syncHash);
     // #endif
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Event emitted when receive sync hash from a slaver chain
-    event ReceiveSyncHash(uint32 blockNumber, uint8 slaverChainId, bytes32 syncHash);
+    event ReceiveSyncHash(uint8 slaverChainId, bytes32 syncHash);
     // #endif
 }
 

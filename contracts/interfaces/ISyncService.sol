@@ -7,9 +7,8 @@ pragma solidity ^0.8.0;
 interface ISyncService {
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Send sync hash message to master chain
-    /// @param blockNumber the block height
     /// @param syncHash the sync hash
-    function sendSyncHash(uint32 blockNumber, bytes32 syncHash) external payable;
+    function sendSyncHash(bytes32 syncHash) external payable;
     // #endif
 
     // #if CHAIN_ID == MASTER_CHAIN_ID

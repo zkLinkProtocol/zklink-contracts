@@ -337,9 +337,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // =======================Cross chain block synchronization======================
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
-    function receiveSyncHash(uint32 blockNumber, uint8 chainId, bytes32 syncHash) external onlySyncService {
-        synchronizedChains[blockNumber][chainId] = syncHash;
-        emit ReceiveSyncHash(blockNumber, chainId, syncHash);
+    function receiveSyncHash(uint8 chainId, bytes32 syncHash) external onlySyncService {
+        synchronizedChains[chainId] = syncHash;
+        emit ReceiveSyncHash(chainId, syncHash);
     }
 
     /// @notice Check if received all syncHash from other chains at the block height
@@ -350,7 +350,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         for (uint8 i = 0; i < _block.syncHashs.length; ++i) {
             SyncHash memory sync = _block.syncHashs[i];
-            bytes32 remoteSyncHash = synchronizedChains[blockNumber][sync.chainId];
+            bytes32 remoteSyncHash = synchronizedChains[sync.chainId];
             require(remoteSyncHash == sync.syncHash, "n2");
         }
 
@@ -365,9 +365,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Send sync hash to master chain
     function sendSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
-        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber], "j0");
-        syncService.sendSyncHash{value:msg.value}(_block.blockNumber, _block.syncHash);
-        emit SendSyncHash(_block.blockNumber, _block.syncHash);
+        require(_block.blockNumber > totalBlocksSynchronized, "j0");
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber], "j1");
+        syncService.sendSyncHash{value:msg.value}(_block.syncHash);
+        emit SendSyncHash(_block.syncHash);
     }
 
     function receiveBlockConfirmation(uint32 blockNumber) external onlySyncService {
