@@ -81,16 +81,15 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
 
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Estimate send sync hash fee
-    /// @param blockNumber the height of stored block
     /// @param syncHash the sync hash of stored block
-    function estimateSendSyncHashFee(uint32 blockNumber, bytes32 syncHash) external view returns (uint nativeFee, uint zroFee) {
+    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee, uint zroFee) {
         uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
         checkDstChainId(dstChainId);
-        bytes memory payload = buildSyncHashPayload(blockNumber, syncHash);
+        bytes memory payload = buildSyncHashPayload(syncHash);
         return endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
     }
 
-    function sendSyncHash(uint32 blockNumber, bytes32 syncHash) external override onlyZkLink payable {
+    function sendSyncHash(bytes32 syncHash) external override onlyZkLink payable {
         // ===Checks===
         // send msg to master chain
         uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
@@ -99,7 +98,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         // ===Interactions===
         // send LayerZero message
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
-        bytes memory payload = buildSyncHashPayload(blockNumber, syncHash);
+        bytes memory payload = buildSyncHashPayload(syncHash);
         // fee = value - refund
         uint256 originMsgValue = msg.value;
         uint256 originBalance= tx.origin.balance;
@@ -109,8 +108,8 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         emit SynchronizationFee(originMsgValue - (tx.origin.balance - originBalance));
     }
 
-    function buildSyncHashPayload(uint32 blockNumber, bytes32 syncHash) internal pure returns (bytes memory payload) {
-        payload = abi.encode(blockNumber, syncHash);
+    function buildSyncHashPayload(bytes32 syncHash) internal pure returns (bytes memory payload) {
+        payload = abi.encode(syncHash);
     }
 
     function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
@@ -195,8 +194,8 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         // unpack payload
         uint8 slaverChainId = lzChainIdToZKLinkChainId[srcChainId];
         require(slaverChainId > 0, "zkLink chain id not config");
-        (uint32 blockNumber, bytes32 syncHash) = abi.decode(payload, (uint32, bytes32));
-        zklink.receiveSyncHash(blockNumber, slaverChainId, syncHash);
+        bytes32 syncHash = abi.decode(payload, (bytes32));
+        zklink.receiveSyncHash(slaverChainId, syncHash);
     }
     // #endif
 

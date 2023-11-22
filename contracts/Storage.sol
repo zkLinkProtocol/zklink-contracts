@@ -95,8 +95,8 @@ contract Storage is ZkLinkAcceptor, Config {
     mapping(uint32 => bytes32) internal storedBlockHashes;
 
     /// @dev Store sync hash for slaver chains
-    /// blockNumber => chainId => syncHash
-    mapping(uint32 => mapping(uint8 => bytes32)) internal synchronizedChains;
+    /// chainId => syncHash
+    mapping(uint8 => bytes32) internal synchronizedChains;
 
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;
