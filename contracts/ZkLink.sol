@@ -49,6 +49,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         bytes[] pendingOnchainOpsPubdata;
     }
 
+    /// @dev The periphery code address which is a runtime constant
+    address public immutable periphery;
+
+    constructor(address _periphery) {
+        periphery = _periphery;
+    }
+
     // =================Upgrade interface=================
 
     /// @notice Notice period before activation preparation status of upgrade mode
@@ -111,7 +118,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
-        address periphery = $(defined(PERIPHERY_ADDRESS) ? PERIPHERY_ADDRESS : 0x0000000000000000000000000000000000000000);
         _fallback(periphery);
     }
 
@@ -249,6 +255,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
     /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
     /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
+    /// slaverChainNum - the slaver chain num
     /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
     function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
         bytes memory pubData = _newBlockData.publicData;
@@ -296,7 +303,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             priorityOperationsProcessed = priorityOperationsProcessed + newPriorityProceeded;
             // group onchain operations pubdata hash by chain id for slaver chains
             if (chainId != CHAIN_ID) {
-                onchainOperationPubdataHashs[chainId] = Utils.concatHash(onchainOperationPubdataHashs[chainId], opPubData);
+                uint256 chainOrder = chainId - 1;
+                onchainOperationPubdataHashs[chainOrder] = Utils.concatHash(onchainOperationPubdataHashs[chainOrder], opPubData);
             }
             if (processablePubData.length > 0) {
                 // concat processable onchain operations pubdata hash of current chain
@@ -589,31 +597,31 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(nBlocks > 0, "d0");
 
         uint32 _totalBlocksExecuted = totalBlocksExecuted;
-        require(storedBlockHashes[_totalBlocksExecuted] == hashStoredBlockInfo(_latestExecutedBlockData), "d2");
+        require(storedBlockHashes[_totalBlocksExecuted] == hashStoredBlockInfo(_latestExecutedBlockData), "d1");
 
         uint64 priorityRequestsExecuted = 0;
         uint32 latestExecutedBlockNumber = _latestExecutedBlockData.blockNumber;
         for (uint32 i = 0; i < nBlocks; ++i) {
             ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
-            require(_blockExecuteData.storedBlock.preCommittedBlockNumber == latestExecutedBlockNumber, "d3");
-            require(_blockExecuteData.storedBlock.blockNumber <= totalBlocksSynchronized, "d4");
+            require(_blockExecuteData.storedBlock.preCommittedBlockNumber == latestExecutedBlockNumber, "d2");
 
             executeOneBlock(_blockExecuteData);
             priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
             latestExecutedBlockNumber = _blockExecuteData.storedBlock.blockNumber;
         }
+        require(latestExecutedBlockNumber <= totalBlocksSynchronized, "d3");
 
         firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
         totalCommittedPriorityRequests = totalCommittedPriorityRequests - priorityRequestsExecuted;
         totalOpenPriorityRequests = totalOpenPriorityRequests - priorityRequestsExecuted;
 
-        totalBlocksExecuted = totalBlocksExecuted + nBlocks;
+        totalBlocksExecuted = _totalBlocksExecuted + nBlocks;
 
         emit BlockExecuted(latestExecutedBlockNumber);
     }
     // #endif
 
-    function createSlaverChainSyncHash(bytes32 preBlockSyncHash, uint256 _newBlockNumber, bytes32 _newBlockStateHash, uint256 _newBlockTimestamp, bytes32 _newBlockOnchainOperationPubdataHash) internal pure returns (bytes32) {
+    function createSlaverChainSyncHash(bytes32 preBlockSyncHash, uint32 _newBlockNumber, bytes32 _newBlockStateHash, uint256 _newBlockTimestamp, bytes32 _newBlockOnchainOperationPubdataHash) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(preBlockSyncHash, _newBlockNumber, _newBlockStateHash, _newBlockTimestamp, _newBlockOnchainOperationPubdataHash));
     }
 
