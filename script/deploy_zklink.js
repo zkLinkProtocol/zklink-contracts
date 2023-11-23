@@ -7,10 +7,7 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("validator", "The validator address (default is same as deployer)", undefined, types.string, true)
     .addParam("feeAccount", "The feeAccount address (default is same as deployer)", undefined, types.string, true)
     .addParam("blockNumber", "The block number", 0, types.int, true)
-    .addParam("timestamp", "The block timestamp", 0, types.int, true)
-    .addParam("genesisRoot", "The block root hash")
-    .addParam("commitment", "The block commitment", "0x0000000000000000000000000000000000000000000000000000000000000000", types.string, true)
-    .addParam("syncHash", "The block syncHash", "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", types.string, true)
+    .addParam("genesisRoot", "The block root hash", "0x0000000000000000000000000000000000000000000000000000000000000000", types.string, true)
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
@@ -33,18 +30,12 @@ task("deployZkLink", "Deploy zklink contracts")
         const force = taskArgs.force;
         const skipVerify = taskArgs.skipVerify;
         const blockNumber = taskArgs.blockNumber;
-        const timestamp = taskArgs.timestamp;
         const genesisRoot = taskArgs.genesisRoot;
-        const commitment = taskArgs.commitment;
-        const syncHash = taskArgs.syncHash;
         console.log('governor', governor);
         console.log('validator', validator);
         console.log('feeAccount', feeAccount);
         console.log('blockNumber', blockNumber);
-        console.log('timestamp', timestamp);
         console.log('genesisRoot', genesisRoot);
-        console.log('commitment', commitment);
-        console.log('syncHash', syncHash);
         console.log('force redeploy all contracts?', force);
         console.log('skip verify contracts?', skipVerify);
 
@@ -60,7 +51,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_VERIFIER_TARGET in deployLog) || force) {
             console.log('deploy verifier target...');
             let verifier;
-            if (contractDeployer.zksync) {
+            if (!hardhat.config.isMasterChain) {
                 verifier = await contractDeployer.deployContract('EmptyVerifier', []);
             } else {
                 verifier = await contractDeployer.deployContract('Verifier', []);
@@ -100,10 +91,7 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkTarget;
         if (!(logName.DEPLOY_LOG_ZKLINK_TARGET in deployLog) || force) {
             console.log('deploy zkLink target...');
-            hardhat.config.solpp.defs.PERIPHERY_ADDRESS = peripheryTarget;
-            console.log(`set PERIPHERY_ADDRESS to ${peripheryTarget} and compile contracts...`);
-            await hardhat.run('compile');
-            let zkLink = await contractDeployer.deployContract('ZkLink', []);
+            let zkLink = await contractDeployer.deployContract('ZkLink', [peripheryTarget]);
             zkLinkTarget = zkLink.address;
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -112,7 +100,7 @@ task("deployZkLink", "Deploy zklink contracts")
         }
         console.log('zkLink target', zkLinkTarget);
         if ((!(logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
-            await verifyContractCode(hardhat, zkLinkTarget, []);
+            await verifyContractCode(hardhat, zkLinkTarget, [peripheryTarget]);
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
@@ -122,16 +110,15 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkProxyAddr;
         let verifierProxyAddr;
         let gatekeeperAddr;
+        const zkLinkInitParams = hardhat.isMasterChain ?
+            hardhat.ethers.utils.defaultAbiCoder.encode(["bytes32"], [genesisRoot]) :
+            hardhat.ethers.utils.defaultAbiCoder.encode(["uint32"], [blockNumber]);
         if (!(logName.DEPLOY_LOG_DEPLOY_FACTORY in deployLog) || force) {
             console.log('use deploy factory...');
             const deployArgs = [
                 verifierTarget,
                 zkLinkTarget,
-                blockNumber,
-                timestamp,
-                hardhat.ethers.utils.arrayify(genesisRoot),
-                hardhat.ethers.utils.arrayify(commitment),
-                hardhat.ethers.utils.arrayify(syncHash),
+                zkLinkInitParams,
                 validator,
                 governor,
                 feeAccount
@@ -182,8 +169,8 @@ task("deployZkLink", "Deploy zklink contracts")
             if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
                 await verifyContractCode(hardhat, zkLinkProxyAddr, [
                     zkLinkTarget,
-                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','uint32','uint256','bytes32','bytes32','bytes32'],
-                        [verifierProxyAddr, deployFactoryAddr, blockNumber, timestamp, genesisRoot, commitment, syncHash])
+                    hardhat.ethers.utils.defaultAbiCoder.encode(['address','address','bytes'],
+                        [verifierProxyAddr, deployFactoryAddr, zkLinkInitParams])
                 ]);
                 deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));

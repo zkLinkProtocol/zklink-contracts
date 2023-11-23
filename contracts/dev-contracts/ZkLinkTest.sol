@@ -6,6 +6,8 @@ import "../ZkLink.sol";
 
 contract ZkLinkTest is ZkLink {
 
+    constructor(address _periphery) ZkLink(_periphery) {}
+
     receive() external payable {
     }
 
@@ -26,8 +28,9 @@ contract ZkLinkTest is ZkLink {
         addPriorityRequest(_opType, _pubData);
     }
 
-    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) external view returns (StoredBlockInfo memory storedNewBlock) {
-        return commitOneBlock(_previousBlock, _newBlock, _compressed, _newBlockExtra);
+    // #if CHAIN_ID == MASTER_CHAIN_ID
+    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external view returns (StoredBlockInfo memory storedNewBlock) {
+        return commitOneBlock(_previousBlock, _newBlock);
     }
 
     function testCollectOnchainOps(CommitBlockInfo memory _newBlockData) external view
@@ -35,16 +38,33 @@ contract ZkLinkTest is ZkLink {
         bytes32 processableOperationsHash,
         uint64 priorityOperationsProcessed,
         bytes memory offsetsCommitment,
+        uint256 slaverChainNum,
         bytes32[] memory onchainOperationPubdataHashs
     ) {
         return collectOnchainOps(_newBlockData);
     }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    function testCommitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) external view returns (StoredBlockInfo memory storedNewBlock) {
+        return commitOneCompressedBlock(_previousBlock, _newBlock);
+    }
+
+    function testCollectOnchainOps(CommitBlockInfo memory _newBlockData) external view
+    returns (
+        bytes32 processableOperationsHash,
+        uint64 priorityOperationsProcessed,
+        bytes32 onchainOperationPubdataHash
+    ) {
+        return collectOnchainOpsOfCompressedBlock(_newBlockData);
+    }
+    // #endif
 
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
         _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
     }
 
-    function testVerifyChangePubkeyECRECOVER(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) external pure returns (bool) {
-        return verifyChangePubkeyECRECOVER(_ethWitness, _changePk);
+    function testVerifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) external pure returns (bool) {
+        return verifyChangePubkey(_ethWitness, _changePk);
     }
 }

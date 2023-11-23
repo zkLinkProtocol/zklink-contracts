@@ -80,11 +80,8 @@ contract Config {
     /// @dev All chain index, for example [1, 2, 3, 4] => 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 = 15
     uint256 internal constant ALL_CHAINS = $(ALL_CHAINS);
 
-    /// @dev Chain index, CHAIN_ID is non-zero value
-    uint256 internal constant CHAIN_INDEX = $(1 << CHAIN_ID - 1);
-
-    /// @dev Enable commit a compressed block
-    bool internal constant ENABLE_COMMIT_COMPRESSED_BLOCK = $(ENABLE_COMMIT_COMPRESSED_BLOCK);
+    /// @dev Master chain id defined by ZkLink
+    uint8 internal constant MASTER_CHAIN_ID = $(MASTER_CHAIN_ID);
 
     /// @dev Token decimals is a fixed value at layer two in ZkLink
     uint8 internal constant TOKEN_DECIMALS_OF_LAYER2 = 18;

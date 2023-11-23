@@ -12,10 +12,6 @@ require("./script/deloy_multicall")
 require("./script/upgrade_l2_gateway")
 require("./script/upgrade_l1_gateway")
 
-if (!process.env.NET.toUpperCase().includes('ZKSYNC')) {
-  require("@openzeppelin/hardhat-upgrades");
-}
-
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -54,10 +50,9 @@ const hardhatUserConfig = {
       UPGRADE_NOTICE_PERIOD: 0,
       PRIORITY_EXPIRATION: 0,
       CHAIN_ID: 1,
-      ENABLE_COMMIT_COMPRESSED_BLOCK: true,
-      MIN_CHAIN_ID: 1,
       MAX_CHAIN_ID: 4,
       ALL_CHAINS: 15,
+      MASTER_CHAIN_ID: 1
     },
   },
   gasReporter: {
@@ -65,7 +60,7 @@ const hardhatUserConfig = {
   },
   mocha: {
     timeout: 600000,
-  },
+  }
 };
 
 // custom hardhat user config for different net
@@ -96,6 +91,18 @@ if (process.env.NET !== undefined) {
       settings: {},
     };
   }
+} else if (process.env.MASTER_UNITTEST !== undefined) {
+  hardhatUserConfig.solpp.defs.CHAIN_ID = 1;
+  hardhatUserConfig.solpp.defs.MAX_CHAIN_ID = 4;
+  hardhatUserConfig.solpp.defs.ALL_CHAINS = 11; // [1,3,4]
+  hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
+} else if (process.env.SLAVER_UNITTEST !== undefined) {
+  hardhatUserConfig.solpp.defs.CHAIN_ID = 2;
+  hardhatUserConfig.solpp.defs.MAX_CHAIN_ID = 4;
+  hardhatUserConfig.solpp.defs.ALL_CHAINS = 11; // [1,3,4]
+  hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
 }
+
+hardhatUserConfig.isMasterChain = hardhatUserConfig.solpp.defs.CHAIN_ID === hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID
 
 module.exports = hardhatUserConfig;

@@ -12,19 +12,21 @@
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^0.3.16",
     "@matterlabs/hardhat-zksync-verify": "^0.1.5",
-    "@matterlabs/zksync-contracts": "^0.6.1",
+    "@matterlabs/hardhat-zksync-upgradable": "^0.1.3",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomiclabs/hardhat-solpp": "^2.0.1",
-    "@openzeppelin/hardhat-upgrades": "^1.27.0",
     "hardhat": "^2.13.1",
     "zksync-web3": "^0.14.3"
   },
   "scripts": {
     "compile": "npx hardhat compile",
-    "test": "npx harthat test"
+    "test-master": "MASTER_UNITTEST=true npx hardhat test",
+    "test-slaver": "SLAVER_UNITTEST=true npx hardhat test",
+    "flatten-master": "MASTER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js",
+    "flatten-slaver": "SLAVER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.6.0",
-    "@openzeppelin/contracts-upgradeable": "^4.6.0"
+    "@openzeppelin/contracts": "^4.9.2",
+    "@openzeppelin/contracts-upgradeable": "^4.9.2"
   }
 }

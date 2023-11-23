@@ -41,18 +41,19 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint32 blockNumber;
     }
 
-    struct CompressedBlockExtraInfo {
-        bytes32 publicDataHash; // pubdata hash of all chains
-        bytes32 offsetCommitmentHash; // all chains pubdata offset commitment hash
-        bytes32[] onchainOperationPubdataHashs; // onchain operation pubdata hash of the all other chains
-    }
-
     /// @notice Data needed to execute committed and verified block
     /// @param storedBlock the block info that will be executed
     /// @param pendingOnchainOpsPubdata onchain ops(e.g. Withdraw, ForcedExit, FullExit) that will be executed
     struct ExecuteBlockInfo {
         StoredBlockInfo storedBlock;
         bytes[] pendingOnchainOpsPubdata;
+    }
+
+    /// @dev The periphery code address which is a runtime constant
+    address public immutable periphery;
+
+    constructor(address _periphery) {
+        periphery = _periphery;
     }
 
     // =================Upgrade interface=================
@@ -68,6 +69,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         return !exodusMode;
     }
 
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice ZkLink contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
     /// @param initializationParameters Encoded representation of initialization parameters:
     /// @dev _verifierAddress The address of Verifier contract
@@ -76,9 +78,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function initialize(bytes calldata initializationParameters) external onlyDelegateCall {
         initializeReentrancyGuard();
 
-        (address _verifierAddress, address _networkGovernor,
-        uint32 _blockNumber, uint256 _timestamp, bytes32 _stateHash, bytes32 _commitment, bytes32 _syncHash) =
-            abi.decode(initializationParameters, (address, address, uint32, uint256, bytes32, bytes32, bytes32));
+        (address _verifierAddress, address _networkGovernor, bytes32 _stateHash) = abi.decode(initializationParameters, (address, address, bytes32));
         require(_verifierAddress != address(0), "i0");
         require(_networkGovernor != address(0), "i2");
 
@@ -87,17 +87,37 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         // We need initial state hash because it is used in the commitment of the next block
         StoredBlockInfo memory storedBlockZero =
-            StoredBlockInfo(_blockNumber, 0, EMPTY_STRING_KECCAK, _timestamp, _stateHash, _commitment, _syncHash);
+            StoredBlockInfo(0, 0, EMPTY_STRING_KECCAK, 0, _stateHash, bytes32(0), new SyncHash[](0));
 
-        storedBlockHashes[_blockNumber] = hashStoredBlockInfo(storedBlockZero);
-        totalBlocksCommitted = totalBlocksProven = totalBlocksSynchronized = totalBlocksExecuted = _blockNumber;
+        storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
     }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice ZkLink contract initialization. Can be external because Proxy contract intercepts illegal calls of this function.
+    /// @param initializationParameters Encoded representation of initialization parameters:
+    /// @dev _verifierAddress The address of Verifier contract
+    /// @dev _peripheryAddress The address of ZkLinkPeriphery contract
+    /// @dev _networkGovernor The address of system controller
+    function initialize(bytes calldata initializationParameters) external onlyDelegateCall {
+        initializeReentrancyGuard();
+
+        (address _verifierAddress, address _networkGovernor, uint32 _blockNumber) = abi.decode(initializationParameters, (address, address, uint32));
+        require(_verifierAddress != address(0), "i0");
+        require(_networkGovernor != address(0), "i2");
+
+        verifier = IVerifier(_verifierAddress);
+        networkGovernor = _networkGovernor;
+
+        StoredBlockInfo memory storedBlockZero = StoredBlockInfo(_blockNumber, 0, 0, EMPTY_STRING_KECCAK, EMPTY_STRING_KECCAK);
+        storedBlockHashes[0] = hashStoredBlockInfo(storedBlockZero);
+    }
+    // #endif
 
     // =================Delegate call=================
 
     /// @notice Will run when no functions matches call data
     fallback() external payable {
-        address periphery = $(defined(PERIPHERY_ADDRESS) ? PERIPHERY_ADDRESS : 0x0000000000000000000000000000000000000000);
         _fallback(periphery);
     }
 
@@ -169,20 +189,246 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     // =================Validator interface=================
 
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Commit block
     /// @dev 1. Checks onchain operations of all chains, timestamp.
     /// 2. Store block commitments, sync hash
-    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external
+    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
     {
-        CompressedBlockExtraInfo[] memory _newBlocksExtraData = new CompressedBlockExtraInfo[](_newBlocksData.length);
-        _commitBlocks(_lastCommittedBlockData, _newBlocksData, false, _newBlocksExtraData);
+        // ===Checks===
+        require(_newBlocksData.length > 0, "f0");
+        // Check that we commit blocks after last committed block
+        require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
+
+        // ===Effects===
+        for (uint32 i = 0; i < _newBlocksData.length; ++i) {
+            _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
+
+            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
+            totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
+            storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
+        }
+        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
+
+        totalBlocksCommitted = totalBlocksCommitted + SafeCast.toUint32(_newBlocksData.length);
+        // log the last new committed block number
+        emit BlockCommit(_lastCommittedBlockData.blockNumber);
     }
 
-    /// @notice Commit compressed block
-    /// @dev 1. Checks onchain operations of current chain, timestamp.
-    /// 2. Store block commitments, sync hash
-    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, CompressedBlockExtraInfo[] memory _newBlocksExtraData) external {
-        _commitBlocks(_lastCommittedBlockData, _newBlocksData, true, _newBlocksExtraData);
+    /// @dev Process one block commit using previous block StoredBlockInfo,
+    /// returns new block StoredBlockInfo
+    /// NOTE: Does not change storage (except events, so we can't mark it view)
+    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) internal view returns (StoredBlockInfo memory storedNewBlock) {
+        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "g0");
+
+        // Check timestamp of the new block
+        require(_newBlock.timestamp >= _previousBlock.timestamp, "g2");
+
+        // Check onchain operations
+        (
+            bytes32 pendingOnchainOpsHash,
+            uint64 priorityReqCommitted,
+            bytes memory onchainOpsOffsetCommitment,
+            uint256 slaverChainNum,
+            bytes32[] memory onchainOperationPubdataHashs
+        ) = collectOnchainOps(_newBlock);
+
+        // Create block commitment for verification proof
+        bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
+        // Create synchronization hash for cross chain block verify
+        SyncHash[] memory syncHashs = createSyncHash(_previousBlock.syncHashs, _newBlock, slaverChainNum, onchainOperationPubdataHashs);
+
+        return StoredBlockInfo(
+            _newBlock.blockNumber,
+            priorityReqCommitted,
+            pendingOnchainOpsHash,
+            _newBlock.timestamp,
+            _newBlock.newStateHash,
+            commitment,
+            syncHashs
+        );
+    }
+
+    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
+    /// Priority operations must be committed in the same order as they are in the priority queue.
+    /// NOTE: does not change storage! (only emits events)
+    /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
+    /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
+    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
+    /// slaverChainNum - the slaver chain num
+    /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
+    function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
+        bytes memory pubData = _newBlockData.publicData;
+        // pubdata length must be a multiple of CHUNK_BYTES
+        require(pubData.length % CHUNK_BYTES == 0, "h0");
+        offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
+        priorityOperationsProcessed = 0;
+        (slaverChainNum, onchainOperationPubdataHashs) = initOnchainOperationPubdataHashs();
+        processableOperationsHash = EMPTY_STRING_KECCAK;
+
+        // early return to save once slot read
+        if (_newBlockData.onchainOperations.length == 0) {
+            return (processableOperationsHash, priorityOperationsProcessed, offsetsCommitment, slaverChainNum, onchainOperationPubdataHashs);
+        }
+        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
+        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
+            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
+
+            uint256 pubdataOffset = onchainOpData.publicDataOffset;
+            // uint256 chainIdOffset = pubdataOffset.add(1);
+            // comment this value to resolve stack too deep error
+            require(pubdataOffset + 1 < pubData.length, "h1");
+            require(pubdataOffset % CHUNK_BYTES == 0, "h2");
+
+            {
+                uint256 chunkId = pubdataOffset / CHUNK_BYTES;
+                require(offsetsCommitment[chunkId] == 0x00, "h3"); // offset commitment should be empty
+                offsetsCommitment[chunkId] = bytes1(0x01);
+            }
+
+            // check chain id
+            uint8 chainId = uint8(pubData[pubdataOffset + 1]);
+            checkChainId(chainId);
+
+            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
+
+            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
+            (uint64 newPriorityProceeded, bytes memory opPubData, bytes memory processablePubData) = checkOnchainOp(
+                opType,
+                chainId,
+                pubData,
+                pubdataOffset,
+                nextPriorityOpIndex,
+                onchainOpData.ethWitness);
+            priorityOperationsProcessed = priorityOperationsProcessed + newPriorityProceeded;
+            // group onchain operations pubdata hash by chain id for slaver chains
+            if (chainId != CHAIN_ID) {
+                uint256 chainOrder = chainId - 1;
+                onchainOperationPubdataHashs[chainOrder] = Utils.concatHash(onchainOperationPubdataHashs[chainOrder], opPubData);
+            }
+            if (processablePubData.length > 0) {
+                // concat processable onchain operations pubdata hash of current chain
+                processableOperationsHash = Utils.concatHash(processableOperationsHash, processablePubData);
+            }
+        }
+    }
+
+    /// @dev Creates block commitment from its data
+    /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
+    function createBlockCommitment(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
+        bytes32 offsetsCommitmentHash = sha256(offsetsCommitment);
+        bytes32 newBlockPubDataHash = sha256(_newBlockData.publicData);
+        commitment = sha256(abi.encodePacked(
+            uint256(_newBlockData.blockNumber),
+            uint256(DEFAULT_FEE_ACCOUNT_ID),
+            _previousBlock.stateHash,
+            _newBlockData.newStateHash,
+            uint256(_newBlockData.timestamp),
+            newBlockPubDataHash,
+            offsetsCommitmentHash
+        ));
+    }
+
+    /// @dev Create synchronization hash for cross chain block verify
+    function createSyncHash(SyncHash[] memory preBlockSyncHashs, CommitBlockInfo memory _newBlock, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (SyncHash[] memory syncHashs) {
+        syncHashs = new SyncHash[](slaverChainNum);
+        uint256 chainOrder = 0;
+        for (uint8 i = 0; i < onchainOperationPubdataHashs.length; ++i) {
+            uint8 chainId = i + 1;
+            if (chainId == CHAIN_ID) {
+                continue;
+            }
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                bytes32 preBlockSyncHash = EMPTY_STRING_KECCAK;
+                for (uint j = 0; j < preBlockSyncHashs.length; ++j) {
+                    SyncHash memory _preBlockSyncHash = preBlockSyncHashs[j];
+                    if (_preBlockSyncHash.chainId == chainId) {
+                        preBlockSyncHash = _preBlockSyncHash.syncHash;
+                        break;
+                    }
+                }
+                // only append syncHash if onchain op exist in pubdata
+                bytes32 newBlockSyncHash = preBlockSyncHash;
+                bytes32 onchainOperationPubdataHash = onchainOperationPubdataHashs[i];
+                if (onchainOperationPubdataHash != EMPTY_STRING_KECCAK) {
+                    newBlockSyncHash = createSlaverChainSyncHash(preBlockSyncHash, _newBlock.blockNumber, _newBlock.newStateHash, _newBlock.timestamp, onchainOperationPubdataHash);
+                }
+                syncHashs[chainOrder] = SyncHash(chainId, newBlockSyncHash);
+                chainOrder++;
+            }
+        }
+    }
+
+    /// @dev init onchain op pubdata hash for all slaver chains
+    function initOnchainOperationPubdataHashs() internal pure returns (uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
+        slaverChainNum = 0;
+        onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID);
+        for(uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
+            uint8 chainId = i + 1;
+            if (chainId == CHAIN_ID) {
+                continue;
+            }
+            uint256 chainIndex = 1 << i;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                slaverChainNum++;
+                onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
+            }
+        }
+    }
+
+    function checkChainId(uint8 chainId) internal pure {
+        require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "i1");
+        // revert if invalid chain id exist
+        // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
+        uint256 chainIndex = 1 << chainId - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
+        require(chainIndex & ALL_CHAINS == chainIndex, "i2");
+    }
+
+    function checkOnchainOp(Operations.OpType opType, uint8 chainId, bytes memory pubData, uint256 pubdataOffset, uint64 nextPriorityOpIdx, bytes memory ethWitness) internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
+        priorityOperationsProcessed = 0;
+        processablePubData = new bytes(0);
+        // ignore check if ops are not part of the current chain
+        if (opType == Operations.OpType.Deposit) {
+            opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
+            if (chainId == CHAIN_ID) {
+                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
+                Operations.checkPriorityOperation(op, priorityRequests[nextPriorityOpIdx]);
+                priorityOperationsProcessed = 1;
+            }
+        } else if (opType == Operations.OpType.ChangePubKey) {
+            opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
+            if (chainId == CHAIN_ID) {
+                Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
+                if (ethWitness.length != 0) {
+                    bool valid = verifyChangePubkey(ethWitness, op);
+                    require(valid, "k0");
+                } else {
+                    bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
+                    require(valid, "k1");
+                }
+            }
+        } else {
+            if (opType == Operations.OpType.Withdraw) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
+            } else if (opType == Operations.OpType.ForcedExit) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
+            } else if (opType == Operations.OpType.FullExit) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
+                if (chainId == CHAIN_ID) {
+                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
+                    Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
+                    priorityOperationsProcessed = 1;
+                }
+            } else {
+                revert("k2");
+            }
+            if (chainId == CHAIN_ID) {
+                // clone opPubData here instead of return its reference
+                // because opPubData and processablePubData will be consumed in later concatHash
+                processablePubData = Bytes.slice(opPubData, 0, opPubData.length);
+            }
+        }
     }
 
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
@@ -192,21 +438,191 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint32 nBlocks = uint32(_blocksData.length);
         require(nBlocks > 0, "d0");
 
-        require(totalBlocksExecuted + nBlocks <= totalBlocksSynchronized, "d1");
+        uint32 _totalBlocksExecuted = totalBlocksExecuted;
+        require(_totalBlocksExecuted + nBlocks <= totalBlocksSynchronized, "d1");
 
         uint64 priorityRequestsExecuted = 0;
         for (uint32 i = 0; i < nBlocks; ++i) {
-            executeOneBlock(_blocksData[i], i);
-            priorityRequestsExecuted = priorityRequestsExecuted + _blocksData[i].storedBlock.priorityOperations;
+            ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
+            require(_blockExecuteData.storedBlock.blockNumber == _totalBlocksExecuted + i + 1, "d2");
+            executeOneBlock(_blockExecuteData);
+            priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
         }
 
         firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
         totalCommittedPriorityRequests = totalCommittedPriorityRequests - priorityRequestsExecuted;
         totalOpenPriorityRequests = totalOpenPriorityRequests - priorityRequestsExecuted;
 
-        totalBlocksExecuted = totalBlocksExecuted + nBlocks;
+        totalBlocksExecuted = _totalBlocksExecuted + nBlocks;
 
         emit BlockExecuted(_blocksData[nBlocks-1].storedBlock.blockNumber);
+    }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice Commit compressed block
+    /// @dev 1. Checks onchain operations of current chain, timestamp.
+    /// 2. Store block commitments, sync hash
+    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
+    {
+        // ===Checks===
+        require(_newBlocksData.length > 0, "f0");
+        // Check that we commit blocks after last committed block
+        uint32 _totalBlocksCommitted = totalBlocksCommitted;
+        require(storedBlockHashes[_totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
+
+        // ===Effects===
+        for (uint32 i = 0; i < _newBlocksData.length; ++i) {
+            _lastCommittedBlockData = commitOneCompressedBlock(_lastCommittedBlockData, _newBlocksData[i]);
+
+            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
+            totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
+            storedBlockHashes[++_totalBlocksCommitted] = hashStoredBlockInfo(_lastCommittedBlockData);
+        }
+        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
+
+        totalBlocksCommitted = _totalBlocksCommitted;
+        // log the last new committed block number
+        emit BlockCommit(_lastCommittedBlockData.blockNumber);
+    }
+
+    /// @dev Process one block commit using previous block StoredBlockInfo,
+    /// returns new block StoredBlockInfo
+    /// NOTE: Does not change storage (except events, so we can't mark it view)
+    function commitOneCompressedBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock) internal view returns (StoredBlockInfo memory storedNewBlock) {
+        require(_newBlock.blockNumber > _previousBlock.blockNumber, "g0");
+        // Check onchain operations
+        (
+            bytes32 pendingOnchainOpsHash,
+            uint64 priorityReqCommitted,
+            bytes32 onchainOperationPubdataHash
+        ) = collectOnchainOpsOfCompressedBlock(_newBlock);
+
+        // Create synchronization hash for cross chain block verify
+        bytes32 syncHash = createSlaverChainSyncHash(_previousBlock.syncHash, _newBlock.blockNumber, _newBlock.newStateHash, _newBlock.timestamp, onchainOperationPubdataHash);
+
+        return StoredBlockInfo(
+            _newBlock.blockNumber,
+            _previousBlock.blockNumber,
+            priorityReqCommitted,
+            pendingOnchainOpsHash,
+            syncHash
+        );
+    }
+
+    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
+    /// Priority operations must be committed in the same order as they are in the priority queue.
+    /// NOTE: does not change storage! (only emits events)
+    /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
+    /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
+    /// onchainOperationPubdataHash - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdata hash (used in cross chain block verify)
+    function collectOnchainOpsOfCompressedBlock(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes32 onchainOperationPubdataHash) {
+        bytes memory pubData = _newBlockData.publicData;
+        // pubdata length must be a multiple of CHUNK_BYTES
+        require(pubData.length % CHUNK_BYTES == 0, "h0");
+
+        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
+        priorityOperationsProcessed = 0;
+        onchainOperationPubdataHash = EMPTY_STRING_KECCAK;
+        processableOperationsHash = EMPTY_STRING_KECCAK;
+
+        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
+            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
+
+            uint256 pubdataOffset = onchainOpData.publicDataOffset;
+            require(pubdataOffset + 1 < pubData.length, "h1");
+            require(pubdataOffset % CHUNK_BYTES == 0, "h2");
+
+            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
+
+            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
+            (uint64 newPriorityProceeded, bytes memory opPubData, bytes memory processablePubData) = checkOnchainOpOfCompressedBlock(
+                opType,
+                pubData,
+                pubdataOffset,
+                nextPriorityOpIndex,
+                onchainOpData.ethWitness);
+            priorityOperationsProcessed = priorityOperationsProcessed + newPriorityProceeded;
+            onchainOperationPubdataHash = Utils.concatHash(onchainOperationPubdataHash, opPubData);
+            if (processablePubData.length > 0) {
+                // concat processable onchain operations pubdata hash of current chain
+                processableOperationsHash = Utils.concatHash(processableOperationsHash, processablePubData);
+            }
+        }
+    }
+
+    function checkOnchainOpOfCompressedBlock(Operations.OpType opType, bytes memory pubData, uint256 pubdataOffset, uint64 nextPriorityOpIdx, bytes memory ethWitness) internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
+        priorityOperationsProcessed = 0;
+        processablePubData = new bytes(0);
+        // ignore check if ops are not part of the current chain
+        if (opType == Operations.OpType.Deposit) {
+            opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
+            Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
+            Operations.checkPriorityOperation(op, priorityRequests[nextPriorityOpIdx]);
+            priorityOperationsProcessed = 1;
+        } else if (opType == Operations.OpType.ChangePubKey) {
+            opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
+            Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
+            if (ethWitness.length != 0) {
+                bool valid = verifyChangePubkey(ethWitness, op);
+                require(valid, "k0");
+            } else {
+                bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
+                require(valid, "k1");
+            }
+        } else {
+            if (opType == Operations.OpType.Withdraw) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
+            } else if (opType == Operations.OpType.ForcedExit) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
+            } else if (opType == Operations.OpType.FullExit) {
+                opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
+                Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
+                Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
+                priorityOperationsProcessed = 1;
+            } else {
+                revert("k2");
+            }
+            // clone opPubData here instead of return its reference
+            // because opPubData and processablePubData will be consumed in later concatHash
+            processablePubData = Bytes.slice(opPubData, 0, opPubData.length);
+        }
+    }
+
+    /// @notice Execute blocks, completing priority operations and processing withdrawals.
+    /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
+    /// 2. Finalizes block on Ethereum
+    function executeCompressedBlocks(StoredBlockInfo memory _latestExecutedBlockData, ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
+        uint32 nBlocks = uint32(_blocksData.length);
+        require(nBlocks > 0, "d0");
+
+        uint32 _totalBlocksExecuted = totalBlocksExecuted;
+        require(storedBlockHashes[_totalBlocksExecuted] == hashStoredBlockInfo(_latestExecutedBlockData), "d1");
+
+        uint64 priorityRequestsExecuted = 0;
+        uint32 latestExecutedBlockNumber = _latestExecutedBlockData.blockNumber;
+        for (uint32 i = 0; i < nBlocks; ++i) {
+            ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
+            require(_blockExecuteData.storedBlock.preCommittedBlockNumber == latestExecutedBlockNumber, "d2");
+
+            executeOneBlock(_blockExecuteData);
+            priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
+            latestExecutedBlockNumber = _blockExecuteData.storedBlock.blockNumber;
+        }
+        require(latestExecutedBlockNumber <= totalBlocksSynchronized, "d3");
+
+        firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
+        totalCommittedPriorityRequests = totalCommittedPriorityRequests - priorityRequestsExecuted;
+        totalOpenPriorityRequests = totalOpenPriorityRequests - priorityRequestsExecuted;
+
+        totalBlocksExecuted = _totalBlocksExecuted + nBlocks;
+
+        emit BlockExecuted(latestExecutedBlockNumber);
+    }
+    // #endif
+
+    function createSlaverChainSyncHash(bytes32 preBlockSyncHash, uint32 _newBlockNumber, bytes32 _newBlockStateHash, uint256 _newBlockTimestamp, bytes32 _newBlockOnchainOperationPubdataHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(preBlockSyncHash, _newBlockNumber, _newBlockStateHash, _newBlockTimestamp, _newBlockOnchainOperationPubdataHash));
     }
 
     // =================Internal functions=================
@@ -285,255 +701,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         totalOpenPriorityRequests = totalOpenPriorityRequests + 1;
     }
 
-    function _commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData, bool compressed, CompressedBlockExtraInfo[] memory _newBlocksExtraData) internal active onlyValidator nonReentrant {
-        // ===Checks===
-        require(_newBlocksData.length > 0, "f0");
-        // Check that we commit blocks after last committed block
-        require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
-
-        // ===Effects===
-        for (uint32 i = 0; i < _newBlocksData.length; ++i) {
-            _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i], compressed, _newBlocksExtraData[i]);
-
-            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
-            totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
-            storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
-        }
-        require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
-
-        totalBlocksCommitted = totalBlocksCommitted + SafeCast.toUint32(_newBlocksData.length);
-        // If enable compressed commit then we can ignore prove and ensure that block is correct by sync
-        if (compressed && ENABLE_COMMIT_COMPRESSED_BLOCK) {
-            totalBlocksProven = totalBlocksCommitted;
-        }
-
-        // log the last new committed block number
-        emit BlockCommit(_lastCommittedBlockData.blockNumber);
-    }
-
-    /// @dev Process one block commit using previous block StoredBlockInfo,
-    /// returns new block StoredBlockInfo
-    /// NOTE: Does not change storage (except events, so we can't mark it view)
-    function commitOneBlock(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlock, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtra) internal view returns (StoredBlockInfo memory storedNewBlock) {
-        require(_newBlock.blockNumber == _previousBlock.blockNumber + 1, "g0");
-        require(!_compressed || ENABLE_COMMIT_COMPRESSED_BLOCK, "g1");
-
-        // Check timestamp of the new block
-        {
-            require(_newBlock.timestamp >= _previousBlock.timestamp, "g2");
-        }
-
-        // Check onchain operations
-        (
-            bytes32 pendingOnchainOpsHash,
-            uint64 priorityReqCommitted,
-            bytes memory onchainOpsOffsetCommitment,
-            bytes32[] memory onchainOperationPubdataHashs
-        ) =
-        collectOnchainOps(_newBlock);
-
-        // Create block commitment for sync block cross chain
-        bytes32 commitmentForSync = createBlockCommitmentForSync(_previousBlock, _newBlock, _compressed, _newBlockExtra, onchainOpsOffsetCommitment);
-        // Create block commitment for verification proof
-        bytes32 commitment = _compressed ? bytes32(0) : createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
-
-        if (_compressed) {
-            // Fill other chain pubdata hash
-            uint nextPubdataHashIndex = 0;
-            for(uint i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-                if (i == CHAIN_ID) {
-                    continue;
-                }
-                uint256 chainIndex = 1 << i - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
-                if (chainIndex & ALL_CHAINS == chainIndex) {
-                    require(nextPubdataHashIndex < _newBlockExtra.onchainOperationPubdataHashs.length, "g3");
-                    onchainOperationPubdataHashs[i] = _newBlockExtra.onchainOperationPubdataHashs[nextPubdataHashIndex];
-                    nextPubdataHashIndex += 1;
-                }
-            }
-        }
-        // Create synchronization hash for cross chain block verify
-        bytes32 syncHash = createSyncHash(_previousBlock.syncHash, commitmentForSync, onchainOperationPubdataHashs);
-
-        return StoredBlockInfo(
-            _newBlock.blockNumber,
-            priorityReqCommitted,
-            pendingOnchainOpsHash,
-            _newBlock.timestamp,
-            _newBlock.newStateHash,
-            commitment,
-            syncHash
-        );
-    }
-
-    /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
-    /// Priority operations must be committed in the same order as they are in the priority queue.
-    /// NOTE: does not change storage! (only emits events)
-    /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
-    /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
-    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
-    /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
-    function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, bytes32[] memory onchainOperationPubdataHashs) {
-        bytes memory pubData = _newBlockData.publicData;
-        // pubdata length must be a multiple of CHUNK_BYTES
-        require(pubData.length % CHUNK_BYTES == 0, "h0");
-        offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
-
-        uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
-        priorityOperationsProcessed = 0;
-        onchainOperationPubdataHashs = initOnchainOperationPubdataHashs();
-
-        processableOperationsHash = EMPTY_STRING_KECCAK;
-
-        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
-            OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
-
-            uint256 pubdataOffset = onchainOpData.publicDataOffset;
-            // uint256 chainIdOffset = pubdataOffset.add(1);
-            // comment this value to resolve stack too deep error
-            require(pubdataOffset + 1 < pubData.length, "h1");
-            require(pubdataOffset % CHUNK_BYTES == 0, "h2");
-
-            {
-                uint256 chunkId = pubdataOffset / CHUNK_BYTES;
-                require(offsetsCommitment[chunkId] == 0x00, "h3"); // offset commitment should be empty
-                offsetsCommitment[chunkId] = bytes1(0x01);
-            }
-
-            // check chain id
-            uint8 chainId = uint8(pubData[pubdataOffset + 1]);
-            checkChainId(chainId);
-
-            Operations.OpType opType = Operations.OpType(uint8(pubData[pubdataOffset]));
-
-            uint64 nextPriorityOpIndex = uncommittedPriorityRequestsOffset + priorityOperationsProcessed;
-            (uint64 newPriorityProceeded, bytes memory opPubData, bytes memory processablePubData) = checkOnchainOp(
-                opType,
-                chainId,
-                pubData,
-                pubdataOffset,
-                nextPriorityOpIndex,
-                onchainOpData.ethWitness);
-            priorityOperationsProcessed = priorityOperationsProcessed + newPriorityProceeded;
-            // group onchain operations pubdata hash by chain id
-            onchainOperationPubdataHashs[chainId] = Utils.concatHash(onchainOperationPubdataHashs[chainId], opPubData);
-            if (processablePubData.length > 0) {
-                // concat processable onchain operations pubdata hash of current chain
-                processableOperationsHash = Utils.concatHash(processableOperationsHash, processablePubData);
-            }
-        }
-    }
-
-    function initOnchainOperationPubdataHashs() internal pure returns (bytes32[] memory onchainOperationPubdataHashs) {
-        // overflow is impossible, max(MAX_CHAIN_ID + 1) = 256
-        // use index of onchainOperationPubdataHashs as chain id
-        // index start from [0, MIN_CHAIN_ID - 1] left unused
-        onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID + 1);
-        for(uint i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-            uint256 chainIndex = 1 << i - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
-            if (chainIndex & ALL_CHAINS == chainIndex) {
-                onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
-            }
-        }
-    }
-
-    function checkChainId(uint8 chainId) internal pure {
-        require(chainId >= MIN_CHAIN_ID && chainId <= MAX_CHAIN_ID, "i1");
-        // revert if invalid chain id exist
-        // for example, when `ALL_CHAINS` = 13(1 << 0 | 1 << 2 | 1 << 3), it means 2(1 << 2 - 1) is a invalid chainId
-        uint256 chainIndex = 1 << chainId - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
-        require(chainIndex & ALL_CHAINS == chainIndex, "i2");
-    }
-
-    function checkOnchainOp(Operations.OpType opType, uint8 chainId, bytes memory pubData, uint256 pubdataOffset, uint64 nextPriorityOpIdx, bytes memory ethWitness) internal view returns (uint64 priorityOperationsProcessed, bytes memory opPubData, bytes memory processablePubData) {
-        priorityOperationsProcessed = 0;
-        processablePubData = new bytes(0);
-        // ignore check if ops are not part of the current chain
-        if (opType == Operations.OpType.Deposit) {
-            opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
-            if (chainId == CHAIN_ID) {
-                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-                Operations.checkPriorityOperation(op, priorityRequests[nextPriorityOpIdx]);
-                priorityOperationsProcessed = 1;
-            }
-        } else if (opType == Operations.OpType.ChangePubKey) {
-            opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
-            if (chainId == CHAIN_ID) {
-                Operations.ChangePubKey memory op = Operations.readChangePubKeyPubdata(opPubData);
-                if (ethWitness.length != 0) {
-                    bool valid = verifyChangePubkey(ethWitness, op);
-                    require(valid, "k0");
-                } else {
-                    bool valid = authFacts[op.owner][op.nonce] == keccak256(abi.encodePacked(op.pubKeyHash));
-                    require(valid, "k1");
-                }
-            }
-        } else {
-            if (opType == Operations.OpType.Withdraw) {
-                opPubData = Bytes.slice(pubData, pubdataOffset, WITHDRAW_BYTES);
-            } else if (opType == Operations.OpType.ForcedExit) {
-                opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
-            } else if (opType == Operations.OpType.FullExit) {
-                opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
-                if (chainId == CHAIN_ID) {
-                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
-                    priorityOperationsProcessed = 1;
-                }
-            } else {
-                revert("k2");
-            }
-            if (chainId == CHAIN_ID) {
-                // clone opPubData here instead of return its reference
-                // because opPubData and processablePubData will be consumed in later concatHash
-                processablePubData = Bytes.slice(opPubData, 0, opPubData.length);
-            }
-        }
-    }
-
-    /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(bytes32 preBlockSyncHash, bytes32 commitment, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (bytes32 syncHash) {
-        syncHash = Utils.concatTwoHash(preBlockSyncHash, commitment);
-        for (uint8 i = MIN_CHAIN_ID; i <= MAX_CHAIN_ID; ++i) {
-            uint256 chainIndex = 1 << i - 1; // overflow is impossible, min(i) = MIN_CHAIN_ID = 1
-            if (chainIndex & ALL_CHAINS == chainIndex) {
-                syncHash = Utils.concatTwoHash(syncHash, onchainOperationPubdataHashs[i]);
-            }
-        }
-    }
-
-    /// @dev Creates block commitment from its data
-    /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
-    function createBlockCommitmentForSync(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bool _compressed, CompressedBlockExtraInfo memory _newBlockExtraData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
-        bytes32 offsetsCommitmentHash = !_compressed ? keccak256(offsetsCommitment) : _newBlockExtraData.offsetCommitmentHash;
-        bytes32 newBlockPubDataHash = !_compressed ? keccak256(_newBlockData.publicData) : _newBlockExtraData.publicDataHash;
-        commitment = keccak256(abi.encodePacked(
-            uint256(_newBlockData.blockNumber),
-            uint256(DEFAULT_FEE_ACCOUNT_ID),
-            _previousBlock.stateHash,
-            _newBlockData.newStateHash,
-            uint256(_newBlockData.timestamp),
-            newBlockPubDataHash,
-            offsetsCommitmentHash
-        ));
-    }
-
-    /// @dev Creates block commitment from its data
-    /// @dev _offsetCommitment - hash of the array where 1 is stored in chunk where onchainOperation begins and 0 for other chunks
-    function createBlockCommitment(StoredBlockInfo memory _previousBlock, CommitBlockInfo memory _newBlockData, bytes memory offsetsCommitment) internal pure returns (bytes32 commitment) {
-        bytes32 offsetsCommitmentHash = sha256(offsetsCommitment);
-        bytes32 newBlockPubDataHash = sha256(_newBlockData.publicData);
-        commitment = sha256(abi.encodePacked(
-                uint256(_newBlockData.blockNumber),
-                uint256(DEFAULT_FEE_ACCOUNT_ID),
-                _previousBlock.stateHash,
-                _newBlockData.newStateHash,
-                uint256(_newBlockData.timestamp),
-                newBlockPubDataHash,
-                offsetsCommitmentHash
-            ));
-    }
-
     /// @notice Checks that change operation is correct
     function verifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) internal pure returns (bool) {
         ChangePubkeyType changePkType = ChangePubkeyType(uint8(_ethWitness[0]));
@@ -578,14 +745,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
     /// _executedBlockIdx is index in the array of the blocks that we want to execute together
-    function executeOneBlock(ExecuteBlockInfo memory _blockExecuteData, uint32 _executedBlockIdx) internal {
+    function executeOneBlock(ExecuteBlockInfo memory _blockExecuteData) internal {
         // Ensure block was committed
         require(
             hashStoredBlockInfo(_blockExecuteData.storedBlock) ==
             storedBlockHashes[_blockExecuteData.storedBlock.blockNumber],
             "m0"
         );
-        require(_blockExecuteData.storedBlock.blockNumber == totalBlocksExecuted + _executedBlockIdx + 1, "m1");
 
         bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
         for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {

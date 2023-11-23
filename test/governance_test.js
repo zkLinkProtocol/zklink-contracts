@@ -64,28 +64,12 @@ describe('Governance unit tests', function () {
             .withArgs(jack.address, false);
     });
 
-    it('only network governor can add bridge', async () => {
-        await expect(testContract.connect(alice).addBridge(lzBridgeInETH.address))
+    it('only network governor can set sync service', async () => {
+        await expect(testContract.connect(alice).setSyncService(lzBridgeInETH.address))
             .to.be.revertedWith('3');
 
-        await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
-            .to.be.emit(testContract, "AddBridge")
-            .withArgs(lzBridgeInETH.address, 1);
-        // duplicate add bridge should be failed
-        await expect(testContract.connect(bob).addBridge(lzBridgeInETH.address))
-            .to.be.revertedWith("L1");
-    });
-
-    it('only network governor can disable bridge', async () => {
-        await expect(testContract.connect(alice).updateBridge(1, false, false))
-            .to.be.revertedWith('3');
-
-        await expect(testContract.connect(bob).updateBridge(0, false, false))
-            .to.be.emit(testContract, "UpdateBridge")
-            .withArgs(0, false, false);
-
-        await expect(testContract.connect(bob).updateBridge(0, true, true))
-            .to.be.emit(testContract, "UpdateBridge")
-            .withArgs(0, true, true);
+        await expect(testContract.connect(bob).setSyncService(lzBridgeInETH.address))
+            .to.be.emit(testContract, "SetSyncService")
+            .withArgs(lzBridgeInETH.address);
     });
 });
