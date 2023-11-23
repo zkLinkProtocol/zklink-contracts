@@ -184,7 +184,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 amount: 0 // unknown at this point
             });
         bytes memory pubData = Operations.writeFullExitPubdataForPriorityQueue(op);
-        addPriorityRequest(Operations.OpType.FullExit, pubData);
+        addPriorityRequest(Operations.OpType.FullExit, pubData, Operations.FULL_EXIT_CHECK_BYTES);
     }
 
     // =================Validator interface=================
@@ -392,8 +392,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         if (opType == Operations.OpType.Deposit) {
             opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
             if (chainId == CHAIN_ID) {
-                Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-                Operations.checkPriorityOperation(op, priorityRequests[nextPriorityOpIdx]);
+                Operations.checkDepositOperation(opPubData, priorityRequests[nextPriorityOpIdx].hashedPubData);
                 priorityOperationsProcessed = 1;
             }
         } else if (opType == Operations.OpType.ChangePubKey) {
@@ -416,8 +415,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             } else if (opType == Operations.OpType.FullExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
                 if (chainId == CHAIN_ID) {
-                    Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                    Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
+                    Operations.checkFullExitOperation(opPubData, priorityRequests[nextPriorityOpIdx].hashedPubData);
                     priorityOperationsProcessed = 1;
                 }
             } else {
@@ -557,8 +555,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // ignore check if ops are not part of the current chain
         if (opType == Operations.OpType.Deposit) {
             opPubData = Bytes.slice(pubData, pubdataOffset, DEPOSIT_BYTES);
-            Operations.Deposit memory op = Operations.readDepositPubdata(opPubData);
-            Operations.checkPriorityOperation(op, priorityRequests[nextPriorityOpIdx]);
+            Operations.checkDepositOperation(opPubData, priorityRequests[nextPriorityOpIdx].hashedPubData);
             priorityOperationsProcessed = 1;
         } else if (opType == Operations.OpType.ChangePubKey) {
             opPubData = Bytes.slice(pubData, pubdataOffset, CHANGE_PUBKEY_BYTES);
@@ -577,8 +574,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FORCED_EXIT_BYTES);
             } else if (opType == Operations.OpType.FullExit) {
                 opPubData = Bytes.slice(pubData, pubdataOffset, FULL_EXIT_BYTES);
-                Operations.FullExit memory fullExitData = Operations.readFullExitPubdata(opPubData);
-                Operations.checkPriorityOperation(fullExitData, priorityRequests[nextPriorityOpIdx]);
+                Operations.checkFullExitOperation(opPubData, priorityRequests[nextPriorityOpIdx].hashedPubData);
                 priorityOperationsProcessed = 1;
             } else {
                 revert("k2");
@@ -673,7 +669,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             amount: _amount
         });
         bytes memory pubData = Operations.writeDepositPubdataForPriorityQueue(op);
-        addPriorityRequest(Operations.OpType.Deposit, pubData);
+        addPriorityRequest(Operations.OpType.Deposit, pubData, Operations.DEPOSIT_CHECK_BYTES);
     }
 
     // Priority queue
@@ -682,13 +678,14 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Calculates expiration block for request, store this request and emit NewPriorityRequest event
     /// @param _opType Rollup operation type
     /// @param _pubData Operation pubdata
-    function addPriorityRequest(Operations.OpType _opType, bytes memory _pubData) internal {
+    /// @param _hashSize Operation pubdata hash size
+    function addPriorityRequest(Operations.OpType _opType, bytes memory _pubData, uint256 _hashSize) internal {
         // Expiration block is: current block number + priority expiration delta
         uint64 expirationBlock = SafeCast.toUint64(block.number + PRIORITY_EXPIRATION);
 
         uint64 nextPriorityRequestId = firstPriorityRequestId + totalOpenPriorityRequests;
 
-        bytes20 hashedPubData = Utils.hashBytesToBytes20(_pubData);
+        bytes20 hashedPubData = Utils.hashBytesWithSizeToBytes20(_pubData, _hashSize);
 
         priorityRequests[nextPriorityRequestId] = Operations.PriorityOperation({
             hashedPubData: hashedPubData,

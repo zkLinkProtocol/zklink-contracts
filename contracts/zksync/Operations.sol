@@ -58,6 +58,10 @@ library Operations {
     /// @dev amount is uint128
     uint8 internal constant AMOUNT_BYTES = 16;
 
+    /// @dev Priority hash bytes length
+    uint256 internal constant DEPOSIT_CHECK_BYTES = 55;
+    uint256 internal constant FULL_EXIT_CHECK_BYTES = 43;
+
     // Priority operations: Deposit, FullExit
     struct PriorityOperation {
         bytes20 hashedPubData; // hashed priority operation public data
@@ -68,12 +72,12 @@ library Operations {
     struct Deposit {
         // uint8 opType
         uint8 chainId; // deposit from which chain that identified by L2 chain id
-        uint32 accountId; // the account id bound to the owner address, ignored at serialization and will be set when the block is submitted
         uint8 subAccountId; // the sub account is bound to account, default value is 0(the global public sub account)
         uint16 tokenId; // the token that registered to L2
         uint16 targetTokenId; // the token that user increased in L2
         uint128 amount; // the token amount deposited to L2
         bytes32 owner; // the address that receive deposited token at L2
+        uint32 accountId; // the account id bound to the owner address, ignored at serialization and will be set when the block is submitted
     } // 59 bytes
 
     /// @dev Deserialize deposit pubdata
@@ -81,12 +85,12 @@ library Operations {
         // NOTE: there is no check that variable sizes are same as constants (i.e. TOKEN_BYTES), fix if possible.
         uint256 offset = OP_TYPE_BYTES;
         (offset, parsed.chainId) = Bytes.readUint8(_data, offset);
-        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
         (offset, parsed.subAccountId) = Bytes.readUint8(_data, offset);
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.targetTokenId) = Bytes.readUInt16(_data, offset);
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
         (offset, parsed.owner) = Bytes.readBytes32(_data, offset);
+        (offset, parsed.accountId) = Bytes.readUInt32(_data, offset);
     }
 
     /// @dev Serialize deposit pubdata
@@ -94,19 +98,18 @@ library Operations {
         buf = abi.encodePacked(
             uint8(OpType.Deposit),
             op.chainId,
-            uint32(0), // accountId (ignored during hash calculation)
             op.subAccountId,
             op.tokenId,
             op.targetTokenId,
             op.amount,
-            op.owner
+            op.owner,
+            uint32(0) // accountId (ignored during hash calculation)
         );
     }
 
-    /// @dev Checks that deposit is same as operation in priority queue
-    function checkPriorityOperation(Deposit memory _deposit, PriorityOperation memory _priorityOperation) internal pure {
-        require(_priorityOperation.opType == Operations.OpType.Deposit, "OP: not deposit");
-        require(Utils.hashBytesToBytes20(writeDepositPubdataForPriorityQueue(_deposit)) == _priorityOperation.hashedPubData, "OP: invalid deposit hash");
+    /// @dev Checks that op pubdata is same as operation in priority queue
+    function checkDepositOperation(bytes memory _opPubData, bytes20 hashedPubData) internal pure {
+        require(Utils.hashBytesWithSizeToBytes20(_opPubData, DEPOSIT_CHECK_BYTES) == hashedPubData, "OP: invalid deposit hash");
     }
 
     struct FullExit {
@@ -150,10 +153,9 @@ library Operations {
         );
     }
 
-    /// @dev Checks that FullExit is same as operation in priority queue
-    function checkPriorityOperation(FullExit memory _fullExit, PriorityOperation memory _priorityOperation) internal pure {
-        require(_priorityOperation.opType == Operations.OpType.FullExit, "OP: not fullExit");
-        require(Utils.hashBytesToBytes20(writeFullExitPubdataForPriorityQueue(_fullExit)) == _priorityOperation.hashedPubData, "OP: invalid fullExit hash");
+    /// @dev Checks that op pubdata is same as operation in priority queue
+    function checkFullExitOperation(bytes memory _opPubData, bytes20 hashedPubData) internal pure {
+        require(Utils.hashBytesWithSizeToBytes20(_opPubData, FULL_EXIT_CHECK_BYTES) == hashedPubData, "OP: invalid fullExit hash");
     }
 
     struct Withdraw {

@@ -25,7 +25,11 @@ contract ZkLinkTest is ZkLink {
     }
 
     function testAddPriorityRequest(Operations.OpType _opType, bytes memory _pubData) external {
-        addPriorityRequest(_opType, _pubData);
+        if (_opType == Operations.OpType.Deposit) {
+            addPriorityRequest(_opType, _pubData, Operations.DEPOSIT_CHECK_BYTES);
+        } else if (_opType == Operations.OpType.FullExit) {
+            addPriorityRequest(_opType, _pubData, Operations.FULL_EXIT_CHECK_BYTES);
+        }
     }
 
     // #if CHAIN_ID == MASTER_CHAIN_ID

@@ -63,7 +63,11 @@ library Utils {
         }
     }
 
-    function hashBytesToBytes20(bytes memory _bytes) internal pure returns (bytes20) {
-        return bytes20(uint160(uint256(keccak256(_bytes))));
+    function hashBytesWithSizeToBytes20(bytes memory _bytes, uint256 _size) internal pure returns (bytes20) {
+        bytes32 result;
+        assembly {
+            result := keccak256(add(_bytes, 32), _size)
+        }
+        return bytes20(uint160(uint256(result)));
     }
 }

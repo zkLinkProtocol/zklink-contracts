@@ -27,19 +27,21 @@ const OP_FULL_EXIT_SIZE = 59;
 const OP_CHANGE_PUBKEY_SIZE = 67;
 const OP_FORCE_EXIT_SIZE = 69;
 const OP_ORDER_MATCHING_SIZE = 77;
+const OP_DEPOSIT_HASH_SIZE = 55;
+const OP_FULLEXIT_HASH_SIZE = 43;
 const ADDRESS_PREFIX_ZERO_BYTES = "0x000000000000000000000000";
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","bytes32"],
-        [OP_DEPOSIT,chainId,accountId,subAccountId,tokenId,targetTokenId,amount,owner]);
+    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
+        [OP_DEPOSIT,chainId,subAccountId,tokenId,targetTokenId,amount,owner,accountId]);
     const pubdataArray = ethers.utils.arrayify(pubdata);
     console.assert(pubdataArray.length === OP_DEPOSIT_SIZE, "wrong deposit pubdata");
     return pubdata;
 }
 
 function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","bytes32"],
-        [OP_DEPOSIT,chainId,0,subAccountId,tokenId,targetTokenId,amount,owner]);
+    return ethers.utils.solidityPack(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
+        [OP_DEPOSIT,chainId,subAccountId,tokenId,targetTokenId,amount,owner,0]);
 }
 
 function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, withdrawToL1 }) {
@@ -208,4 +210,6 @@ module.exports = {
     OP_CHANGE_PUBKEY_CHUNKS,
     OP_FORCE_EXIT_CHUNKS,
     OP_ORDER_MATCHING_CHUNKS,
+    OP_DEPOSIT_HASH_SIZE,
+    OP_FULLEXIT_HASH_SIZE
 };
