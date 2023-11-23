@@ -74,7 +74,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             Operations.PriorityOperation memory pr = priorityRequests[id];
             if (pr.opType == Operations.OpType.Deposit) {
                 bytes memory depositPubdata = _depositsPubdata[currentDepositIdx];
-                require(Utils.hashBytesToBytes20(depositPubdata) == pr.hashedPubData, "A1");
+                require(Utils.hashBytesWithSizeToBytes20(depositPubdata, Operations.DEPOSIT_CHECK_BYTES) == pr.hashedPubData, "A1");
                 ++currentDepositIdx;
 
                 Operations.Deposit memory op = Operations.readDepositPubdata(depositPubdata);
