@@ -193,7 +193,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Commit block
     /// @dev 1. Checks onchain operations of all chains, timestamp.
     /// 2. Store block commitments, sync hash
-    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external
+    function commitBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
     {
         // ===Checks===
         require(_newBlocksData.length > 0, "f0");
@@ -463,7 +463,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Commit compressed block
     /// @dev 1. Checks onchain operations of current chain, timestamp.
     /// 2. Store block commitments, sync hash
-    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external
+    function commitCompressedBlocks(StoredBlockInfo memory _lastCommittedBlockData, CommitBlockInfo[] memory _newBlocksData) external active onlyValidator nonReentrant
     {
         // ===Checks===
         require(_newBlocksData.length > 0, "f0");
