@@ -12,10 +12,6 @@ require("./script/deloy_multicall")
 require("./script/upgrade_l2_gateway")
 require("./script/upgrade_l1_gateway")
 
-if (!process.env.NET.toUpperCase().includes('ZKSYNC')) {
-  require("@openzeppelin/hardhat-upgrades");
-}
-
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -64,7 +60,7 @@ const hardhatUserConfig = {
   },
   mocha: {
     timeout: 600000,
-  },
+  }
 };
 
 // custom hardhat user config for different net
@@ -106,5 +102,7 @@ if (process.env.NET !== undefined) {
   hardhatUserConfig.solpp.defs.ALL_CHAINS = 11; // [1,3,4]
   hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
 }
+
+hardhatUserConfig.isMasterChain = hardhatUserConfig.solpp.defs.CHAIN_ID === hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID
 
 module.exports = hardhatUserConfig;

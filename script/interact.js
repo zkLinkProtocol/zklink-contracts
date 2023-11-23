@@ -82,6 +82,64 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             await tx.wait()
     });
 
+task("setChainIdMap", "Set chain id map for layerzero bridge (only support testnet)")
+    .setAction(async (taskArgs, hardhat) => {
+        if (process.env.NET === undefined) {
+            console.log('current net must set')
+            return;
+        }
+        const lzInfo = layerZero[process.env.NET];
+        if (lzInfo === undefined) {
+            console.log('layerzero not support current net')
+            return;
+        }
+
+        const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
+        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const governor = await hardhat.ethers.getSigner(governorAddress);
+
+        console.log('bridge', bridgeAddr);
+        console.log('governor', governor.address);
+
+        const balance = await governor.getBalance();
+        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
+
+        const CHAIN_ID = hardhat.config.solpp.defs.CHAIN_ID;
+        const MASTER_CHAIN_ID = hardhat.config.solpp.defs.MASTER_CHAIN_ID;
+        const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
+        if (CHAIN_ID === MASTER_CHAIN_ID) {
+            console.log("Set chain id map for master chain");
+            for (let lzConfig of Object.values(layerZero)) {
+                const chainIndex = 1 << lzConfig.zkLinkChainId - 1;
+                if ((chainIndex & ALL_CHAINS) === chainIndex && lzConfig.zkLinkChainId !== CHAIN_ID && lzInfo.mainnet === lzConfig.mainnet) {
+                    console.log("Slaver chain: %s", lzConfig.zkLinkChainId);
+                    const tx = await bridgeContract.connect(governor).setChainIdMap(lzConfig.zkLinkChainId, lzConfig.chainId);
+                    console.log('tx', tx.hash);
+                    await tx.wait()
+                }
+            }
+        } else {
+            console.log("Set chain id map for slaver chain");
+            let masterConfig;
+            for (let lzConfig of Object.values(layerZero)) {
+                if (lzConfig.zkLinkChainId === MASTER_CHAIN_ID && lzInfo.mainnet === lzConfig.mainnet) {
+                    masterConfig = lzConfig;
+                    break;
+                }
+            }
+            if (masterConfig === undefined) {
+                console.log("Master chain layerzero config not found");
+                return;
+            }
+            const tx = await bridgeContract.connect(governor).setChainIdMap(masterConfig.zkLinkChainId, masterConfig.chainId);
+            console.log('tx', tx.hash);
+            await tx.wait()
+        }
+    });
+
 task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
     .addParam("dest", "The destination net env name")
     .setAction(async (taskArgs, hardhat) => {
@@ -144,7 +202,7 @@ task("addBridge", "Add bridge to zkLink")
         const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
         const peripheryContract = peripheryFactory.attach(zkLinkProxyAddr);
         console.log('add bridge to zkLink...');
-        const tx = await peripheryContract.connect(governor).addBridge(bridgeAddr);
+        const tx = await peripheryContract.connect(governor).setSyncService(bridgeAddr);
         console.log('tx', tx.hash);
         await tx.wait()
     });
@@ -245,42 +303,6 @@ task("zkLinkStatus", "Query zkLink status")
         const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
         const zkLink = zkLinkFactory.attach(zkLinkProxy);
         const result = await zkLink[property]();
-        console.log('result:%s', result);
-    });
-
-task("estimateZkLinkBlockBridgeFees", "Get fee for bridge block")
-    .addParam("lzBridge", "The layerzero bridge contract address (default get from deploy log)", undefined, types.string, true)
-    .addParam("dest", "The dest net env name")
-    .addParam("syncHash", "The block sync hash")
-    .addParam("progress", "The sync progress of current chain")
-    .addParam("useZro", "True if use zro to pay fee", false, types.boolean, true)
-    .addParam("adapterParams", "Adapter params for relayer", "0x", types.string, true)
-    .setAction(async (taskArgs, hardhat) => {
-        let lzBridge = taskArgs.lzBridge;
-        let dest = taskArgs.dest;
-        let syncHash = taskArgs.syncHash;
-        let progress = taskArgs.progress;
-        let useZro = taskArgs.useZro;
-        let adapterParams = taskArgs.adapterParams;
-        if (lzBridge === undefined) {
-            lzBridge = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
-        }
-        const lzInfo = layerZero[dest];
-        if (lzInfo === undefined) {
-            console.log('%s layerzero not support', dest);
-            return;
-        }
-        console.log('lzBridge', lzBridge);
-        console.log('dest', dest);
-        console.log('syncHash', syncHash);
-        console.log('progress', progress);
-        console.log('useZro', useZro);
-        console.log('adapterParams', adapterParams);
-
-        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeContract = bridgeFactory.attach(lzBridge);
-
-        const result = await bridgeContract.estimateZkLinkBlockBridgeFees(lzInfo.chainId, syncHash, progress, useZro, adapterParams);
         console.log('result:%s', result);
     });
 

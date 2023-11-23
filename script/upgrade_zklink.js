@@ -63,21 +63,19 @@ task("upgradeZkLink", "Upgrade zkLink")
         if (upgradeStatus === 0) {
             // verifier
             if (upgradeVerifier) {
-                console.log('deploy verifier target...');
-                let verifier;
-                if (isZksync) {
-                    const verifierArtifact = await zkSyncDeployer.loadArtifact('EmptyVerifier');
-                    verifier = await zkSyncDeployer.deploy(verifierArtifact);
-                } else {
+                if (hardhat.isMasterChain) {
+                    console.log('deploy verifier target...');
                     const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-                    verifier = await verifierFactory.connect(deployerWallet).deploy();
-                }
-                await verifier.deployed();
-                deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifier.address;
-                console.log('verifier target', verifier.address);
-                if (!skipVerify) {
-                    await verifyContractCode(hardhat, verifier.address, []);
-                    deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+                    let verifier = await verifierFactory.connect(deployerWallet).deploy();
+                    await verifier.deployed();
+                    deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifier.address;
+                    console.log('verifier target', verifier.address);
+                    if (!skipVerify) {
+                        await verifyContractCode(hardhat, verifier.address, []);
+                        deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+                    }
+                } else {
+                    console.log('no need to upgrade verifier in slaver chain');
                 }
             }
 
@@ -101,22 +99,19 @@ task("upgradeZkLink", "Upgrade zkLink")
                 }
 
                 console.log('deploy zkLink target...');
-                hardhat.config.solpp.defs.PERIPHERY_ADDRESS = periphery.address;
-                console.log(`set PERIPHERY_ADDRESS to ${periphery.address} and compile contracts...`);
-                await hardhat.run('compile');
                 let zkLink;
                 if (isZksync) {
                     const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
-                    zkLink = await zkSyncDeployer.deploy(zkLinkArtifact);
+                    zkLink = await zkSyncDeployer.deploy(zkLinkArtifact, [periphery.address]);
                 } else {
                     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-                    zkLink = await zkLinkFactory.connect(deployerWallet).deploy();
+                    zkLink = await zkLinkFactory.connect(deployerWallet).deploy(periphery.address);
                 }
                 await zkLink.deployed();
                 deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLink.address;
                 console.log('zkLink target', zkLink.address);
                 if (!skipVerify) {
-                    await verifyContractCode(hardhat, zkLink.address, []);
+                    await verifyContractCode(hardhat, zkLink.address, [periphery.address]);
                     deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
                 }
             }
