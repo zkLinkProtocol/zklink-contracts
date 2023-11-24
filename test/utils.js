@@ -120,9 +120,9 @@ async function deploy() {
     }
 }
 
-function createSlaverChainSyncHash(preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, newBlockTimestamp, onchainOperationPubdataHash) {
-    return hardhat.ethers.utils.keccak256(hardhat.ethers.utils.solidityPack(["bytes32","uint32","bytes32","uint256","bytes32"],
-        [preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, newBlockTimestamp, onchainOperationPubdataHash]));
+function createSlaverChainSyncHash(preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, onchainOperationPubdataHash) {
+    return hardhat.ethers.utils.keccak256(hardhat.ethers.utils.solidityPack(["bytes32","uint32","bytes32","bytes32"],
+        [preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, onchainOperationPubdataHash]));
 }
 
 module.exports = {

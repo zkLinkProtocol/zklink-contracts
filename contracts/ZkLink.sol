@@ -352,7 +352,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 bytes32 newBlockSyncHash = preBlockSyncHash;
                 bytes32 onchainOperationPubdataHash = onchainOperationPubdataHashs[i];
                 if (onchainOperationPubdataHash != EMPTY_STRING_KECCAK) {
-                    newBlockSyncHash = createSlaverChainSyncHash(preBlockSyncHash, _newBlock.blockNumber, _newBlock.newStateHash, _newBlock.timestamp, onchainOperationPubdataHash);
+                    newBlockSyncHash = createSlaverChainSyncHash(preBlockSyncHash, _newBlock.blockNumber, _newBlock.newStateHash, onchainOperationPubdataHash);
                 }
                 syncHashs[chainOrder] = SyncHash(chainId, newBlockSyncHash);
                 chainOrder++;
@@ -497,7 +497,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         ) = collectOnchainOpsOfCompressedBlock(_newBlock);
 
         // Create synchronization hash for cross chain block verify
-        bytes32 syncHash = createSlaverChainSyncHash(_previousBlock.syncHash, _newBlock.blockNumber, _newBlock.newStateHash, _newBlock.timestamp, onchainOperationPubdataHash);
+        bytes32 syncHash = createSlaverChainSyncHash(_previousBlock.syncHash, _newBlock.blockNumber, _newBlock.newStateHash, onchainOperationPubdataHash);
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
@@ -617,8 +617,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
     // #endif
 
-    function createSlaverChainSyncHash(bytes32 preBlockSyncHash, uint32 _newBlockNumber, bytes32 _newBlockStateHash, uint256 _newBlockTimestamp, bytes32 _newBlockOnchainOperationPubdataHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(preBlockSyncHash, _newBlockNumber, _newBlockStateHash, _newBlockTimestamp, _newBlockOnchainOperationPubdataHash));
+    function createSlaverChainSyncHash(bytes32 preBlockSyncHash, uint32 _newBlockNumber, bytes32 _newBlockStateHash, bytes32 _newBlockOnchainOperationPubdataHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(preBlockSyncHash, _newBlockNumber, _newBlockStateHash, _newBlockOnchainOperationPubdataHash));
     }
 
     // =================Internal functions=================

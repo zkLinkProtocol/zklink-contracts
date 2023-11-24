@@ -395,8 +395,8 @@ describe('Block commit unit tests', function () {
             expect(r.timestamp).to.eql(BigNumber.from(commitBlock.timestamp));
             expect(r.stateHash).to.eql(commitBlock.newStateHash);
 
-            const syncHash2 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, commitBlock.timestamp, expected.onchainOperationPubdataHashs[1]));
-            const syncHash4 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, commitBlock.timestamp, expected.onchainOperationPubdataHashs[3]));
+            const syncHash2 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashs[1]));
+            const syncHash4 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashs[3]));
             expect(r.syncHashs).to.eql([[2, syncHash2],[4, syncHash4]]);
         });
     });
