@@ -30,6 +30,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint32 publicDataOffset;
     }
 
+    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Data needed to commit new block
     /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enable
     /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enable
@@ -40,6 +41,19 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         OnchainOperationData[] onchainOperations;
         uint32 blockNumber;
     }
+    // #endif
+
+    // #if CHAIN_ID != MASTER_CHAIN_ID
+    /// @notice Data needed to commit new block
+    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enable
+    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enable
+    struct CommitBlockInfo {
+        bytes32 newStateHash;
+        bytes publicData;
+        OnchainOperationData[] onchainOperations;
+        uint32 blockNumber;
+    }
+    // #endif
 
     /// @notice Data needed to execute committed and verified block
     /// @param storedBlock the block info that will be executed
