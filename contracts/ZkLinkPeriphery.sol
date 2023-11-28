@@ -343,18 +343,30 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     /// @notice Check if received all syncHash from other chains at the block height
-    function confirmBlock(StoredBlockInfo memory _block) external onlyValidator payable {
+    function isBlockConfirmable(StoredBlockInfo memory _block) public view returns (bool) {
         uint32 blockNumber = _block.blockNumber;
-        require(blockNumber > totalBlocksSynchronized && blockNumber <= totalBlocksProven, "n0");
-        require(hashStoredBlockInfo(_block) == storedBlockHashes[blockNumber], "n1");
-
+        if (!(blockNumber > totalBlocksSynchronized && blockNumber <= totalBlocksProven)) {
+            return false;
+        }
+        if (hashStoredBlockInfo(_block) != storedBlockHashes[blockNumber]) {
+            return false;
+        }
         for (uint8 i = 0; i < _block.syncHashs.length; ++i) {
             SyncHash memory sync = _block.syncHashs[i];
             bytes32 remoteSyncHash = synchronizedChains[sync.chainId];
-            require(remoteSyncHash == sync.syncHash, "n2");
+            if (remoteSyncHash != sync.syncHash) {
+                return false;
+            }
         }
+        return true;
+    }
+
+    /// @notice Send block confirmation message to all other slaver chains at the block height
+    function confirmBlock(StoredBlockInfo memory _block) external onlyValidator payable {
+        require(isBlockConfirmable(_block), "n0");
 
         // send confirm message to slaver chains
+        uint32 blockNumber = _block.blockNumber;
         syncService.confirmBlock{value:msg.value}(blockNumber);
 
         totalBlocksSynchronized = blockNumber;

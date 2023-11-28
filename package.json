@@ -19,7 +19,8 @@
     "zksync-web3": "^0.14.3"
   },
   "scripts": {
-    "compile": "npx hardhat compile",
+    "compile-master": "MASTER_UNITTEST=true npx hardhat compile",
+    "compile-slaver": "SLAVER_UNITTEST=true npx hardhat compile",
     "test-master": "MASTER_UNITTEST=true npx hardhat test",
     "test-slaver": "SLAVER_UNITTEST=true npx hardhat test",
     "flatten-master": "MASTER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js",
