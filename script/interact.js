@@ -82,7 +82,7 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             await tx.wait()
     });
 
-task("setChainIdMap", "Set chain id map for layerzero bridge (only support testnet)")
+task("configLayerZeroBridge", "Set chain id map and destination address for layerzero bridge (only support testnet)")
     .setAction(async (taskArgs, hardhat) => {
         if (process.env.NET === undefined) {
             console.log('current net must set')
@@ -93,6 +93,7 @@ task("setChainIdMap", "Set chain id map for layerzero bridge (only support testn
             console.log('layerzero not support current net')
             return;
         }
+        console.log('is mainnet?', lzInfo.mainnet);
 
         const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
         const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
@@ -111,71 +112,50 @@ task("setChainIdMap", "Set chain id map for layerzero bridge (only support testn
         const MASTER_CHAIN_ID = hardhat.config.solpp.defs.MASTER_CHAIN_ID;
         const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
         if (CHAIN_ID === MASTER_CHAIN_ID) {
-            console.log("Set chain id map for master chain");
-            for (let lzConfig of Object.values(layerZero)) {
-                const chainIndex = 1 << lzConfig.zkLinkChainId - 1;
-                if ((chainIndex & ALL_CHAINS) === chainIndex && lzConfig.zkLinkChainId !== CHAIN_ID && lzInfo.mainnet === lzConfig.mainnet) {
-                    console.log("Slaver chain: %s", lzConfig.zkLinkChainId);
-                    const tx = await bridgeContract.connect(governor).setChainIdMap(lzConfig.zkLinkChainId, lzConfig.chainId);
-                    console.log('tx', tx.hash);
-                    await tx.wait()
+            console.log("config layerzero bridge for master chain");
+            for (let [slaverNet, slaverConfig] of Object.entries(layerZero)) {
+                const chainIndex = 1 << slaverConfig.zkLinkChainId - 1;
+                if ((chainIndex & ALL_CHAINS) === chainIndex && slaverConfig.zkLinkChainId !== CHAIN_ID && lzInfo.mainnet === slaverConfig.mainnet) {
+                    console.log("slaver chain:", slaverNet);
+                    const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, slaverNet);
+
+                    console.log("set chain id map...");
+                    const tx0 = await bridgeContract.connect(governor).setChainIdMap(slaverConfig.zkLinkChainId, slaverConfig.chainId);
+                    console.log('set chain id map tx hash:', tx0.hash);
+                    await tx0.wait()
+
+                    console.log("set destination...");
+                    const tx1 = await bridgeContract.connect(governor).setDestination(slaverConfig.chainId, dstBridgeAddr);
+                    console.log('set destination tx hash:', tx1.hash);
+                    await tx1.wait();
                 }
             }
         } else {
-            console.log("Set chain id map for slaver chain");
-            let masterConfig;
-            for (let lzConfig of Object.values(layerZero)) {
+            console.log("config layerzero bridge for slaver chain");
+            let masterNet, masterConfig;
+            for (let [net, lzConfig] of Object.entries(layerZero)) {
                 if (lzConfig.zkLinkChainId === MASTER_CHAIN_ID && lzInfo.mainnet === lzConfig.mainnet) {
+                    masterNet = net;
                     masterConfig = lzConfig;
                     break;
                 }
             }
             if (masterConfig === undefined) {
-                console.log("Master chain layerzero config not found");
+                console.log("master chain layerzero config not found");
                 return;
             }
-            const tx = await bridgeContract.connect(governor).setChainIdMap(masterConfig.zkLinkChainId, masterConfig.chainId);
-            console.log('tx', tx.hash);
-            await tx.wait()
-        }
-    });
+            console.log("master chain:", masterNet);
+            const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, masterNet);
 
-task("setDestinations", "Set layerzero bridge destinations (only support testnet)")
-    .addParam("dest", "The destination net env name")
-    .setAction(async (taskArgs, hardhat) => {
-        const dest = taskArgs.dest;
-        console.log('dest env', dest);
-        if (process.env.NET === dest) {
-            console.log('dest env must not be the same with current env net')
-            return;
-        }
-        const lzInfo = layerZero[dest];
-        if (lzInfo === undefined) {
-            console.log('invalid dest env')
-            return;
-        }
+            console.log("set chain id map...");
+            const tx0 = await bridgeContract.connect(governor).setChainIdMap(masterConfig.zkLinkChainId, masterConfig.chainId);
+            console.log('set chain id map tx hash:', tx0.hash);
+            await tx0.wait();
 
-        const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
-        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
-        const governor = await hardhat.ethers.getSigner(governorAddress);
-
-        console.log('bridge', bridgeAddr);
-        console.log('governor', governor.address);
-
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
-
-        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
-        const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
-        console.log('Set destination %s for %s...', dest, process.env.NET);
-        try {
-            const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, dest);
-            const tx = await bridgeContract.connect(governor).setDestination(lzInfo.chainId, dstBridgeAddr);
-            console.log('tx', tx.hash);
-            await tx.wait()
-        } catch (error) {
-            console.log('Set bridge destination failed: ' + error);
+            console.log("set destination...");
+            const tx1 = await bridgeContract.connect(governor).setDestination(masterConfig.chainId, dstBridgeAddr);
+            console.log('set destination tx hash:', tx1.hash);
+            await tx1.wait();
         }
     });
 
@@ -454,7 +434,6 @@ task("setL2GatewayToZkLink", "set gateway address to zklink")
 
         // get gateway deploy info
         if (!gatewayConfig[network.name]) throw Error("gateway config not found")
-        const {contractName} = gatewayConfig[network.name]
         const {deployLog: gatewayDeployInfo} = getDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX)
         console.log("l2GatewayDeployInfo:",gatewayDeployInfo)
 
