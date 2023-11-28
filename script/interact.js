@@ -117,7 +117,12 @@ task("configLayerZeroBridge", "Set chain id map and destination address for laye
                 const chainIndex = 1 << slaverConfig.zkLinkChainId - 1;
                 if ((chainIndex & ALL_CHAINS) === chainIndex && slaverConfig.zkLinkChainId !== CHAIN_ID && lzInfo.mainnet === slaverConfig.mainnet) {
                     console.log("slaver chain:", slaverNet);
-                    const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, slaverNet);
+                    let dstBridgeAddr = await bridgeContract.connect(governor).destinations(slaverConfig.chainId);
+                    if (dstBridgeAddr !== hardhat.ethers.constants.AddressZero) {
+                        console.log("slaver chain was configured, skip it");
+                        continue;
+                    }
+                    dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, slaverNet);
 
                     console.log("set chain id map...");
                     const tx0 = await bridgeContract.connect(governor).setChainIdMap(slaverConfig.zkLinkChainId, slaverConfig.chainId);
@@ -145,7 +150,13 @@ task("configLayerZeroBridge", "Set chain id map and destination address for laye
                 return;
             }
             console.log("master chain:", masterNet);
-            const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, masterNet);
+            let dstBridgeAddr = await bridgeContract.connect(governor).destinations(masterConfig.chainId);
+            if (dstBridgeAddr !== hardhat.ethers.constants.AddressZero) {
+                console.log("master chain was configured, skip it");
+                return;
+            }
+            dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, masterNet);
+
 
             console.log("set chain id map...");
             const tx0 = await bridgeContract.connect(governor).setChainIdMap(masterConfig.zkLinkChainId, masterConfig.chainId);
