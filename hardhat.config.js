@@ -8,9 +8,9 @@ require("./script/deploy_account_mock");
 require("./script/interact");
 require("./script/deploy_l1_gateway");
 require("./script/deploy_l2_gateway");
-require("./script/deloy_multicall")
-require("./script/upgrade_l2_gateway")
-require("./script/upgrade_l1_gateway")
+require("./script/deloy_multicall");
+require("./script/upgrade_l2_gateway");
+require("./script/upgrade_l1_gateway");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -52,7 +52,7 @@ const hardhatUserConfig = {
       CHAIN_ID: 1,
       MAX_CHAIN_ID: 4,
       ALL_CHAINS: 15,
-      MASTER_CHAIN_ID: 1
+      MASTER_CHAIN_ID: 1,
     },
   },
   gasReporter: {
@@ -60,7 +60,7 @@ const hardhatUserConfig = {
   },
   mocha: {
     timeout: 600000,
-  }
+  },
 };
 
 // custom hardhat user config for different net
@@ -90,6 +90,8 @@ if (process.env.NET !== undefined) {
       compilerSource: "binary",
       settings: {},
     };
+  } else {
+    require("@openzeppelin/hardhat-upgrades");
   }
 } else if (process.env.MASTER_UNITTEST !== undefined) {
   hardhatUserConfig.solpp.defs.CHAIN_ID = 1;
@@ -103,6 +105,8 @@ if (process.env.NET !== undefined) {
   hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
 }
 
-hardhatUserConfig.isMasterChain = hardhatUserConfig.solpp.defs.CHAIN_ID === hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID
+hardhatUserConfig.isMasterChain =
+  hardhatUserConfig.solpp.defs.CHAIN_ID ===
+  hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID;
 
 module.exports = hardhatUserConfig;
