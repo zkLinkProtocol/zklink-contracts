@@ -11,6 +11,13 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
+        const isMasterChain = hardhat.config.isMasterChain;
+        if (typeof isMasterChain === 'undefined') {
+            console.log('master chain not config');
+            return;
+        }
+        console.log('is master chain?', isMasterChain);
+
         const contractDeployer = new ChainContractDeployer(hardhat);
         await contractDeployer.init();
         const deployerWallet = contractDeployer.deployerWallet;
@@ -51,7 +58,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_VERIFIER_TARGET in deployLog) || force) {
             console.log('deploy verifier target...');
             let verifier;
-            if (!hardhat.config.isMasterChain) {
+            if (!isMasterChain) {
                 verifier = await contractDeployer.deployContract('EmptyVerifier', []);
             } else {
                 verifier = await contractDeployer.deployContract('Verifier', []);
@@ -110,7 +117,7 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkProxyAddr;
         let verifierProxyAddr;
         let gatekeeperAddr;
-        const zkLinkInitParams = hardhat.isMasterChain ?
+        const zkLinkInitParams = isMasterChain ?
             hardhat.ethers.utils.defaultAbiCoder.encode(["bytes32"], [genesisRoot]) :
             hardhat.ethers.utils.defaultAbiCoder.encode(["uint32"], [blockNumber]);
         if (!(logName.DEPLOY_LOG_DEPLOY_FACTORY in deployLog) || force) {
