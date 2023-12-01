@@ -9,6 +9,13 @@ task("upgradeZkLink", "Upgrade zkLink")
     .addParam("upgradeZkLink", "Upgrade zkLink", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
+        const isMasterChain = hardhat.config.isMasterChain;
+        if (isMasterChain === undefined) {
+            console.log('master chain not config');
+            return;
+        }
+        console.log('is master chain?', isMasterChain);
+
         const network = hardhat.network;
         const isZksync = network.zksync !== undefined && network.zksync;
         console.log('is zksync?', isZksync);
@@ -63,7 +70,7 @@ task("upgradeZkLink", "Upgrade zkLink")
         if (upgradeStatus === 0) {
             // verifier
             if (upgradeVerifier) {
-                if (hardhat.isMasterChain) {
+                if (isMasterChain) {
                     console.log('deploy verifier target...');
                     const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
                     let verifier = await verifierFactory.connect(deployerWallet).deploy();
