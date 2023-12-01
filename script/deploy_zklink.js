@@ -12,7 +12,7 @@ task("deployZkLink", "Deploy zklink contracts")
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
         const isMasterChain = hardhat.config.isMasterChain;
-        if (isMasterChain === undefined) {
+        if (typeof isMasterChain === 'undefined') {
             console.log('master chain not config');
             return;
         }
