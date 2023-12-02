@@ -309,26 +309,26 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // #endif
 
     // #if CHAIN_ID != MASTER_CHAIN_ID
-    function revertBlocks(StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
+    function revertBlocks(StoredBlockInfo memory _latestCommittedBlock, StoredBlockInfo[] memory _blocksToRevert) external onlyValidator nonReentrant {
         uint32 blocksCommitted = totalBlocksCommitted;
         uint32 blocksToRevert = Utils.minU32(SafeCast.toUint32(_blocksToRevert.length), blocksCommitted - totalBlocksExecuted);
         uint64 revertedPriorityRequests = 0;
-
-        uint32 latestSynchronizedBlockNumber = totalBlocksSynchronized;
         for (uint32 i = 0; i < blocksToRevert; ++i) {
             StoredBlockInfo memory storedBlockInfo = _blocksToRevert[i];
             require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(storedBlockInfo), "c"); // incorrect stored block info
-            latestSynchronizedBlockNumber = storedBlockInfo.preCommittedBlockNumber;
 
             delete storedBlockHashes[blocksCommitted];
 
             --blocksCommitted;
             revertedPriorityRequests = revertedPriorityRequests + storedBlockInfo.priorityOperations;
         }
+        require(storedBlockHashes[blocksCommitted] == hashStoredBlockInfo(_latestCommittedBlock), "c1");
 
         totalBlocksCommitted = blocksCommitted;
         totalCommittedPriorityRequests = totalCommittedPriorityRequests - revertedPriorityRequests;
-        totalBlocksSynchronized = latestSynchronizedBlockNumber;
+        if (_latestCommittedBlock.blockNumber < totalBlocksSynchronized) {
+            totalBlocksSynchronized = _latestCommittedBlock.blockNumber;
+        }
 
         emit BlocksRevert(totalBlocksExecuted, blocksCommitted);
     }
@@ -378,7 +378,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice Send sync hash to master chain
     function sendSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
         require(_block.blockNumber > totalBlocksSynchronized, "j0");
-        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber], "j1");
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockSequence], "j1");
         syncService.sendSyncHash{value:msg.value}(_block.syncHash);
         emit SendSyncHash(_block.syncHash);
     }
