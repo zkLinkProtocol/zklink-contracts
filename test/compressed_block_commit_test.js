@@ -126,7 +126,7 @@ describe('Compressed block commit unit tests', function () {
     describe('Commit one block', function () {
         const preBlock = {
             blockNumber:10,
-            preCommittedBlockNumber: 9,
+            blockSequence: 1,
             priorityOperations:0,
             pendingOnchainOperationsHash:"0x0000000000000000000000000000000000000000000000000000000000000001",
             syncHash:"0x0100000000000000000000000000000000000000000000000000000000000000"
@@ -157,7 +157,7 @@ describe('Compressed block commit unit tests', function () {
             const r = await zkLink.testCommitOneBlock(preBlock, commitBlock);
             const syncHash = hexlify(createSlaverChainSyncHash(preBlock.syncHash, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHash));
             expect(r.blockNumber).to.eql(commitBlock.blockNumber);
-            expect(r.preCommittedBlockNumber).to.eql(preBlock.blockNumber);
+            expect(r.blockSequence).to.eql(preBlock.blockSequence + 1);
             expect(r.priorityOperations).to.eql(BigNumber.from(expected.priorityOperationsProcessed));
             expect(r.pendingOnchainOperationsHash).to.eql(expected.processableOpPubdataHash);
             expect(r.syncHash).to.eql(syncHash);
