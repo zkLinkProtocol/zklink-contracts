@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-ethers");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 async function verifyContractCode(hardhat, address, constructorArguments) {
@@ -95,8 +95,8 @@ class ChainContractDeployer {
             [this.deployerWallet] = await this.hardhat.ethers.getSigners();
         }
         console.log('deployer', this.deployerWallet.address);
-        const balance = await this.deployerWallet.getBalance();
-        console.log('deployer balance', this.hardhat.ethers.utils.formatEther(balance));
+        const balance = await  this.hardhat.ethers.provider.getBalance(this.deployerWallet.address);
+        console.log('deployer balance', this.hardhat.ethers.formatEther(balance));
     }
 
     async deployContract(contractName, deployArgs) {
@@ -108,7 +108,7 @@ class ChainContractDeployer {
             const factory = await this.hardhat.ethers.getContractFactory(contractName);
             contract = await factory.connect(this.deployerWallet).deploy(...deployArgs);
         }
-        await contract.deployed();
+        await contract.waitForDeployment();
         return contract;
     }
 }

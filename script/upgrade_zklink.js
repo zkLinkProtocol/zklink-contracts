@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { verifyContractCode, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
+const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-ethers");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 task("upgradeZkLink", "Upgrade zkLink")
