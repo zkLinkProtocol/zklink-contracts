@@ -15,7 +15,6 @@ async function verifyContractCode(hardhat, address, constructorArguments) {
             console.log('contract code verified success');
             return;
         } catch (e) {
-            console.log("verify failed:",e)
             if (e.message.includes('Already Verified')
                 || e.message.includes('Contract source code already verified')
                 || e.message.includes('Smart-contract already verified')
