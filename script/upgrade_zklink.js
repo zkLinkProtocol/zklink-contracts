@@ -3,6 +3,7 @@ const { verifyContractCode, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
 const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-ethers");
 const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
+const {} = require("ethers")
 
 task("upgradeZkLink", "Upgrade zkLink")
     .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
@@ -52,8 +53,8 @@ task("upgradeZkLink", "Upgrade zkLink")
         }
 
         // log deployer balance
-        const balance = await deployerWallet.getBalance();
-        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(deployerWallet.address);
+        console.log('deployer balance', hardhat.ethers.formatEther(balance));
 
         // attach upgrade gatekeeper
         const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
@@ -135,7 +136,7 @@ task("upgradeZkLink", "Upgrade zkLink")
             return;
         }
 
-        const upgradeTargets = [hardhat.ethers.constants.AddressZero, hardhat.ethers.constants.AddressZero];
+        const upgradeTargets = [hardhat.ethers.ZeroAddress, hardhat.ethers.ZeroAddress];
         if (upgradeVerifier) {
             upgradeTargets[0] = deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET];
         }

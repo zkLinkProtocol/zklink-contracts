@@ -38,8 +38,8 @@ task("addToken", "Adds a new token with a given address for testnet")
         console.log('token address', tokenAddr);
         console.log('token decimals', tokenDecimals);
 
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
 
         await governanceAddToken(hardhat, governor, governanceAddr, tokenId, tokenAddr, tokenDecimals);
     });
@@ -60,20 +60,20 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             console.log('decimals', decimals);
             console.log('amount', amount);
 
-            const balance = await sender.getBalance();
-            console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
+            const balance = await hardhat.ethers.provider.getBalance(sender.address);
+            console.log('sender eth balance', hardhat.ethers.formatEther(balance));
             const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
             const erc20 = erc20Factory.attach(token);
             const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
-            console.log('sender token balance', hardhat.ethers.utils.formatEther(tokenBalance, decimals));
+            console.log('sender token balance', hardhat.ethers.formatEther(tokenBalance, decimals));
 
             const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
             const zkLink = zkLinkFactory.attach(zkLinkProxy);
-            const amountInWei = hardhat.ethers.utils.parseUnits(amount, decimals);
+            const amountInWei = hardhat.ethers.parseUnits(amount, decimals);
             const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
-            if (allowance.isZero()) {
+            if (allowance === 0n) {
                     console.log('add unlimited allowance');
-                    const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.constants.MaxUint256);
+                    const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.MaxUint256);
                     console.log('approve tx hash', tx.hash);
                     await tx.wait()
             }
@@ -102,8 +102,8 @@ task("configLayerZeroBridge", "Set chain id map and destination address for laye
         console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
 
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
 
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
@@ -118,7 +118,7 @@ task("configLayerZeroBridge", "Set chain id map and destination address for laye
                 if ((chainIndex & ALL_CHAINS) === chainIndex && slaverConfig.zkLinkChainId !== CHAIN_ID && lzInfo.mainnet === slaverConfig.mainnet) {
                     console.log("slaver chain:", slaverNet);
                     let dstBridgeAddr = await bridgeContract.connect(governor).destinations(slaverConfig.chainId);
-                    if (dstBridgeAddr !== hardhat.ethers.constants.AddressZero) {
+                    if (dstBridgeAddr !== hardhat.ethers.ZeroAddress) {
                         console.log("slaver chain was configured, skip it");
                         continue;
                     }
@@ -151,7 +151,7 @@ task("configLayerZeroBridge", "Set chain id map and destination address for laye
             }
             console.log("master chain:", masterNet);
             let dstBridgeAddr = await bridgeContract.connect(governor).destinations(masterConfig.chainId);
-            if (dstBridgeAddr !== hardhat.ethers.constants.AddressZero) {
+            if (dstBridgeAddr !== hardhat.ethers.ZeroAddress) {
                 console.log("master chain was configured, skip it");
                 return;
             }
@@ -187,8 +187,8 @@ task("addBridge", "Add bridge to zkLink")
         console.log('governor', governor.address);
         console.log('zkLink', zkLinkProxyAddr);
 
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
 
         const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
         const peripheryContract = peripheryFactory.attach(zkLinkProxyAddr);
@@ -206,15 +206,15 @@ task("mintFaucetToken", "Mint faucet token for testnet")
     .setAction(async (taskArgs, hardhat) => {
         let tokenAddr = taskArgs.token;
         const accountAddr = taskArgs.to;
-        const amount = hardhat.ethers.utils.parseUnits(taskArgs.amount, taskArgs.decimals);
+        const amount = hardhat.ethers.parseUnits(taskArgs.amount, taskArgs.decimals);
         console.log('to', accountAddr);
         console.log('amount', amount);
 
         const [governor] = await hardhat.ethers.getSigners();
         console.log('governor', governor.address);
 
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
 
         const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
         const tokenContract = tokenFactory.attach(tokenAddr);
@@ -237,8 +237,8 @@ task("transferOwnership", "Transfer faucet token ownership")
         const [governor] = await hardhat.ethers.getSigners();
         console.log('governor', governor.address);
 
-        const balance = await governor.getBalance();
-        console.log('governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
 
         const tokenFactory = await hardhat.ethers.getContractFactory('FaucetToken');
         const tokenContract = tokenFactory.attach(tokenAddr);
@@ -269,8 +269,8 @@ task("setAuthPubkeyHash", "Set auth pubkey hash for ChangePubKey on devnet or te
 
         const sender = await hardhat.ethers.getSigner(address);
 
-        const balance = await sender.getBalance();
-        console.log('sender eth balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(sender.address);
+        console.log('sender eth balance', hardhat.ethers.formatEther(balance));
 
         const zkLinkPeripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
         const zkLink = zkLinkPeripheryFactory.attach(zkLinkProxy);
@@ -312,8 +312,8 @@ task("transferMastershipOfUpgradeGatekeeper", "Set the master of UpgradeGatekeep
         const [oldMaster] = await hardhat.ethers.getSigners();
         console.log('old master', oldMaster.address);
 
-        const balance = await oldMaster.getBalance();
-        console.log('old master balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(oldMaster.address)
+        console.log('old master balance', hardhat.ethers.formatEther(balance));
 
         const gatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
         const gatekeeperContract = gatekeeperFactory.attach(gatekeeper);
@@ -339,8 +339,8 @@ task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
         const [oldGovernor] = await hardhat.ethers.getSigners();
         console.log('old governor', oldGovernor.address);
 
-        const balance = await oldGovernor.getBalance();
-        console.log('old governor balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(oldGovernor.address);
+        console.log('old governor balance', hardhat.ethers.formatEther(balance));
 
         const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
         const peripheryContract = peripheryFactory.attach(zkLinkProxy);

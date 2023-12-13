@@ -9,6 +9,7 @@
     "cross chain"
   ],
   "devDependencies": {
+    "@ethersproject/bytes": "^5.7.0",
     "@matterlabs/hardhat-zksync-deploy": "^1.1.0",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@nomiclabs/hardhat-solpp": "^2.0.1",
