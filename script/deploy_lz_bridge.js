@@ -39,7 +39,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         if (!(logName.DEPLOY_LOG_LZ_BRIDGE in deployLog) || force) {
             console.log('deploy layerzero bridge...');
             let lzBridgeContract = await contractDeployer.deployContract('LayerZeroBridge', args);
-            lzBridge = lzBridgeContract.address;
+            lzBridge = await lzBridgeContract.getAddress();
             deployLog[logName.DEPLOY_LOG_LZ_BRIDGE] = lzBridge;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         } else {

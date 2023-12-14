@@ -1,4 +1,5 @@
 const ethers = require("ethers");
+const {arrayify,hexlify,concat} = require("@ethersproject/bytes")
 
 const OP_NOOP = 0;
 const OP_DEPOSIT = 1;
@@ -140,10 +141,10 @@ function paddingChunk(pubdata, chunks) {
 }
 
 function extendAddress(address) {
-    const addrBytes = ethers.utils.arrayify(address);
-    const zeroBytes = ethers.utils.arrayify(ADDRESS_PREFIX_ZERO_BYTES);
-    const extendAddrArray = ethers.utils.concat([zeroBytes, addrBytes]);
-    return ethers.utils.hexlify(extendAddrArray);
+    const addrBytes = arrayify(address);
+    const zeroBytes = arrayify(ADDRESS_PREFIX_ZERO_BYTES);
+    const extendAddrArray = concat([zeroBytes, addrBytes]);
+    return hexlify(extendAddrArray);
 }
 
 function hashBytesToBytes20(pubData) {

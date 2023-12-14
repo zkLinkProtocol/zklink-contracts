@@ -20,5 +20,5 @@ task("deployFaucetToken", "Deploy faucet token for testnet")
         console.log('deploy faucet token...');
         const deployArgs = [name, symbol, decimals];
         let tokenContract = await contractDeployer.deployContract('FaucetToken', deployArgs);
-        console.log('token deploy success: ', tokenContract.address);
+        console.log('token deploy success: ', await tokenContract.getAddress());
 });
