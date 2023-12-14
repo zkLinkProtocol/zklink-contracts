@@ -1,7 +1,4 @@
 const fs = require("fs");
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-ethers");
-const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
-
 async function verifyContractCode(hardhat, address, constructorArguments) {
     // contract code may be not exist after tx send to chain
     // try every one minutes if verify failed
@@ -88,6 +85,9 @@ class ChainContractDeployer {
         // use the first account of accounts in the hardhat network config as the deployer
         const deployerKey = network.config.accounts[0];
         if (this.zksync) {
+            const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("../zksync/node_modules/zksync-ethers");
+            const { Deployer: ZkSyncDeployer } = require("../zksync/node_modules/@matterlabs/hardhat-zksync-deploy");
+
             this.zkSyncProvider = new ZkSyncProvider(network.config.url);
             this.deployerWallet = new ZkSyncWallet(deployerKey, this.zkSyncProvider);
             this.zkSyncDeployer = new ZkSyncDeployer(this.hardhat, this.deployerWallet);

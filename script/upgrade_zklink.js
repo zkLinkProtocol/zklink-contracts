@@ -1,9 +1,6 @@
 const fs = require('fs');
 const { verifyContractCode, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-ethers");
-const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
-const {} = require("ethers")
 
 task("upgradeZkLink", "Upgrade zkLink")
     .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
@@ -25,6 +22,8 @@ task("upgradeZkLink", "Upgrade zkLink")
         let deployerWallet;
         let zkSyncDeployer;
         if (isZksync) {
+            const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("../zksync/node_modules/zksync-ethers");
+            const { Deployer: ZkSyncDeployer } = require("../zksync/node_modules/@matterlabs/hardhat-zksync-deploy");
             const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
             deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
             zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);

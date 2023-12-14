@@ -176,6 +176,13 @@ task("deployZkLink", "Deploy zklink contracts")
 
         // zksync verify contract where created in contract not support now
         if (!contractDeployer.zksync) {
+            if ((!(logName.DEPLOY_LOG_GATEKEEPER_VERIFIED in deployLog) || force) && !skipVerify) {
+              await verifyContractCode(hardhat, gatekeeperAddr, [
+                zkLinkProxyAddr
+              ]);
+              deployLog[logName.DEPLOY_LOG_GATEKEEPER_VERIFIED] = true;
+              fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            }
             if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
                 await verifyContractCode(hardhat, zkLinkProxyAddr, [
                     zkLinkTarget,
@@ -192,13 +199,6 @@ task("deployZkLink", "Deploy zklink contracts")
                 ]);
                 deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED] = true;
                 fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-            }
-            if ((!(logName.DEPLOY_LOG_GATEKEEPER_VERIFIED in deployLog) || force) && !skipVerify) {
-              await verifyContractCode(hardhat, gatekeeperAddr, [
-                zkLinkProxyAddr
-              ]);
-              deployLog[logName.DEPLOY_LOG_GATEKEEPER_VERIFIED] = true;
-              fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
             }
         }
 });
