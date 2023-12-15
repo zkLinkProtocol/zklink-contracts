@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { deploy, MAX_ACCEPT_FEE_RATE} = require('./utils');
 const { calWithdrawHash, extendAddress} = require('../script/op_utils');
-const {parseEther, parseUnits} = require("ethers/lib/utils");
+const {parseEther, parseUnits} = require("ethers");
 const {BigNumber} = require("ethers");
 
 describe('Fast withdraw unit tests', function () {
@@ -45,7 +45,7 @@ describe('Fast withdraw unit tests', function () {
             "withdrawToL1":withdrawToL1
         }
 
-        await token2.mintTo(zkLink.address, amount);
+        await token2.mintTo(zkLink.target, amount);
 
         const b0 = await token2.balanceOf(owner);
         await zkLink.testExecuteWithdraw(op);
@@ -74,8 +74,8 @@ describe('Fast withdraw unit tests', function () {
 
         await token.mintTo(bob.address, l1Amount);
         const amountTransfer = l1Amount.mul(BigNumber.from(MAX_ACCEPT_FEE_RATE-fastWithdrawFeeRate)).div(BigNumber.from(MAX_ACCEPT_FEE_RATE));
-        await token.connect(bob).approve(periphery.address, amountTransfer);
-        await periphery.connect(bob).acceptERC20(owner, token.address, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
+        await token.connect(bob).approve(periphery.target, amountTransfer);
+        await periphery.connect(bob).acceptERC20(owner, token.target, l1Amount, fastWithdrawFeeRate, accountId, subAccountId, nonce);
 
         const op = {
             "chainId": chainId,

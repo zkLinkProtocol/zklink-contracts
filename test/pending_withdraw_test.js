@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { deploy, CHAIN_ID} = require('./utils');
 const { writeDepositPubdata, extendAddress} = require('../script/op_utils');
-const {parseEther} = require("ethers/lib/utils");
+const {parseEther} = require("ethers");
 
 describe('ZkLink withdraw pending balance unit tests', function () {
     let deployedInfo;
@@ -38,20 +38,20 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         await zkLink.setExodus(false);
         expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount);
 
-        const b0 = await alice.getBalance();
+        const b0 = await alice.provider.getBalance(alice.address);
         const amount0 = parseEther("0.5");
         await expect(periphery.withdrawPendingBalance(alice.address, ethId, amount0)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(ethId, amount0);
-        expect(await alice.getBalance()).to.be.eq(b0.add(amount0));
-        expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount.sub(amount0));
+        expect(await alice.provider.getBalance(alice.address)).to.be.eq(b0 + amount0);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount - amount0);
 
-        const leftAmount = depositAmount.sub(amount0);
+        const leftAmount = depositAmount - amount0;
         const amount1 = parseEther("0.6");
         await expect(periphery.withdrawPendingBalance(alice.address, ethId, amount1)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(ethId, leftAmount);
-        expect(await alice.getBalance()).to.be.eq(b0.add(depositAmount));
+        expect(await alice.provider.getBalance(alice.address)).to.be.eq(b0 + depositAmount);
         expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(0);
     });
 
@@ -59,8 +59,8 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         // increase pending balance
         const depositAmount = parseEther("1.0");
         await token2.connect(defaultSender).mint(depositAmount);
-        await token2.connect(defaultSender).approve(zkLink.address, depositAmount);
-        await zkLink.connect(defaultSender).depositERC20(token2.address, depositAmount, extendAddress(alice.address), 0, false);
+        await token2.connect(defaultSender).approve(zkLink.target, depositAmount);
+        await zkLink.connect(defaultSender).depositERC20(token2.target, depositAmount, extendAddress(alice.address), 0, false);
         const pubdata = writeDepositPubdata({ chainId:CHAIN_ID, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:depositAmount, owner:extendAddress(alice.address) });
         await zkLink.setExodus(true);
         await periphery.cancelOutstandingDepositsForExodusMode(1, [pubdata]);
@@ -72,15 +72,15 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         await expect(periphery.withdrawPendingBalance(alice.address, token2Id, amount0)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(token2Id, amount0);
-        expect(await token2.balanceOf(alice.address)).to.be.eq(b0.add(amount0));
-        expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(depositAmount.sub(amount0));
+        expect(await token2.balanceOf(alice.address)).to.be.eq(b0 + amount0);
+        expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(depositAmount - amount0);
 
-        const leftAmount = depositAmount.sub(amount0);
+        const leftAmount = depositAmount - amount0;
         const amount1 = parseEther("0.6");
         await expect(periphery.withdrawPendingBalance(alice.address, token2Id, amount1)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(token2Id, leftAmount);
-        expect(await token2.balanceOf(alice.address)).to.be.eq(b0.add(depositAmount));
+        expect(await token2.balanceOf(alice.address)).to.be.eq(b0 + depositAmount);
         expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(0);
     });
 });

@@ -23,7 +23,8 @@ const {
     OP_FORCE_EXIT_CHUNKS,
     extendAddress
 } = require('../script/op_utils');
-const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
+const { keccak256,  parseEther} = require("ethers");
+const { arrayify, hexlify, concat } = require("@ethersproject/bytes")
 
 if (IS_MASTER_CHAIN) {
     console.log("Compressed block commit unit tests only support slaver chain");

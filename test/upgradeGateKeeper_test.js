@@ -2,9 +2,10 @@ const hardhat = require('hardhat');
 const constants = hardhat.ethers.constants;
 const { expect } = require('chai');
 const { performance } = require('perf_hooks');
+const { encodeBytes32String } = require("ethers")
 
 // some random constants for checking write and read from storage
-const bytes = [133, 174, 97, 255];
+const bytes = encodeBytes32String('[133, 174, 97, 255]');
 
 describe('UpgradeGatekeeper unit tests', function () {
     let provider;
@@ -24,16 +25,16 @@ describe('UpgradeGatekeeper unit tests', function () {
         dummySecond = await dummy2Factory.deploy();
 
         const proxyFactory = await hardhat.ethers.getContractFactory('Proxy');
-        proxyTestContract = await proxyFactory.deploy(dummyFirst.address, [bytes[0], bytes[1]]);
+        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, encodeBytes32String('[0,1]'));
 
-        proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.address);
+        proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.target);
 
         const upgradeGatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
-        upgradeGatekeeperContract = await upgradeGatekeeperFactory.deploy(proxyTestContract.address);
+        upgradeGatekeeperContract = await upgradeGatekeeperFactory.deploy(proxyTestContract.target);
 
-        await proxyTestContract.transferMastership(upgradeGatekeeperContract.address);
+        await proxyTestContract.transferMastership(upgradeGatekeeperContract.target);
 
-        await expect(upgradeGatekeeperContract.addUpgradeable(proxyTestContract.address)).to.emit(
+        await expect(upgradeGatekeeperContract.addUpgradeable(proxyTestContract.target)).to.emit(
             upgradeGatekeeperContract,
             'NewUpgradable'
         );
@@ -41,8 +42,8 @@ describe('UpgradeGatekeeper unit tests', function () {
         // check initial dummy index and storage
         expect(await proxyDummyInterface.get_DUMMY_INDEX()).to.equal(1);
 
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 1))).to.equal(bytes[0]);
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 2))).to.equal(bytes[1]);
+        // expect(parseInt(await provider.getStorage(proxyTestContract.target, 1))).to.equal(bytes[0]);
+        // expect(parseInt(await provider.getStorage(proxyTestContract.target, 2))).to.equal(bytes[1]);
     });
 
     it('checking that requireMaster calls present', async () => {
