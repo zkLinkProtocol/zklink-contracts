@@ -498,6 +498,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         totalBlocksCommitted = _totalBlocksCommitted;
         // log the last new committed block number
         emit BlockCommit(_lastCommittedBlockData.blockNumber);
+
+        if (address(syncService) == address(0)) {
+            totalBlocksSynchronized = _lastCommittedBlockData.blockNumber;
+        }
     }
 
     /// @dev Process one block commit using previous block StoredBlockInfo,

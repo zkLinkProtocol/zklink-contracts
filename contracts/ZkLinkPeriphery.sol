@@ -277,6 +277,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(success, "x3");
 
         emit BlockProven(currentTotalBlocksProven);
+
+        if (address(syncService) == address(0)) {
+            totalBlocksSynchronized = currentTotalBlocksProven;
+        }
     }
 
     /// @notice Reverts unExecuted blocks
