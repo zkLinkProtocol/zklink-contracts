@@ -151,15 +151,15 @@ describe('Compressed block commit unit tests', function () {
             const block = testBlockInfo.block;
             const expected = testBlockInfo.expected;
 
-            commitBlock.blockNumber = 13;
+            commitBlock.blockNumber = 13n
             commitBlock.publicData = block.publicData;
             commitBlock.onchainOperations = block.onchainOperations;
 
             const r = await zkLink.testCommitOneBlock(preBlock, commitBlock);
             const syncHash = hexlify(createSlaverChainSyncHash(preBlock.syncHash, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHash));
             expect(r.blockNumber).to.eql(commitBlock.blockNumber);
-            expect(r.blockSequence).to.eql(preBlock.blockSequence + 1);
-            expect(r.priorityOperations).to.eql(BigNumber.from(expected.priorityOperationsProcessed));
+            expect(r.blockSequence).to.eql(BigInt(preBlock.blockSequence + 1));
+            expect(r.priorityOperations).to.eql(BigInt(expected.priorityOperationsProcessed));
             expect(r.pendingOnchainOperationsHash).to.eql(expected.processableOpPubdataHash);
             expect(r.syncHash).to.eql(syncHash);
         });
