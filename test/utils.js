@@ -40,28 +40,31 @@ async function deploy() {
     // verifier
     const verifierFactory = await hardhat.ethers.getContractFactory('VerifierMock');
     const verifier = await verifierFactory.deploy();
+
     // periphery
     const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
     const periphery = await peripheryFactory.deploy();
     // zkLink
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
-    const zkLink = await zkLinkFactory.deploy(periphery.address);
+    const zkLink = await zkLinkFactory.deploy(periphery.target);
 
     // deployer
+    const abiCoder = new hardhat.ethers.AbiCoder()
     const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
     const zkLinkInitParams = IS_MASTER_CHAIN ?
-        hardhat.ethers.utils.defaultAbiCoder.encode(["bytes32"], [GENESIS_ROOT]) :
-        hardhat.ethers.utils.defaultAbiCoder.encode(["uint32"], [0]);
+          abiCoder.encode(["bytes32"], [GENESIS_ROOT]) :
+          abiCoder.encode(["uint32"], [0]);
     const deployer = await deployerFactory.deploy(
-        verifier.address,
-        zkLink.address,
+        verifier.target,
+        zkLink.target,
         zkLinkInitParams,
         validator.address,
         governor.address,
         feeAccount.address
     );
-    const txr = await deployer.deployTransaction.wait();
-    const log = deployer.interface.parseLog(txr.logs[0]);
+    const txr = await deployer.waitForDeployment();
+    const tx = await hardhat.ethers.provider.getTransactionReceipt(txr.deploymentTransaction().hash)
+    const log = deployer.interface.parseLog(tx.logs[0]);
     const verifyProxy = verifierFactory.attach(log.args.verifier);
     const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
     const peripheryProxy = peripheryFactory.attach(log.args.zkLink);
@@ -75,16 +78,16 @@ async function deploy() {
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
     const token2Id = 34;
-    await peripheryProxy.connect(governor).addToken(token2Id, token2.address, 18);
+    await peripheryProxy.connect(governor).addToken(token2Id, token2.target, 18);
 
     const token4 = await stFactory.deploy("Token4", "T4");
     const token4Id = 17;
-    await peripheryProxy.connect(governor).addToken(token4Id, token4.address, 18);
+    await peripheryProxy.connect(governor).addToken(token4Id, token4.target, 18);
 
     const stdFactory = await hardhat.ethers.getContractFactory('StandardTokenWithDecimals');
     const token5 = await stdFactory.deploy("Token5", "T5", 6);
     const token5Id = 36;
-    await peripheryProxy.connect(governor).addToken(token5Id, token5.address, 6);
+    await peripheryProxy.connect(governor).addToken(token5Id, token5.target, 6);
 
     // L2 gateway
     const gatewayFactory = await hardhat.ethers.getContractFactory('L2GatewayMock');
@@ -121,7 +124,7 @@ async function deploy() {
 }
 
 function createSlaverChainSyncHash(preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, onchainOperationPubdataHash) {
-    return hardhat.ethers.utils.keccak256(hardhat.ethers.utils.solidityPack(["bytes32","uint32","bytes32","bytes32"],
+    return hardhat.ethers.keccak256(hardhat.ethers.solidityPacked(["bytes32","uint32","bytes32","bytes32"],
         [preBlockSyncHash, newBlockBlockNumber, newBlockStateHash, onchainOperationPubdataHash]));
 }
 

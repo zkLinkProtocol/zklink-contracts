@@ -21,7 +21,7 @@ describe('ZkLink change pubkey unit tests', function () {
         const pubkeyHash = '0xfefefefefefefefefefefefefefefefefefefefe';
         await periphery.connect(alice).setAuthPubkeyHash(pubkeyHash, nonce);
 
-        const expectedAuthFact = ethers.utils.keccak256(pubkeyHash);
+        const expectedAuthFact = ethers.keccak256(pubkeyHash);
         expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(expectedAuthFact);
     });
 
@@ -35,15 +35,15 @@ describe('ZkLink change pubkey unit tests', function () {
         expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(oldHash);
 
         // must wait 24 hours
-        const latestBlock = await zkLink.provider.getBlock('latest');
+        const latestBlock = await zkLink.runner.provider.getBlock('latest');
         const resetTimestampTooEarly = latestBlock.timestamp + 23 * 60 * 60;
-        await zkLink.provider.send('evm_setNextBlockTimestamp', [resetTimestampTooEarly]);
+        await zkLink.runner.provider.send('evm_setNextBlockTimestamp', [resetTimestampTooEarly]);
         await expect(periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce)).to.be.revertedWith("B1");
 
         const resetTimestamp = latestBlock.timestamp + 24 * 60 * 60;
-        await zkLink.provider.send('evm_setNextBlockTimestamp', [resetTimestamp]);
+        await zkLink.runner.provider.send('evm_setNextBlockTimestamp', [resetTimestamp]);
         await periphery.connect(alice).setAuthPubkeyHash(newPubkeyHash, nonce);
-        expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(ethers.utils.keccak256(newPubkeyHash));
+        expect(await periphery.getAuthFact(alice.address, nonce)).to.eq(ethers.keccak256(newPubkeyHash));
     });
 
     it('verify CREATE2 should be success', async () => {
