@@ -4,8 +4,7 @@ const { deploy, USD_TOKEN_ID, MAX_SUB_ACCOUNT_ID, MAX_ACCOUNT_ID, CHAIN_ID} = re
 const { hashBytesToBytes20, getDepositPubdata, getFullExitPubdata, extendAddress, OP_DEPOSIT_HASH_SIZE,
     OP_FULLEXIT_HASH_SIZE
 } = require('../script/op_utils');
-const {parseEther, parseUnits } = require("ethers");
-const { arrayify } = require("@ethersproject/bytes")
+const {parseEther, parseUnits, getBytes } = require("ethers");
 
 describe('ZkLink priority queue ops unit tests', function () {
     let zkLink, periphery, ethId,
@@ -77,7 +76,7 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:ethId, targetTokenId:ethId, amount, owner:extendAddress(to) });
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
     });
 
     it('deposit standard erc20 should success', async () => {
@@ -94,7 +93,7 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token2Id, targetTokenId:token2Id, amount, owner:extendAddress(to) });
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
     });
 
     it('deposit erc20 with mapping should success', async () => {
@@ -111,7 +110,7 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token4Id, targetTokenId:token4Mapping, amount, owner:extendAddress(to) });
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
     });
 
     it('deposit standard erc20 with decimals should success', async () => {
@@ -129,7 +128,7 @@ describe('ZkLink priority queue ops unit tests', function () {
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const amountInPubdata = parseEther("30"); // 30 * 10 ^18
         const encodePubdata = getDepositPubdata({ chainId:CHAIN_ID, accountId:0, subAccountId, tokenId:token5Id, targetTokenId:token5Id, amount:amountInPubdata, owner:extendAddress(to) });
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_DEPOSIT_HASH_SIZE)));
     });
 
     it('invalid state or params should be failed when full exit', async () => {
@@ -162,7 +161,7 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getFullExitPubdata({ chainId:CHAIN_ID, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:ethId, srcTokenId:ethId, amount:0});
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_FULLEXIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_FULLEXIT_HASH_SIZE)));
     });
 
     it('requestFullExit with mapping should success', async () => {
@@ -172,6 +171,6 @@ describe('ZkLink priority queue ops unit tests', function () {
 
         const hashedPubdata = await zkLink.getPriorityHash(tpn++);
         const encodePubdata = getFullExitPubdata({ chainId:CHAIN_ID, accountId, subAccountId, owner:extendAddress(defaultSender.address), tokenId:token4Id, srcTokenId:token4Mapping, amount:0});
-        expect(hashedPubdata).eq(hashBytesToBytes20(arrayify(encodePubdata).slice(0, OP_FULLEXIT_HASH_SIZE)));
+        expect(hashedPubdata).eq(hashBytesToBytes20(getBytes(encodePubdata).slice(0, OP_FULLEXIT_HASH_SIZE)));
     });
 });

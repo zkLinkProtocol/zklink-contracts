@@ -23,8 +23,7 @@ const {
     OP_FORCE_EXIT_CHUNKS,
     extendAddress
 } = require('../script/op_utils');
-const { keccak256,  parseEther} = require("ethers");
-const { arrayify, hexlify, concat } = require("@ethersproject/bytes")
+const { keccak256,  parseEther, hexlify, concat, getBytes} = require("ethers");
 
 if (IS_MASTER_CHAIN) {
     console.log("Compressed block commit unit tests only support slaver chain");
@@ -71,28 +70,28 @@ describe('Compressed block commit unit tests', function () {
         await zkLink.testAddPriorityRequest(OP_DEPOSIT, opOfWrite);
         let opPadding = paddingChunk(op, OP_DEPOSIT_CHUNKS);
         pubdatas.push(opPadding);
-        onchainOperationPubdataHash = hexlify(keccak256(concat([arrayify(onchainOperationPubdataHash), opPadding])));
+        onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
-        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffset += getBytes(opPadding).length;
         priorityOperationsProcessed++;
 
         // change pubkey of current chain
         op = getChangePubkeyPubdata({chainId:CHAIN_ID,accountId:2,subAccountId:7,pubKeyHash:'0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',owner:extendAddress(alice.address),nonce:32,tokenId:token2Id,fee:145});
         opPadding = paddingChunk(op, OP_CHANGE_PUBKEY_CHUNKS);
         pubdatas.push(opPadding);
-        onchainOperationPubdataHash = hexlify(keccak256(concat([arrayify(onchainOperationPubdataHash), opPadding])));
+        onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));
         let ethWitness = await createEthWitnessOfECRECOVER('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',32,2,alice);
         ops.push({ethWitness,publicDataOffset});
-        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffset += getBytes(opPadding).length;
 
         // withdraw of current chain
         op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0});
         opPadding = paddingChunk(op, OP_WITHDRAW_CHUNKS);
         pubdatas.push(opPadding);
-        onchainOperationPubdataHash = hexlify(keccak256(concat([arrayify(onchainOperationPubdataHash), opPadding])));
-        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
+        onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([getBytes(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
-        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffset += getBytes(opPadding).length;
 
         // full exit of current chain
         op = getFullExitPubdata({chainId:CHAIN_ID,accountId:15,subAccountId:2,owner:extendAddress(bob.address),tokenId:ethId,srcTokenId:ethId,amount:parseEther("14")});
@@ -100,18 +99,18 @@ describe('Compressed block commit unit tests', function () {
         await zkLink.testAddPriorityRequest(OP_FULL_EXIT, opOfWrite);
         opPadding = paddingChunk(op, OP_FULL_EXIT_CHUNKS);
         pubdatas.push(opPadding);
-        onchainOperationPubdataHash = hexlify(keccak256(concat([arrayify(onchainOperationPubdataHash), opPadding])));
-        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
+        onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([getBytes(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
-        publicDataOffset += arrayify(opPadding).length;
+        publicDataOffset += getBytes(opPadding).length;
         priorityOperationsProcessed++;
 
         // force exit of current chain
         op = getForcedExitPubdata({chainId:CHAIN_ID,initiatorAccountId:13,initiatorSubAccountId:4,initiatorNonce:0,targetAccountId:23,targetSubAccountId:2,tokenId:token2Id,srcTokenId:token2Id,amount:parseEther("24.5"),withdrawToL1:0,target:extendAddress(alice.address)});
         opPadding = paddingChunk(op, OP_FORCE_EXIT_CHUNKS);
         pubdatas.push(opPadding);
-        onchainOperationPubdataHash = hexlify(keccak256(concat([arrayify(onchainOperationPubdataHash), opPadding])));
-        processableOpPubdataHash = hexlify(keccak256(concat([arrayify(processableOpPubdataHash), opPadding])));
+        onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));
+        processableOpPubdataHash = hexlify(keccak256(concat([getBytes(processableOpPubdataHash), opPadding])));
         ops.push({ethWitness:"0x",publicDataOffset});
 
         block.publicData = hexlify(concat(pubdatas));

@@ -1,4 +1,6 @@
 const fs = require("fs");
+const path = require("path");
+
 async function verifyContractCode(hardhat, address, constructorArguments) {
     // contract code may be not exist after tx send to chain
     // try every one minutes if verify failed
@@ -27,7 +29,7 @@ async function verifyContractCode(hardhat, address, constructorArguments) {
 }
 
 function createOrGetDeployLog(name) {
-    const deployLogPath = `log/${name}_${process.env.NET}.log`;
+    const deployLogPath = getDeployLogPath(name, process.env.NET);
     console.log('deploy log path', deployLogPath);
     if (!fs.existsSync('log')) {
         fs.mkdirSync('log', true);
@@ -42,7 +44,7 @@ function createOrGetDeployLog(name) {
 }
 
 function getDeployLog(name, env = process.env.NET) {
-    const deployLogPath = `log/${name}_${env}.log`;
+    const deployLogPath = getDeployLogPath(name, env);
     console.log('deploy log path', deployLogPath);
     if (!fs.existsSync(deployLogPath)) {
         throw 'deploy log not exist';
@@ -57,7 +59,7 @@ function readDeployContract(logName, contractName, env = process.env.NET) {
 }
 
 function readDeployLogField(logName, fieldName, env = process.env.NET) {
-    const deployLogPath = `log/${logName}_${env}.log`;
+    const deployLogPath = getDeployLogPath(logName, env);
     if (!fs.existsSync(deployLogPath)) {
         throw 'deploy log not exist';
     }
@@ -68,6 +70,11 @@ function readDeployLogField(logName, fieldName, env = process.env.NET) {
         throw fieldName + ' not exit';
     }
     return fieldValue;
+}
+
+function getDeployLogPath(logName, env = process.env.NET) {
+    const zkLinkRoot = path.resolve(__dirname, "..");
+    return `${zkLinkRoot}/log/${logName}_${env}.log`;
 }
 
 class ChainContractDeployer {

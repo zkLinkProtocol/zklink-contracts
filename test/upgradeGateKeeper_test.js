@@ -2,7 +2,7 @@ const hardhat = require('hardhat');
 const constants = hardhat.ethers.constants;
 const { expect } = require('chai');
 const { performance } = require('perf_hooks');
-const { encodeBytes32String } = require("ethers")
+const { solidityPacked } = require("ethers")
 
 // some random constants for checking write and read from storage
 const bytes = [133, 174, 97, 255];
@@ -26,7 +26,8 @@ describe('UpgradeGatekeeper unit tests', function () {
         dummySecond = await dummy2Factory.deploy();
 
         const proxyFactory = await hardhat.ethers.getContractFactory('Proxy');
-        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, [bytes[0], bytes[1]]);
+        const initializationParameters = solidityPacked(["uint8","uint8"],[bytes[0], bytes[1]]);
+        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, initializationParameters);
 
         proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.target);
 
