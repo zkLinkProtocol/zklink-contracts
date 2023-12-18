@@ -21,14 +21,14 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
         _;
     }
 
-    function claimETHCallback(bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
+    function claimETHCallback(uint32 _txNonce, bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
         require(msg.value == _amount, "Claim eth value not match");
 
         zkLink.depositETH{value: _amount}(_zkLinkAddress, _subAccountId);
-        emit ClaimedDepositETH(_zkLinkAddress, _subAccountId, _amount);
+        emit ClaimedDeposit(_txNonce);
     }
 
-    function claimERC20Callback(bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway {
+    function claimERC20Callback(uint32 _txNonce, bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external override onlyMessageService onlyRemoteGateway {
         // find target token on Linea
         address targetToken = getTargetToken(_isUSDC, _nativeToken);
         // approve token to zkLink
@@ -36,7 +36,7 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
         // deposit erc20 to zkLink
         uint104 amount = uint104(_amount);
         zkLink.depositERC20(IERC20(targetToken), amount, _zkLinkAddress, _subAccountId, _mapping);
-        emit ClaimedDepositERC20(targetToken, amount, _zkLinkAddress, _subAccountId, _mapping);
+        emit ClaimedDeposit(_txNonce);
     }
 
     function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {

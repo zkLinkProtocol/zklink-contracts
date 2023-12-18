@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {ILineaGateway} from "./ILineaGateway.sol";
 
 interface ILineaL1Gateway is ILineaGateway {
-    event Deposit(uint192 indexed txNonce, address token, uint256 amount, bytes32 zklinkAddress, uint8 subAccountId, bool _mapping);
+    event Deposit(uint32 indexed txNonce, address token, uint256 amount, bytes32 zklinkAddress, uint8 subAccountId, bool _mapping);
     event ClaimedWithdrawETH(address _receiver, uint256 _amount);
     event ClaimedWithdrawERC20(address _receiver, address _token, uint256 _amount);
     event SetFee(uint64 fee);

@@ -86,6 +86,12 @@ const layerZero = {
         chainId: 10121,
         address: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23'
     },
+    SEPOLIA: {
+        mainnet: false,
+        zkLinkChainId: 4,
+        chainId: 10161,
+        address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
+    },
     BSCTEST: {
         mainnet: false,
         zkLinkChainId: 3,
@@ -143,8 +149,8 @@ const layerZero = {
     SCROLLTEST: {
         mainnet: false,
         zkLinkChainId: 6,
-        chainId: 10170,
-        address: '0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1'
+        chainId: 10214,
+        address: '0x6098e96a28E02f27B1e6BD381f870F1C8Bd169d3'
     },
     MANTLETEST: {
         mainnet: false,

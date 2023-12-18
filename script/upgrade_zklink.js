@@ -1,14 +1,19 @@
 const fs = require('fs');
 const { verifyContractCode, getDeployLog } = require('./utils');
 const logName = require('./deploy_log_name');
-const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("zksync-web3");
-const { Deployer: ZkSyncDeployer } = require("@matterlabs/hardhat-zksync-deploy");
 
 task("upgradeZkLink", "Upgrade zkLink")
     .addParam("upgradeVerifier", "Upgrade verifier", false, types.boolean, true)
     .addParam("upgradeZkLink", "Upgrade zkLink", false, types.boolean, true)
     .addParam("skipVerify", "Skip verify", false, types.boolean, true)
     .setAction(async (taskArgs, hardhat) => {
+        const isMasterChain = hardhat.config.isMasterChain;
+        if (typeof isMasterChain === 'undefined') {
+            console.log('master chain not config');
+            return;
+        }
+        console.log('is master chain?', isMasterChain);
+
         const network = hardhat.network;
         const isZksync = network.zksync !== undefined && network.zksync;
         console.log('is zksync?', isZksync);
@@ -17,6 +22,8 @@ task("upgradeZkLink", "Upgrade zkLink")
         let deployerWallet;
         let zkSyncDeployer;
         if (isZksync) {
+            const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("../zksync/node_modules/zksync-ethers");
+            const { Deployer: ZkSyncDeployer } = require("../zksync/node_modules/@matterlabs/hardhat-zksync-deploy");
             const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
             deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
             zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);
@@ -45,8 +52,8 @@ task("upgradeZkLink", "Upgrade zkLink")
         }
 
         // log deployer balance
-        const balance = await deployerWallet.getBalance();
-        console.log('deployer balance', hardhat.ethers.utils.formatEther(balance));
+        const balance = await hardhat.ethers.provider.getBalance(deployerWallet.address);
+        console.log('deployer balance', hardhat.ethers.formatEther(balance));
 
         // attach upgrade gatekeeper
         const gatekeeperAddr = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
@@ -63,7 +70,7 @@ task("upgradeZkLink", "Upgrade zkLink")
         if (upgradeStatus === 0) {
             // verifier
             if (upgradeVerifier) {
-                if (hardhat.isMasterChain) {
+                if (isMasterChain) {
                     console.log('deploy verifier target...');
                     const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
                     let verifier = await verifierFactory.connect(deployerWallet).deploy();
@@ -128,7 +135,7 @@ task("upgradeZkLink", "Upgrade zkLink")
             return;
         }
 
-        const upgradeTargets = [hardhat.ethers.constants.AddressZero, hardhat.ethers.constants.AddressZero];
+        const upgradeTargets = [hardhat.ethers.ZeroAddress, hardhat.ethers.ZeroAddress];
         if (upgradeVerifier) {
             upgradeTargets[0] = deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET];
         }

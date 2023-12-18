@@ -18,7 +18,7 @@ task("deployAccountMock", "Deploy eip1271 account mock for testnet")
         // deploy AccountMockDeployer
         console.log('deploy AccountMockDeployer...');
         const accountMockDeployerContract = await contractDeployer.deployContract('AccountMockDeployer', []);
-        console.log('account mock deployer deployed success: ', accountMockDeployerContract.address);
+        console.log('account mock deployer deployed success: ', await accountMockDeployerContract.getAddress());
 
         // cal AccountMock code hash
         const accountMockFactory = await hardhat.ethers.getContractFactory("AccountMock");

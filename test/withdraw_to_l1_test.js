@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { deploy, ETH_ADDRESS} = require('./utils');
 const { calWithdrawHash } = require('../script/op_utils');
-const {parseEther, parseUnits} = require("ethers/lib/utils");
+const {parseEther, parseUnits} = require("ethers");
 const {ethers} = require("hardhat");
 
 describe('Withdraw to L1 unit tests', function () {
@@ -22,7 +22,7 @@ describe('Withdraw to L1 unit tests', function () {
         bob = deployedInfo.bob;
         gateway = deployedInfo.gateway;
         // set gateway
-        await periphery.connect(governor).setGateway(gateway.address);
+        await periphery.connect(governor).setGateway(gateway.target);
     });
 
     it('withdraw eth to l1 should success', async () => {
@@ -41,12 +41,12 @@ describe('Withdraw to L1 unit tests', function () {
 
         // zkLink init balance is 30 eth
         await bob.sendTransaction({
-            to: periphery.address,
+            to: periphery.target,
             value: parseEther("30")
         });
 
-        const zkLinkBalance0 = await ethers.provider.getBalance(periphery.address);
-        const gatewayBalance0 = await ethers.provider.getBalance(gateway.address);
+        const zkLinkBalance0 = await ethers.provider.getBalance(periphery.target);
+        const gatewayBalance0 = await ethers.provider.getBalance(gateway.target);
 
         // no withdraw exist
         await expect(periphery.connect(bob).withdrawToL1(owner,token,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce, {value: gatewayFee}))
@@ -75,13 +75,13 @@ describe('Withdraw to L1 unit tests', function () {
         // withdraw data executed
         expect(await periphery.pendingL1Withdraws(withdrawHash)).to.eq(false);
 
-        const zkLinkBalance1 = await ethers.provider.getBalance(periphery.address);
-        const gatewayBalance1 = await ethers.provider.getBalance(gateway.address);
+        const zkLinkBalance1 = await ethers.provider.getBalance(periphery.target);
+        const gatewayBalance1 = await ethers.provider.getBalance(gateway.target);
 
         // zkLink balance reduced by l1Amount
-        expect(zkLinkBalance0.sub(zkLinkBalance1)).to.eq(l1Amount);
+        expect(zkLinkBalance0 - zkLinkBalance1).to.eq(l1Amount);
         // gateway balance increased by l1Amount + fee
-        expect(gatewayBalance1.sub(gatewayBalance0)).to.eq(l1Amount.add(gatewayFee));
+        expect(gatewayBalance1 - gatewayBalance0).to.eq(l1Amount + gatewayFee);
     });
 
     it('withdraw erc20 to l1 should success', async () => {
@@ -99,12 +99,12 @@ describe('Withdraw to L1 unit tests', function () {
         const gatewayFee = parseEther("0.001");
 
         // zkLink init balance is 30
-        await token.mintTo(periphery.address, parseUnits("30", 6));
+        await token.mintTo(periphery.target, parseUnits("30", 6));
 
-        const zkLinkBalance0 = await token.balanceOf(periphery.address);
-        const gatewayBalance0 = await token.balanceOf(gateway.address);
-        const zkLinkEthBalance0 = await ethers.provider.getBalance(periphery.address);
-        const gatewayEthBalance0 = await ethers.provider.getBalance(gateway.address);
+        const zkLinkBalance0 = await token.balanceOf(periphery.target);
+        const gatewayBalance0 = await token.balanceOf(gateway.target);
+        const zkLinkEthBalance0 = await ethers.provider.getBalance(periphery.target);
+        const gatewayEthBalance0 = await ethers.provider.getBalance(gateway.target);
 
         // execute withdraw
         const op = {
@@ -119,28 +119,28 @@ describe('Withdraw to L1 unit tests', function () {
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
             "withdrawToL1":1
         }
-        const withdrawHash = calWithdrawHash(owner,token.address,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
+        const withdrawHash = calWithdrawHash(owner,token.target,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
         await expect(await zkLink.testExecuteWithdraw(op))
             .to.be.emit(zkLink, "WithdrawalPendingL1")
             .withArgs(withdrawHash);
-        await expect(periphery.connect(bob).withdrawToL1(owner,token.address,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce, {value: gatewayFee}))
+        await expect(periphery.connect(bob).withdrawToL1(owner,token.target,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce, {value: gatewayFee}))
             .to.be.emit(periphery, "WithdrawalL1")
             .withArgs(withdrawHash);
         // withdraw data executed
         expect(await periphery.pendingL1Withdraws(withdrawHash)).to.eq(false);
 
-        const zkLinkBalance1 = await token.balanceOf(periphery.address);
-        const gatewayBalance1 = await token.balanceOf(gateway.address);
-        const zkLinkEthBalance1 = await ethers.provider.getBalance(periphery.address);
-        const gatewayEthBalance1 = await ethers.provider.getBalance(gateway.address);
+        const zkLinkBalance1 = await token.balanceOf(periphery.target);
+        const gatewayBalance1 = await token.balanceOf(gateway.target);
+        const zkLinkEthBalance1 = await ethers.provider.getBalance(periphery.target);
+        const gatewayEthBalance1 = await ethers.provider.getBalance(gateway.target);
 
         // zkLink token balance reduced by l1Amount
-        expect(zkLinkBalance0.sub(zkLinkBalance1)).to.eq(l1Amount);
+        expect(zkLinkBalance0 - zkLinkBalance1).to.eq(l1Amount);
         // gateway token balance increased by l1Amount
-        expect(gatewayBalance1.sub(gatewayBalance0)).to.eq(l1Amount);
+        expect(gatewayBalance1 - gatewayBalance0).to.eq(l1Amount);
         // zkLink eth balance not change
         expect(zkLinkEthBalance0).to.eq(zkLinkEthBalance1);
         // gateway eth balance increased by fee
-        expect(gatewayEthBalance1.sub(gatewayEthBalance0)).to.eq(gatewayFee);
+        expect(gatewayEthBalance1 - gatewayEthBalance0).to.eq(gatewayFee);
     });
 });

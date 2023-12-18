@@ -473,10 +473,12 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_totalBlocksExecuted + nBlocks <= totalBlocksSynchronized, "d1");
 
         uint64 priorityRequestsExecuted = 0;
+
         for (uint32 i; i < nBlocks;) {
+            uint32 _executedBlockIdx = _totalBlocksExecuted + i + 1;
             ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
-            require(_blockExecuteData.storedBlock.blockNumber == _totalBlocksExecuted + i + 1, "d2");
-            executeOneBlock(_blockExecuteData);
+            require(_blockExecuteData.storedBlock.blockNumber == _executedBlockIdx, "d2");
+            executeOneBlock(_blockExecuteData, _executedBlockIdx);
             priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
 
             unchecked {
@@ -542,7 +544,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
-            _previousBlock.blockNumber,
+            _previousBlock.blockSequence + 1,
             priorityReqCommitted,
             pendingOnchainOpsHash,
             syncHash
@@ -633,28 +635,27 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @notice Execute blocks, completing priority operations and processing withdrawals.
     /// @dev 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
-    function executeCompressedBlocks(StoredBlockInfo memory _latestExecutedBlockData, ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
+    function executeCompressedBlocks(ExecuteBlockInfo[] memory _blocksData) external active onlyValidator nonReentrant {
         uint32 nBlocks = uint32(_blocksData.length);
         require(nBlocks > 0, "d0");
 
-        uint32 _totalBlocksExecuted = totalBlocksExecuted;
-        require(storedBlockHashes[_totalBlocksExecuted] == hashStoredBlockInfo(_latestExecutedBlockData), "d1");
+        uint32 latestExecutedBlockNumber = _blocksData[nBlocks - 1].storedBlock.blockNumber;
+        require(latestExecutedBlockNumber <= totalBlocksSynchronized, "d1");
 
-        uint64 priorityRequestsExecuted;
-        uint32 latestExecutedBlockNumber = _latestExecutedBlockData.blockNumber;
-        for (uint32 i; i < nBlocks;) {
+       uint32 _totalBlocksExecuted = totalBlocksExecuted;
+        uint64 priorityRequestsExecuted = 0;
+        for (uint32 i = 0; i < nBlocks; ) {
+            uint32 _executedBlockIdx = _totalBlocksExecuted + i + 1;
             ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
-            require(_blockExecuteData.storedBlock.preCommittedBlockNumber == latestExecutedBlockNumber, "d2");
+            require(_blockExecuteData.storedBlock.blockSequence == _executedBlockIdx, "d2");
 
-            executeOneBlock(_blockExecuteData);
+            executeOneBlock(_blockExecuteData, _executedBlockIdx);
             priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
-            latestExecutedBlockNumber = _blockExecuteData.storedBlock.blockNumber;
 
             unchecked {
                 ++i;
             }
         }
-        require(latestExecutedBlockNumber <= totalBlocksSynchronized, "d3");
 
         firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
         totalCommittedPriorityRequests = totalCommittedPriorityRequests - priorityRequestsExecuted;
@@ -791,11 +792,11 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// 1. Processes all pending operations (Send Exits, Complete priority requests)
     /// 2. Finalizes block on Ethereum
     /// _executedBlockIdx is index in the array of the blocks that we want to execute together
-    function executeOneBlock(ExecuteBlockInfo memory _blockExecuteData) internal {
+    function executeOneBlock(ExecuteBlockInfo memory _blockExecuteData, uint32 _executedBlockIdx) internal {
         // Ensure block was committed
         require(
             hashStoredBlockInfo(_blockExecuteData.storedBlock) ==
-            storedBlockHashes[_blockExecuteData.storedBlock.blockNumber],
+            storedBlockHashes[_executedBlockIdx],
             "m0"
         );
 

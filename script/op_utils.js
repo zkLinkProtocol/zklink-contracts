@@ -1,4 +1,5 @@
 const ethers = require("ethers");
+const {arrayify,hexlify,concat} = require("@ethersproject/bytes")
 
 const OP_NOOP = 0;
 const OP_DEPOSIT = 1;
@@ -32,73 +33,73 @@ const OP_FULLEXIT_HASH_SIZE = 43;
 const ADDRESS_PREFIX_ZERO_BYTES = "0x000000000000000000000000";
 
 function getDepositPubdata({ chainId, accountId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
+    const pubdata = ethers.solidityPacked(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
         [OP_DEPOSIT,chainId,subAccountId,tokenId,targetTokenId,amount,owner,accountId]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_DEPOSIT_SIZE, "wrong deposit pubdata");
     return pubdata;
 }
 
 function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, amount, owner }) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
+    return ethers.solidityPacked(["uint8","uint8","uint8","uint16","uint16","uint128","bytes32","uint32"],
         [OP_DEPOSIT,chainId,subAccountId,tokenId,targetTokenId,amount,owner,0]);
 }
 
 function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, withdrawToL1 }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8"],
+    const pubdata = ethers.solidityPacked(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8"],
         [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate,withdrawToL1]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_WITHDRAW_SIZE, "wrong withdraw pubdata");
     return pubdata;
 }
 
 function getFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId, amount}) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
+    const pubdata = ethers.solidityPacked(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,amount]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_FULL_EXIT_SIZE, "wrong fullexit pubdata");
     return pubdata;
 }
 
 function writeFullExitPubdata({ chainId, accountId, subAccountId, owner, tokenId, srcTokenId}) {
-    return ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
+    return ethers.solidityPacked(["uint8","uint8","uint32","uint8","bytes32","uint16","uint16","uint128"],
         [OP_FULL_EXIT,chainId,accountId,subAccountId,owner,tokenId,srcTokenId,0]);
 }
 
 function getForcedExitPubdata({ chainId, initiatorAccountId, initiatorSubAccountId, initiatorNonce, targetAccountId, targetSubAccountId, tokenId, srcTokenId, amount, withdrawToL1, target }) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","uint32","uint32","uint8","uint16","uint16","uint128","uint8","bytes32"],
+    const pubdata = ethers.solidityPacked(["uint8","uint8","uint32","uint8","uint32","uint32","uint8","uint16","uint16","uint128","uint8","bytes32"],
         [OP_FORCE_EXIT,chainId,initiatorAccountId,initiatorSubAccountId,initiatorNonce,targetAccountId,targetSubAccountId,tokenId,srcTokenId,amount,withdrawToL1,target]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_FORCE_EXIT_SIZE, "wrong forcedexit pubdata");
     return pubdata;
 }
 
 function getChangePubkeyPubdata({ chainId, accountId, subAccountId, pubKeyHash, owner, nonce, tokenId, fee}) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint8","uint32","uint8","bytes20","bytes32","uint32","uint16","uint16"],
+    const pubdata = ethers.solidityPacked(["uint8","uint8","uint32","uint8","bytes20","bytes32","uint32","uint16","uint16"],
         [OP_CHANGE_PUBKEY,chainId,accountId,subAccountId,pubKeyHash,owner,nonce,tokenId,fee]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_CHANGE_PUBKEY_SIZE, "wrong changepubkey pubdata");
     return pubdata;
 }
 
 function getTransferPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, fee}) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","uint16"],
+    const pubdata = ethers.solidityPacked(["uint8","uint32","uint8","uint16","uint40","uint32","uint8","uint16"],
         [OP_TRANSFER,fromAccountId,fromSubAccountId,tokenId,amount,toAccountId,toSubAccountId,fee]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_TRANSFER_SIZE, "wrong transfer pubdata");
     return pubdata;
 }
 
 function getTransferToNewPubdata({fromAccountId, fromSubAccountId, tokenId, amount, toAccountId, toSubAccountId, to, fee}) {
-    const pubdata = ethers.utils.solidityPack(["uint8","uint32","uint8","uint16","uint40","bytes32","uint32","uint8","uint16"],
+    const pubdata = ethers.solidityPacked(["uint8","uint32","uint8","uint16","uint40","bytes32","uint32","uint8","uint16"],
         [OP_TRANSFER_TO_NEW,fromAccountId,fromSubAccountId,tokenId,amount,to,toAccountId,toSubAccountId,fee]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_TRANSFER_TO_NEW_SIZE, "wrong transfertonew pubdata");
     return pubdata;
 }
 
 function getOrderMatchingPubdata({submitterAccountId, taker, maker, feeTokenId, fee, baseAmount, quoteAmount}) {
-    const pubdata =  ethers.utils.solidityPack(["uint8",
+    const pubdata =  ethers.solidityPacked(["uint8",
             "uint8",
             "uint32","uint32","uint32",
             "uint16","uint16",
@@ -122,51 +123,51 @@ function getOrderMatchingPubdata({submitterAccountId, taker, maker, feeTokenId, 
             maker.nonce,taker.nonce,
             maker.is_sell
         ]);
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     console.assert(pubdataArray.length === OP_ORDER_MATCHING_SIZE, "wrong ordermatching pubdata");
     return pubdata;
 }
 
 function mockNoopPubdata() {
-    return ethers.utils.solidityPack(["uint8"], [OP_NOOP]);
+    return ethers.solidityPacked(["uint8"], [OP_NOOP]);
 }
 
 function paddingChunk(pubdata, chunks) {
-    const pubdataArray = ethers.utils.arrayify(pubdata);
+    const pubdataArray = arrayify(pubdata);
     const zeroPaddingNum = CHUNK_BYTES * chunks - pubdataArray.length;
     const zeroArray = new Uint8Array(zeroPaddingNum);
-    const pubdataPaddingArray = ethers.utils.concat([pubdataArray, zeroArray]);
-    return ethers.utils.hexlify(pubdataPaddingArray);
+    const pubdataPaddingArray = concat([pubdataArray, zeroArray]);
+    return hexlify(pubdataPaddingArray);
 }
 
 function extendAddress(address) {
-    const addrBytes = ethers.utils.arrayify(address);
-    const zeroBytes = ethers.utils.arrayify(ADDRESS_PREFIX_ZERO_BYTES);
-    const extendAddrArray = ethers.utils.concat([zeroBytes, addrBytes]);
-    return ethers.utils.hexlify(extendAddrArray);
+    const addrBytes = arrayify(address);
+    const zeroBytes = arrayify(ADDRESS_PREFIX_ZERO_BYTES);
+    const extendAddrArray = concat([zeroBytes, addrBytes]);
+    return hexlify(extendAddrArray);
 }
 
 function hashBytesToBytes20(pubData) {
-    return ethers.utils.hexlify(ethers.utils.arrayify(ethers.utils.keccak256(pubData)).slice(12));
+    return hexlify(arrayify(ethers.keccak256(pubData)).slice(12));
 }
 
 async function createEthWitnessOfECRECOVER(pubKeyHash,nonce,accountId,owner) {
-    const sigMsg = ethers.utils.solidityPack(
+    const sigMsg = ethers.solidityPacked(
         ["string"],
         ["ChangePubKey\nPubKeyHash: " + pubKeyHash + "\nNonce: " + nonce + "\nAccountId: " + accountId]);
-    const signature = await owner.signMessage(ethers.utils.arrayify(sigMsg));
-    return ethers.utils.solidityPack(["bytes1","bytes"],[0, signature]);
+    const signature = await owner.signMessage(arrayify(sigMsg));
+    return ethers.solidityPacked(["bytes1","bytes"],['0x00', signature]);
 }
 
 function createEthWitnessOfCREATE2(pubKeyHash,accountId,creatorAddress,saltArg,codeHash) {
-    const ethWitness = ethers.utils.solidityPack(["bytes1","address","bytes32","bytes32"],[1, creatorAddress, saltArg, codeHash]);
-    const salt = ethers.utils.keccak256(ethers.utils.arrayify(ethers.utils.solidityPack(["bytes32","bytes20"],[saltArg, pubKeyHash])));
-    const owner = ethers.utils.getCreate2Address(creatorAddress, ethers.utils.arrayify(salt), ethers.utils.arrayify(codeHash));
+    const ethWitness = ethers.solidityPacked(["bytes1","address","bytes32","bytes32"],["0x01", creatorAddress, saltArg, codeHash]);
+    const salt = ethers.keccak256(arrayify(ethers.solidityPacked(["bytes32","bytes20"],[saltArg, pubKeyHash])));
+    const owner = ethers.getCreate2Address(creatorAddress, arrayify(salt), arrayify(codeHash));
     return {ethWitness, owner};
 }
 
 function calWithdrawHash(receiver, token, amount, fastWithdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce) {
-    return  ethers.utils.keccak256(ethers.utils.solidityPack(["uint32","uint8","uint32", "address","address","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, token, amount, fastWithdrawFeeRate]));
+    return  ethers.keccak256(ethers.solidityPacked(["uint32","uint8","uint32", "address","address","uint128","uint16"], [accountIdOfNonce, subAccountIdOfNonce, nonce, receiver, token, amount, fastWithdrawFeeRate]));
 }
 
 function getRandomInt(max) {

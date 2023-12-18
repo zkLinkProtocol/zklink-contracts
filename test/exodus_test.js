@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { IS_MASTER_CHAIN, deploy} = require('./utils');
 const { writeDepositPubdata, extendAddress} = require('../script/op_utils');
-const {parseEther} = require("ethers/lib/utils");
+const {parseEther} = require("ethers");
 
 if (!IS_MASTER_CHAIN) {
     console.log("ZkLink exodus unit tests only support master chain");
@@ -142,7 +142,7 @@ describe('ZkLink exodus unit tests', function () {
             proof))
             .to.be.emit(zkLink, "WithdrawalPending")
             .withArgs(tokenId, owner, amount1);
-        expect(await periphery.getPendingBalance(owner, tokenId)).to.be.eq(amount.add(amount1));
+        expect(await periphery.getPendingBalance(owner, tokenId)).to.be.eq(amount + amount1);
     });
 
     it('cancelOutstandingDepositsForExodusMode should success', async () => {
@@ -152,13 +152,13 @@ describe('ZkLink exodus unit tests', function () {
 
         await zkLink.setExodus(false);
         await token2.connect(defaultSender).mint(parseEther("1000"));
-        await token2.connect(defaultSender).approve(zkLink.address, parseEther("1000"));
+        await token2.connect(defaultSender).approve(zkLink.target, parseEther("1000"));
 
         const amount0 = parseEther("4");
         const amount1 = parseEther("10");
-        await zkLink.connect(defaultSender).depositERC20(token2.address, amount0, extendAddress(defaultSender.address), 0, false);
+        await zkLink.connect(defaultSender).depositERC20(token2.target, amount0, extendAddress(defaultSender.address), 0, false);
         await zkLink.connect(alice).requestFullExit(14, 2, token2Id, false);
-        await zkLink.connect(defaultSender).depositERC20(token2.address, amount1, extendAddress(alice.address), 1, false);
+        await zkLink.connect(defaultSender).depositERC20(token2.target, amount1, extendAddress(alice.address), 1, false);
         await zkLink.setExodus(true);
 
         const pubdata0 = writeDepositPubdata({ chainId:1, subAccountId:0, tokenId:token2Id, targetTokenId:token2Id, amount:amount0, owner:extendAddress(defaultSender.address) });

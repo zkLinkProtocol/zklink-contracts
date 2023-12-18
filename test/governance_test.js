@@ -17,7 +17,7 @@ describe('Governance unit tests', function () {
         await testContract.connect(alice).changeGovernor(bob.address);
         expect(await testContract.networkGovernor()).to.equal(bob.address);
 
-        await expect(testContract.connect(bob).changeGovernor(hardhat.ethers.constants.AddressZero)).to.be.revertedWith('H');
+        await expect(testContract.connect(bob).changeGovernor(hardhat.ethers.ZeroAddress)).to.be.revertedWith('H');
     });
 
     it('Add token should success', async () => {
@@ -26,7 +26,7 @@ describe('Governance unit tests', function () {
         await expect(testContract.connect(jack).addToken(tokenId, tokenAddress, 6)).to.be.revertedWith("3");
 
         await expect(testContract.connect(bob).addToken(0, tokenAddress, 18)).to.be.revertedWith("I0");
-        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.constants.AddressZero, 18)).to.be.revertedWith("I1");
+        await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.ZeroAddress, 18)).to.be.revertedWith("I1");
         await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19)).to.be.revertedWith("I3");
 
         await testContract.connect(bob).addToken(tokenId, tokenAddress, 8);

@@ -2,9 +2,11 @@ const hardhat = require('hardhat');
 const constants = hardhat.ethers.constants;
 const { expect } = require('chai');
 const { performance } = require('perf_hooks');
+const { encodeBytes32String } = require("ethers")
 
 // some random constants for checking write and read from storage
 const bytes = [133, 174, 97, 255];
+
 
 describe('UpgradeGatekeeper unit tests', function () {
     let provider;
@@ -24,16 +26,16 @@ describe('UpgradeGatekeeper unit tests', function () {
         dummySecond = await dummy2Factory.deploy();
 
         const proxyFactory = await hardhat.ethers.getContractFactory('Proxy');
-        proxyTestContract = await proxyFactory.deploy(dummyFirst.address, [bytes[0], bytes[1]]);
+        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, [bytes[0], bytes[1]]);
 
-        proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.address);
+        proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.target);
 
         const upgradeGatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
-        upgradeGatekeeperContract = await upgradeGatekeeperFactory.deploy(proxyTestContract.address);
+        upgradeGatekeeperContract = await upgradeGatekeeperFactory.deploy(proxyTestContract.target);
 
-        await proxyTestContract.transferMastership(upgradeGatekeeperContract.address);
+        await proxyTestContract.transferMastership(upgradeGatekeeperContract.target);
 
-        await expect(upgradeGatekeeperContract.addUpgradeable(proxyTestContract.address)).to.emit(
+        await expect(upgradeGatekeeperContract.addUpgradeable(proxyTestContract.target)).to.emit(
             upgradeGatekeeperContract,
             'NewUpgradable'
         );
@@ -41,12 +43,12 @@ describe('UpgradeGatekeeper unit tests', function () {
         // check initial dummy index and storage
         expect(await proxyDummyInterface.get_DUMMY_INDEX()).to.equal(1);
 
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 1))).to.equal(bytes[0]);
-        expect(parseInt(await provider.getStorageAt(proxyTestContract.address, 2))).to.equal(bytes[1]);
+        expect(parseInt(await provider.getStorage(proxyTestContract.target, 1))).to.equal(bytes[0]);
+        expect(parseInt(await provider.getStorage(proxyTestContract.target, 2))).to.equal(bytes[1]);
     });
 
     it('checking that requireMaster calls present', async () => {
-        await expect(upgradeGatekeeperContract.connect(wallet).addUpgradeable(constants.AddressZero)).to.be.revertedWith('1c');
+        await expect(upgradeGatekeeperContract.connect(wallet).addUpgradeable(hardhat.ethers.ZeroAddress)).to.be.revertedWith('1c');
         await expect(upgradeGatekeeperContract.connect(wallet).startUpgrade([])).to.be.revertedWith('1c');
         await expect(upgradeGatekeeperContract.connect(wallet).cancelUpgrade()).to.be.revertedWith('1c');
         await expect(upgradeGatekeeperContract.connect(wallet).finishUpgrade()).to.be.revertedWith('1c');
@@ -56,7 +58,7 @@ describe('UpgradeGatekeeper unit tests', function () {
         await expect(upgradeGatekeeperContract.cancelUpgrade()).to.be.revertedWith('cpu11');
         await expect(upgradeGatekeeperContract.finishUpgrade()).to.be.revertedWith('fpu11');
         await expect(upgradeGatekeeperContract.startUpgrade([])).to.be.revertedWith('spu12');
-        await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.address])).to.emit(
+        await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.target])).to.emit(
             upgradeGatekeeperContract,
             'NoticePeriodStart'
         );
@@ -66,7 +68,7 @@ describe('UpgradeGatekeeper unit tests', function () {
 
     it('checking that the upgrade works correctly', async () => {
         // activate
-        await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.address])).to.emit(
+        await expect(upgradeGatekeeperContract.startUpgrade([dummySecond.target])).to.emit(
             upgradeGatekeeperContract,
             'NoticePeriodStart'
         );
@@ -90,7 +92,7 @@ describe('UpgradeGatekeeper unit tests', function () {
             'UpgradeComplete'
         );
 
-        await expect(await proxyTestContract.getTarget()).to.equal(dummySecond.address);
+        await expect(await proxyTestContract.getTarget()).to.equal(dummySecond.target);
 
         // check dummy index and updated storage
         expect(await proxyDummyInterface.get_DUMMY_INDEX()).to.equal(2);

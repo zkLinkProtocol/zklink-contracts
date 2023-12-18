@@ -23,7 +23,8 @@ const {
     OP_FORCE_EXIT_CHUNKS,
     extendAddress
 } = require('../script/op_utils');
-const { keccak256, arrayify, hexlify, concat, parseEther} = require("ethers/lib/utils");
+const { keccak256,  parseEther} = require("ethers");
+const { arrayify, hexlify, concat } = require("@ethersproject/bytes")
 
 if (IS_MASTER_CHAIN) {
     console.log("Compressed block commit unit tests only support slaver chain");
@@ -126,7 +127,7 @@ describe('Compressed block commit unit tests', function () {
     describe('Commit one block', function () {
         const preBlock = {
             blockNumber:10,
-            preCommittedBlockNumber: 9,
+            blockSequence: 1,
             priorityOperations:0,
             pendingOnchainOperationsHash:"0x0000000000000000000000000000000000000000000000000000000000000001",
             syncHash:"0x0100000000000000000000000000000000000000000000000000000000000000"
@@ -150,15 +151,15 @@ describe('Compressed block commit unit tests', function () {
             const block = testBlockInfo.block;
             const expected = testBlockInfo.expected;
 
-            commitBlock.blockNumber = 13;
+            commitBlock.blockNumber = 13n
             commitBlock.publicData = block.publicData;
             commitBlock.onchainOperations = block.onchainOperations;
 
             const r = await zkLink.testCommitOneBlock(preBlock, commitBlock);
             const syncHash = hexlify(createSlaverChainSyncHash(preBlock.syncHash, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHash));
             expect(r.blockNumber).to.eql(commitBlock.blockNumber);
-            expect(r.preCommittedBlockNumber).to.eql(preBlock.blockNumber);
-            expect(r.priorityOperations).to.eql(BigNumber.from(expected.priorityOperationsProcessed));
+            expect(r.blockSequence).to.eql(BigInt(preBlock.blockSequence + 1));
+            expect(r.priorityOperations).to.eql(BigInt(expected.priorityOperationsProcessed));
             expect(r.pendingOnchainOperationsHash).to.eql(expected.processableOpPubdataHash);
             expect(r.syncHash).to.eql(syncHash);
         });

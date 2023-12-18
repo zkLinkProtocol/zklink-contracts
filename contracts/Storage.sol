@@ -140,7 +140,7 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice block stored data
     struct StoredBlockInfo {
         uint32 blockNumber; // Rollup block number
-        uint32 preCommittedBlockNumber; // The pre not empty block number committed
+        uint32 blockSequence; // The block commit sequence
         uint64 priorityOperations; // Number of priority operations processed
         bytes32 pendingOnchainOperationsHash; // Hash of all operations that must be processed after verify
         bytes32 syncHash; // Used for cross chain block verify
