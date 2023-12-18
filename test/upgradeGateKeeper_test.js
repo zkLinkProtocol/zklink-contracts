@@ -5,7 +5,8 @@ const { performance } = require('perf_hooks');
 const { encodeBytes32String } = require("ethers")
 
 // some random constants for checking write and read from storage
-const bytes = encodeBytes32String('[133, 174, 97, 255]');
+const bytes = [133, 174, 97, 255];
+
 
 describe('UpgradeGatekeeper unit tests', function () {
     let provider;
@@ -25,7 +26,7 @@ describe('UpgradeGatekeeper unit tests', function () {
         dummySecond = await dummy2Factory.deploy();
 
         const proxyFactory = await hardhat.ethers.getContractFactory('Proxy');
-        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, encodeBytes32String('[0,1]'));
+        proxyTestContract = await proxyFactory.deploy(dummyFirst.target, [bytes[0], bytes[1]]);
 
         proxyDummyInterface = await hardhat.ethers.getContractAt('DummyTarget', proxyTestContract.target);
 
@@ -42,8 +43,8 @@ describe('UpgradeGatekeeper unit tests', function () {
         // check initial dummy index and storage
         expect(await proxyDummyInterface.get_DUMMY_INDEX()).to.equal(1);
 
-        // expect(parseInt(await provider.getStorage(proxyTestContract.target, 1))).to.equal(bytes[0]);
-        // expect(parseInt(await provider.getStorage(proxyTestContract.target, 2))).to.equal(bytes[1]);
+        expect(parseInt(await provider.getStorage(proxyTestContract.target, 1))).to.equal(bytes[0]);
+        expect(parseInt(await provider.getStorage(proxyTestContract.target, 2))).to.equal(bytes[1]);
     });
 
     it('checking that requireMaster calls present', async () => {

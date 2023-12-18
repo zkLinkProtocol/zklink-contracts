@@ -338,9 +338,9 @@ describe('Block commit unit tests', function () {
 
         it('pubdata of all chains should be success', async () => {
             const testBlockInfo = await buildTestBlock();
-            // const block = testBlockInfo.block;
-            // const expected = testBlockInfo.expected;
-            // await collectOnchainOps(block, expected);
+            const block = testBlockInfo.block;
+            const expected = testBlockInfo.expected;
+            await collectOnchainOps(block, expected);
         });
     });
 
