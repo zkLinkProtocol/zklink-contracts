@@ -32,8 +32,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Data needed to commit new block
-    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enable
-    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enable
+    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enabled
+    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enabled
     struct CommitBlockInfo {
         bytes32 newStateHash;
         bytes publicData;
@@ -45,8 +45,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
 
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Data needed to commit new block
-    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enable
-    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enable
+    /// @dev `publicData` contain pubdata of all chains when compressed is disabled or only current chain if compressed is enabled
+    /// `onchainOperations` contain onchain ops of all chains when compressed is disabled or only current chain if compressed is enabled
     struct CommitBlockInfo {
         bytes32 newStateHash;
         bytes publicData;
@@ -215,12 +215,16 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(storedBlockHashes[totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
 
         // ===Effects===
-        for (uint32 i = 0; i < _newBlocksData.length; ++i) {
+        for (uint32 i; i < _newBlocksData.length;) {
             _lastCommittedBlockData = commitOneBlock(_lastCommittedBlockData, _newBlocksData[i]);
 
-            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
+            // forward `totalCommittedPriorityRequests` because it will be reused in the next `commitOneBlock`
             totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
             storedBlockHashes[_lastCommittedBlockData.blockNumber] = hashStoredBlockInfo(_lastCommittedBlockData);
+
+            unchecked {
+                ++i;
+            }
         }
         require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
 
@@ -268,7 +272,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// NOTE: does not change storage! (only emits events)
     /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
     /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
-    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other are 0 (used in commitments)
+    /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other is 0 (used in commitments)
     /// slaverChainNum - the slaver chain num
     /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
     function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
@@ -285,7 +289,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             return (processableOperationsHash, priorityOperationsProcessed, offsetsCommitment, slaverChainNum, onchainOperationPubdataHashs);
         }
         uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
-        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
+        for (uint256 i; i < _newBlockData.onchainOperations.length;) {
             OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
 
             uint256 pubdataOffset = onchainOpData.publicDataOffset;
@@ -324,6 +328,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 // concat processable onchain operations pubdata hash of current chain
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, processablePubData);
             }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -346,8 +354,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Create synchronization hash for cross chain block verify
     function createSyncHash(SyncHash[] memory preBlockSyncHashs, CommitBlockInfo memory _newBlock, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (SyncHash[] memory syncHashs) {
         syncHashs = new SyncHash[](slaverChainNum);
-        uint256 chainOrder = 0;
-        for (uint8 i = 0; i < onchainOperationPubdataHashs.length; ++i) {
+        uint256 chainOrder;
+        for (uint8 i; i < onchainOperationPubdataHashs.length;) {
             uint8 chainId = i + 1;
             if (chainId == CHAIN_ID) {
                 continue;
@@ -355,11 +363,15 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 bytes32 preBlockSyncHash = EMPTY_STRING_KECCAK;
-                for (uint j = 0; j < preBlockSyncHashs.length; ++j) {
+                for (uint j; j < preBlockSyncHashs.length;) {
                     SyncHash memory _preBlockSyncHash = preBlockSyncHashs[j];
                     if (_preBlockSyncHash.chainId == chainId) {
                         preBlockSyncHash = _preBlockSyncHash.syncHash;
                         break;
+                    }
+
+                    unchecked {
+                        ++j;
                     }
                 }
                 // only append syncHash if onchain op exist in pubdata
@@ -371,6 +383,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 syncHashs[chainOrder] = SyncHash(chainId, newBlockSyncHash);
                 chainOrder++;
             }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -378,7 +393,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function initOnchainOperationPubdataHashs() internal pure returns (uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
         slaverChainNum = 0;
         onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID);
-        for(uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
+        for(uint8 i; i < MAX_CHAIN_ID;) {
             uint8 chainId = i + 1;
             if (chainId == CHAIN_ID) {
                 continue;
@@ -387,6 +402,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 slaverChainNum++;
                 onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }
@@ -454,12 +473,17 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(_totalBlocksExecuted + nBlocks <= totalBlocksSynchronized, "d1");
 
         uint64 priorityRequestsExecuted = 0;
-        for (uint32 i = 0; i < nBlocks; ++i) {
+
+        for (uint32 i; i < nBlocks;) {
             uint32 _executedBlockIdx = _totalBlocksExecuted + i + 1;
             ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
             require(_blockExecuteData.storedBlock.blockNumber == _executedBlockIdx, "d2");
             executeOneBlock(_blockExecuteData, _executedBlockIdx);
             priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
+
+            unchecked {
+                ++i;
+            }
         }
 
         firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
@@ -485,12 +509,16 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         require(storedBlockHashes[_totalBlocksCommitted] == hashStoredBlockInfo(_lastCommittedBlockData), "f1");
 
         // ===Effects===
-        for (uint32 i = 0; i < _newBlocksData.length; ++i) {
+        for (uint32 i; i < _newBlocksData.length;) {
             _lastCommittedBlockData = commitOneCompressedBlock(_lastCommittedBlockData, _newBlocksData[i]);
 
-            // forward `totalCommittedPriorityRequests` because it's will be reused in the next `commitOneBlock`
+            // forward `totalCommittedPriorityRequests` because it will be reused in the next `commitOneBlock`
             totalCommittedPriorityRequests = totalCommittedPriorityRequests + _lastCommittedBlockData.priorityOperations;
             storedBlockHashes[++_totalBlocksCommitted] = hashStoredBlockInfo(_lastCommittedBlockData);
+
+            unchecked {
+                ++i;
+            }
         }
         require(totalCommittedPriorityRequests <= totalOpenPriorityRequests, "f2");
 
@@ -526,7 +554,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// @dev Gets operations packed in bytes array. Unpacks it and stores onchain operations.
     /// Priority operations must be committed in the same order as they are in the priority queue.
     /// NOTE: does not change storage! (only emits events)
-    /// processableOperationsHash - hash of the all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
+    /// processableOperationsHash - hash of all operations of the current chain that needs to be executed  (Withdraws, ForcedExits, FullExits)
     /// priorityOperationsProcessed - number of priority operations processed of the current chain in this block (Deposits, FullExits)
     /// onchainOperationPubdataHash - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdata hash (used in cross chain block verify)
     function collectOnchainOpsOfCompressedBlock(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes32 onchainOperationPubdataHash) {
@@ -539,7 +567,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         onchainOperationPubdataHash = EMPTY_STRING_KECCAK;
         processableOperationsHash = EMPTY_STRING_KECCAK;
 
-        for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
+        for (uint256 i; i < _newBlockData.onchainOperations.length;) {
             OnchainOperationData memory onchainOpData = _newBlockData.onchainOperations[i];
 
             uint256 pubdataOffset = onchainOpData.publicDataOffset;
@@ -560,6 +588,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             if (processablePubData.length > 0) {
                 // concat processable onchain operations pubdata hash of current chain
                 processableOperationsHash = Utils.concatHash(processableOperationsHash, processablePubData);
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }
@@ -610,15 +642,19 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         uint32 latestExecutedBlockNumber = _blocksData[nBlocks - 1].storedBlock.blockNumber;
         require(latestExecutedBlockNumber <= totalBlocksSynchronized, "d1");
 
-        uint32 _totalBlocksExecuted = totalBlocksExecuted;
+       uint32 _totalBlocksExecuted = totalBlocksExecuted;
         uint64 priorityRequestsExecuted = 0;
-        for (uint32 i = 0; i < nBlocks; ++i) {
+        for (uint32 i = 0; i < nBlocks; ) {
             uint32 _executedBlockIdx = _totalBlocksExecuted + i + 1;
             ExecuteBlockInfo memory _blockExecuteData = _blocksData[i];
             require(_blockExecuteData.storedBlock.blockSequence == _executedBlockIdx, "d2");
 
             executeOneBlock(_blockExecuteData, _executedBlockIdx);
             priorityRequestsExecuted = priorityRequestsExecuted + _blockExecuteData.storedBlock.priorityOperations;
+
+            unchecked {
+                ++i;
+            }
         }
 
         firstPriorityRequestId = firstPriorityRequestId + priorityRequestsExecuted;
@@ -765,7 +801,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         );
 
         bytes32 pendingOnchainOpsHash = EMPTY_STRING_KECCAK;
-        for (uint32 i = 0; i < _blockExecuteData.pendingOnchainOpsPubdata.length; ++i) {
+        for (uint32 i; i < _blockExecuteData.pendingOnchainOpsPubdata.length;) {
             bytes memory pubData = _blockExecuteData.pendingOnchainOpsPubdata[i];
 
             Operations.OpType opType = Operations.OpType(uint8(pubData[0]));
@@ -789,6 +825,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 revert("m2");
             }
             pendingOnchainOpsHash = Utils.concatHash(pendingOnchainOpsHash, pubData);
+
+            unchecked {
+                ++i;
+            }
         }
         require(pendingOnchainOpsHash == _blockExecuteData.storedBlock.pendingOnchainOperationsHash, "m3");
     }
@@ -809,7 +849,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         } else {
             address acceptor = accepts[withdrawHash];
             if (acceptor == address(0)) {
-                // receiver act as a acceptor
+                // receiver act as an acceptor
                 accepts[withdrawHash] = owner;
                 increasePendingBalance(tokenId, owner, amount);
             } else {
