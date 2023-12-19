@@ -355,8 +355,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         if (hashStoredBlockInfo(_block) != storedBlockHashes[blockNumber]) {
             return false;
         }
-        for (uint8 i = 0; i < _block.syncHashs.length; ++i) {
-            SyncHash memory sync = _block.syncHashs[i];
+        for (uint8 i = 0; i < _block.syncHashes.length; ++i) {
+            SyncHash memory sync = _block.syncHashes[i];
             bytes32 remoteSyncHash = synchronizedChains[sync.chainId];
             if (remoteSyncHash != sync.syncHash) {
                 return false;

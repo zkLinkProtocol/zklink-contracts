@@ -244,13 +244,13 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             uint64 priorityReqCommitted,
             bytes memory onchainOpsOffsetCommitment,
             uint256 slaverChainNum,
-            bytes32[] memory onchainOperationPubdataHashs
+            bytes32[] memory onchainOperationPubdataHashes
         ) = collectOnchainOps(_newBlock);
 
         // Create block commitment for verification proof
         bytes32 commitment = createBlockCommitment(_previousBlock, _newBlock, onchainOpsOffsetCommitment);
         // Create synchronization hash for cross chain block verify
-        SyncHash[] memory syncHashs = createSyncHash(_previousBlock.syncHashs, _newBlock, slaverChainNum, onchainOperationPubdataHashs);
+        SyncHash[] memory syncHashes = createSyncHash(_previousBlock.syncHashes, _newBlock, slaverChainNum, onchainOperationPubdataHashes);
 
         return StoredBlockInfo(
             _newBlock.blockNumber,
@@ -259,7 +259,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             _newBlock.timestamp,
             _newBlock.newStateHash,
             commitment,
-            syncHashs
+            syncHashes
         );
     }
 
@@ -271,18 +271,18 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     /// offsetsCommitment - array where 1 is stored in chunk where onchainOperation begins and other is 0 (used in commitments)
     /// slaverChainNum - the slaver chain num
     /// onchainOperationPubdatas - onchain operation (Deposits, ChangePubKeys, Withdraws, ForcedExits, FullExits) pubdatas group by chain id (used in cross chain block verify)
-    function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
+    function collectOnchainOps(CommitBlockInfo memory _newBlockData) internal view returns (bytes32 processableOperationsHash, uint64 priorityOperationsProcessed, bytes memory offsetsCommitment, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashes) {
         bytes memory pubData = _newBlockData.publicData;
         // pubdata length must be a multiple of CHUNK_BYTES
         require(pubData.length % CHUNK_BYTES == 0, "h0");
         offsetsCommitment = new bytes(pubData.length / CHUNK_BYTES);
         priorityOperationsProcessed = 0;
-        (slaverChainNum, onchainOperationPubdataHashs) = initOnchainOperationPubdataHashs();
+        (slaverChainNum, onchainOperationPubdataHashes) = initOnchainOperationPubdataHashes();
         processableOperationsHash = EMPTY_STRING_KECCAK;
 
         // early return to save once slot read
         if (_newBlockData.onchainOperations.length == 0) {
-            return (processableOperationsHash, priorityOperationsProcessed, offsetsCommitment, slaverChainNum, onchainOperationPubdataHashs);
+            return (processableOperationsHash, priorityOperationsProcessed, offsetsCommitment, slaverChainNum, onchainOperationPubdataHashes);
         }
         uint64 uncommittedPriorityRequestsOffset = firstPriorityRequestId + totalCommittedPriorityRequests;
         for (uint256 i = 0; i < _newBlockData.onchainOperations.length; ++i) {
@@ -318,7 +318,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             // group onchain operations pubdata hash by chain id for slaver chains
             if (chainId != CHAIN_ID) {
                 uint256 chainOrder = chainId - 1;
-                onchainOperationPubdataHashs[chainOrder] = Utils.concatHash(onchainOperationPubdataHashs[chainOrder], opPubData);
+                onchainOperationPubdataHashes[chainOrder] = Utils.concatHash(onchainOperationPubdataHashes[chainOrder], opPubData);
             }
             if (processablePubData.length > 0) {
                 // concat processable onchain operations pubdata hash of current chain
@@ -344,10 +344,10 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     }
 
     /// @dev Create synchronization hash for cross chain block verify
-    function createSyncHash(SyncHash[] memory preBlockSyncHashs, CommitBlockInfo memory _newBlock, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) internal pure returns (SyncHash[] memory syncHashs) {
-        syncHashs = new SyncHash[](slaverChainNum);
+    function createSyncHash(SyncHash[] memory preBlockSyncHashes, CommitBlockInfo memory _newBlock, uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashes) internal pure returns (SyncHash[] memory syncHashes) {
+        syncHashes = new SyncHash[](slaverChainNum);
         uint256 chainOrder = 0;
-        for (uint8 i = 0; i < onchainOperationPubdataHashs.length; ++i) {
+        for (uint8 i = 0; i < onchainOperationPubdataHashes.length; ++i) {
             uint8 chainId = i + 1;
             if (chainId == CHAIN_ID) {
                 continue;
@@ -355,8 +355,8 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 bytes32 preBlockSyncHash = EMPTY_STRING_KECCAK;
-                for (uint j = 0; j < preBlockSyncHashs.length; ++j) {
-                    SyncHash memory _preBlockSyncHash = preBlockSyncHashs[j];
+                for (uint j = 0; j < preBlockSyncHashes.length; ++j) {
+                    SyncHash memory _preBlockSyncHash = preBlockSyncHashes[j];
                     if (_preBlockSyncHash.chainId == chainId) {
                         preBlockSyncHash = _preBlockSyncHash.syncHash;
                         break;
@@ -364,20 +364,20 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
                 }
                 // only append syncHash if onchain op exist in pubdata
                 bytes32 newBlockSyncHash = preBlockSyncHash;
-                bytes32 onchainOperationPubdataHash = onchainOperationPubdataHashs[i];
+                bytes32 onchainOperationPubdataHash = onchainOperationPubdataHashes[i];
                 if (onchainOperationPubdataHash != EMPTY_STRING_KECCAK) {
                     newBlockSyncHash = createSlaverChainSyncHash(preBlockSyncHash, _newBlock.blockNumber, _newBlock.newStateHash, onchainOperationPubdataHash);
                 }
-                syncHashs[chainOrder] = SyncHash(chainId, newBlockSyncHash);
+                syncHashes[chainOrder] = SyncHash(chainId, newBlockSyncHash);
                 chainOrder++;
             }
         }
     }
 
     /// @dev init onchain op pubdata hash for all slaver chains
-    function initOnchainOperationPubdataHashs() internal pure returns (uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
+    function initOnchainOperationPubdataHashes() internal pure returns (uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashes) {
         slaverChainNum = 0;
-        onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID);
+        onchainOperationPubdataHashes = new bytes32[](MAX_CHAIN_ID);
         for(uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
             uint8 chainId = i + 1;
             if (chainId == CHAIN_ID) {
@@ -386,7 +386,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
             uint256 chainIndex = 1 << i;
             if (chainIndex & ALL_CHAINS == chainIndex) {
                 slaverChainNum++;
-                onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
+                onchainOperationPubdataHashes[i] = EMPTY_STRING_KECCAK;
             }
         }
     }

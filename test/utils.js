@@ -17,7 +17,7 @@ const GENESIS_BLOCK = {
     timestamp:0,
     stateHash:GENESIS_ROOT,
     commitment:ZERO_BYTES32,
-    syncHashs:[]
+    syncHashes:[]
 }
 const USD_TOKEN_ID = 1;
 const MIN_USD_STABLE_TOKEN_ID = 17;

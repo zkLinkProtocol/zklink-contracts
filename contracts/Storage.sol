@@ -128,7 +128,7 @@ contract Storage is ZkLinkAcceptor, Config {
         uint256 timestamp; // Rollup block timestamp, have the same format as Ethereum block constant
         bytes32 stateHash; // Root hash of the rollup state
         bytes32 commitment; // Verified input for the ZkLink circuit
-        SyncHash[] syncHashs; // Used for cross chain block verify
+        SyncHash[] syncHashes; // Used for cross chain block verify
     }
     struct SyncHash {
         uint8 chainId;

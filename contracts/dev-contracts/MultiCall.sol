@@ -67,10 +67,10 @@ contract MultiCall {
 
     function batchWithdrawToL1(
         IZkLink zkLinkInstance,
-        WithdrawToL1Info[] calldata _withdrawDatas
+        WithdrawToL1Info[] calldata _withdrawData
     ) external payable {
-        for (uint i; i < _withdrawDatas.length; i++) {
-            WithdrawToL1Info memory withdrawInfo = _withdrawDatas[i];
+        for (uint i; i < _withdrawData.length; i++) {
+            WithdrawToL1Info memory withdrawInfo = _withdrawData[i];
             zkLinkInstance.withdrawToL1{value: withdrawInfo.value}(
                 withdrawInfo.owner,
                 withdrawInfo.token,
@@ -85,10 +85,10 @@ contract MultiCall {
 
     function batchWithdrawPendingBalance(
         IZkLink zkLinkInstance,
-        WithdrawPendingBalanceInfo[] calldata _withdrawDatas
+        WithdrawPendingBalanceInfo[] calldata _withdrawData
     ) external {
-        for (uint i; i < _withdrawDatas.length; i++) {
-            WithdrawPendingBalanceInfo memory withdrawInfo = _withdrawDatas[i];
+        for (uint i; i < _withdrawData.length; i++) {
+            WithdrawPendingBalanceInfo memory withdrawInfo = _withdrawData[i];
             zkLinkInstance.withdrawPendingBalance(
                 withdrawInfo.owner,
                 withdrawInfo.tokenId,

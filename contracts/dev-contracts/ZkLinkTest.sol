@@ -43,7 +43,7 @@ contract ZkLinkTest is ZkLink {
         uint64 priorityOperationsProcessed,
         bytes memory offsetsCommitment,
         uint256 slaverChainNum,
-        bytes32[] memory onchainOperationPubdataHashs
+        bytes32[] memory onchainOperationPubdataHashes
     ) {
         return collectOnchainOps(_newBlockData);
     }

@@ -216,7 +216,7 @@ describe('Block commit unit tests', function () {
             priorityOperationsProcessed,
             offsetsCommitment:hexlify(concat(offsetsCommitment)),
             slaverChainNum: 2,
-            onchainOperationPubdataHashs:[
+            onchainOperationPubdataHashes:[
                 ZERO_BYTES32,
                 onchainOpPubdataHash2,
                 ZERO_BYTES32,
@@ -244,7 +244,7 @@ describe('Block commit unit tests', function () {
             expect(actual.priorityOperationsProcessed).eq(expected.priorityOperationsProcessed);
             expect(actual.offsetsCommitment).eq(expected.offsetsCommitment);
             expect(actual.slaverChainNum).eq(expected.slaverChainNum);
-            expect(actual.onchainOperationPubdataHashs).eql(expected.onchainOperationPubdataHashs);
+            expect(actual.onchainOperationPubdataHashes).eql(expected.onchainOperationPubdataHashes);
         }
 
         it('no pubdata should be success', async () => {
@@ -255,7 +255,7 @@ describe('Block commit unit tests', function () {
                 priorityOperationsProcessed:0,
                 offsetsCommitment:"0x",
                 slaverChainNum:2,
-                onchainOperationPubdataHashs:[
+                onchainOperationPubdataHashes:[
                     ZERO_BYTES32, // the master chain
                     EMPTY_STRING_KECCAK,
                     ZERO_BYTES32, // the unSupport chain
@@ -351,7 +351,7 @@ describe('Block commit unit tests', function () {
             timestamp:1652422395,
             stateHash:"0x0000000000000000000000000000000000000000000000000000000000000002",
             commitment:"0x0000000000000000000000000000000000000000000000000000000000000003",
-            syncHashs:[]
+            syncHashes:[]
         }
         const commitBlock = {
             newStateHash:"0x0000000000000000000000000000000000000000000000000000000000000005",
@@ -395,9 +395,9 @@ describe('Block commit unit tests', function () {
             expect(Number(r.timestamp)).to.eql(commitBlock.timestamp);
             expect(r.stateHash).to.eql(commitBlock.newStateHash);
 
-            const syncHash2 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashs[1]));
-            const syncHash4 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashs[3]));
-            expect(r.syncHashs).to.eql([[2n, syncHash2],[4n, syncHash4]]);
+            const syncHash2 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashes[1]));
+            const syncHash4 = hexlify(createSlaverChainSyncHash(EMPTY_STRING_KECCAK, commitBlock.blockNumber, commitBlock.newStateHash, expected.onchainOperationPubdataHashes[3]));
+            expect(r.syncHashes).to.eql([[2n, syncHash2],[4n, syncHash4]]);
         });
     });
 });

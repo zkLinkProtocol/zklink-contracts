@@ -20,7 +20,8 @@
     "test-master": "MASTER_UNITTEST=true npx hardhat test",
     "test-slaver": "SLAVER_UNITTEST=true npx hardhat test",
     "flatten-master": "MASTER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js",
-    "flatten-slaver": "SLAVER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js"
+    "flatten-slaver": "SLAVER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js",
+    "clean": "npx hardhat clean && rm -rf *Master.json *Slaver.json"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",

@@ -31,10 +31,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
       - name: Install dependencies
-        run: npm ci
+        run: npm i
       # https://github.com/crate-ci/typos/blob/master/docs/github-action.md
       - name: check spelling
         uses: crate-ci/typos@master
+      - name: Copy KeysWithPlonkVerifier.sol
+        run: cp KeysWithPlonkVerifier.example contracts/zksync/KeysWithPlonkVerifier.sol
       - name: ${{ matrix.cmd }}
         run: |
           ${{ matrix.cmd }}

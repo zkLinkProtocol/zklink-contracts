@@ -104,7 +104,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         uint256 originBalance= tx.origin.balance;
         // solhint-disable-next-line check-send-result
         endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
-        // log the fee payed to layerzero
+        // log the fee paid to layerzero
         emit SynchronizationFee(originMsgValue - (tx.origin.balance - originBalance));
     }
 
@@ -166,7 +166,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
             (bool success, ) = tx.origin.call{value: leftMsgValue}("");
             require(success, "Refund failed");
         }
-        // log the fee payed to layerzero
+        // log the fee paid to layerzero
         emit SynchronizationFee(originMsgValue - leftMsgValue);
     }
 
