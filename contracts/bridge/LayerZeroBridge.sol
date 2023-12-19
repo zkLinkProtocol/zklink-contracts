@@ -7,7 +7,7 @@ import "./ILayerZeroEndpoint.sol";
 import "./ILayerZeroUserApplicationConfig.sol";
 import "./LayerZeroStorage.sol";
 import "../zksync/ReentrancyGuard.sol";
-import "../interfaces/ISyncService.sol";
+import "../interfaces/ICrossChainBridge.sol";
 
 /// @title LayerZero bridge implementation of non-blocking model
 /// @dev if message is blocking we should call `retryPayload` of endpoint to retry
@@ -16,7 +16,7 @@ import "../interfaces/ISyncService.sol";
 /// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
 /// * lzReceive reverted unexpected, and we can fix bug and deploy a new contract to fix it.
 /// @author zk.link
-contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
+contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ICrossChainBridge, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
     modifier onlyEndpoint {
         require(msg.sender == address(endpoint), "Require endpoint");
         _;
@@ -82,7 +82,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
     // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Estimate send sync hash fee
     /// @param syncHash the sync hash of stored block
-    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee, uint zroFee) {
+    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee, uint protocolFee) {
         uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
         checkDstChainId(dstChainId);
         bytes memory payload = buildSyncHashPayload(syncHash);
@@ -124,9 +124,9 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Estimate the total fee of sending confirm block message to all slaver chains
     /// @param blockNumber the height of stored block
-    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee, uint totalZroFee) {
+    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee, uint totalProtocolFee) {
         totalNativeFee = 0;
-        totalZroFee = 0;
+        totalProtocolFee = 0;
         for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
             uint8 chainId = i + 1;
             if (chainId == CHAIN_ID) {
@@ -139,7 +139,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
                 bytes memory payload = buildConfirmPayload(blockNumber);
                 (uint nativeFee, uint zroFee) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
                 totalNativeFee += nativeFee;
-                totalZroFee += zroFee;
+                totalProtocolFee += zroFee;
             }
         }
     }
