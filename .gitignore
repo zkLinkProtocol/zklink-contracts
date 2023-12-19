@@ -16,3 +16,6 @@ cache-zk
 artifacts
 artifacts-zk
 .openzeppelin
+*Master.json
+*Slaver.json
+
