@@ -1,0 +1,41 @@
+name: github action CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [ 16, 18 ]
+        cmd:
+          - npm run compile-master
+          - npm run compile-slaver
+          - npm run test-master
+          - npm run test-slaver
+          - npm run flatten-master
+          - npm run flatten-slaver
+    name: Run on Node ${{ matrix.node }} env
+    steps:
+      - name: clone repo
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+      - name: Install dependencies
+        run: npm ci
+      # https://github.com/crate-ci/typos/blob/master/docs/github-action.md
+      - name: check spelling
+        uses: crate-ci/typos@master
+      - name: ${{ matrix.cmd }}
+        run: |
+          ${{ matrix.cmd }}
+
