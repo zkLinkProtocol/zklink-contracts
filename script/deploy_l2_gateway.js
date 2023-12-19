@@ -47,8 +47,9 @@ task("deployL2Gateway", "Deploy L2 Gateway")
 
         const receipt = await tx.waitForDeployment()
         console.log("deployed success:", instance.address);
-        deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = receipt.transactionHash
-        deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = receipt.blockNumber
+        const transaction = await receipt.deploymentTransaction().getTransaction()
+        deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash
+        deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = transaction.blockNumber
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
       }
 
