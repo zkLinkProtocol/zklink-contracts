@@ -21,7 +21,7 @@ task("deployMulticall","Deploy multicall contract")
   }
 
   if (!skipVerify) {
-    await verifyContractCode(hardhat,await multicall.getAddress(),[])
+    await verifyContractCode(hardhat,deployLog[logName.DEPLOY_MULTICALL],[])
     deployLog[logName.DEPLOY_MULTICALL_VERIFIED] = true
     fs.writeFileSync(deployLogPath,JSON.stringify(deployLog))
   }
