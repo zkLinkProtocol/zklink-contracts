@@ -22,7 +22,7 @@
     "compile-slaver": "SLAVER_UNITTEST=true npx hardhat compile"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.2",
-    "@openzeppelin/contracts-upgradeable": "^4.9.2"
+    "@openzeppelin/contracts": "^4.9.5",
+    "@openzeppelin/contracts-upgradeable": "^4.9.5"
   }
 }
