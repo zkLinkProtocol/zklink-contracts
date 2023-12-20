@@ -1,4 +1,3 @@
-require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-solpp");
 
 require("./script/deploy_zklink");
@@ -12,6 +11,11 @@ require("./script/deploy_l2_gateway");
 require("./script/deloy_multicall");
 require("./script/upgrade_l2_gateway");
 require("./script/upgrade_l1_gateway");
+
+const { ProxyAgent, setGlobalDispatcher } = require("undici")
+
+const proxyAgent = new ProxyAgent("http://127.0.0.1:1087")
+setGlobalDispatcher(proxyAgent);
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
