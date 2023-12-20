@@ -31,9 +31,7 @@ async function verifyContractCode(hardhat, address, constructorArguments) {
 function createOrGetDeployLog(name) {
     const deployLogPath = getDeployLogPath(name, process.env.NET);
     console.log('deploy log path', deployLogPath);
-    const index = deployLogPath.lastIndexOf('/')
-    const logPath = deployLogPath.slice(0,index+1)
-
+    const logPath = path.dirname(deployLogPath)
     if (!fs.existsSync(logPath)) {
         fs.mkdirSync(logPath, true);
     }
