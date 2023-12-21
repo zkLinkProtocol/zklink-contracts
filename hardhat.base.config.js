@@ -1,4 +1,3 @@
-require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-solpp");
 
 require("./script/deploy_zklink");
