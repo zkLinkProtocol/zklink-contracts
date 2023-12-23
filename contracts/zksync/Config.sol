@@ -5,6 +5,9 @@ pragma solidity ^0.8.0;
 /// @title zkSync configuration constants
 /// @author Matter Labs
 contract Config {
+    /// @dev Default fee address in state
+    address public constant DEFAULT_FEE_ADDRESS = $(DEFAULT_FEE_ADDRESS);
+
     bytes32 internal constant EMPTY_STRING_KECCAK = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
     /// @dev Bytes in one chunk

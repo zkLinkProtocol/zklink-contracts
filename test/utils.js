@@ -36,7 +36,7 @@ async function calFee(tx) {
 }
 
 async function deploy() {
-    const [defaultSender,governor,validator,feeAccount,alice,bob] = await hardhat.ethers.getSigners();
+    const [defaultSender,governor,validator,alice,bob] = await hardhat.ethers.getSigners();
     // verifier
     const verifierFactory = await hardhat.ethers.getContractFactory('VerifierMock');
     const verifier = await verifierFactory.deploy();
@@ -48,55 +48,61 @@ async function deploy() {
     const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLinkTest');
     const zkLink = await zkLinkFactory.deploy(periphery.target);
 
-    // deployer
-    const abiCoder = new hardhat.ethers.AbiCoder()
-    const deployerFactory = await hardhat.ethers.getContractFactory('DeployFactory');
+    // deploy proxy
+    const proxyFactory = await hardhat.ethers.getContractFactory('Proxy');
+    const verifyProxy = await proxyFactory.deploy(verifier.target, "0x");
+    const verifyContract = verifierFactory.attach(verifyProxy.target);
+    const abiCoder = new hardhat.ethers.AbiCoder();
     const zkLinkInitParams = IS_MASTER_CHAIN ?
           abiCoder.encode(["bytes32"], [GENESIS_ROOT]) :
           abiCoder.encode(["uint32"], [0]);
-    const deployer = await deployerFactory.deploy(
-        verifier.target,
-        zkLink.target,
-        zkLinkInitParams,
-        validator.address,
-        governor.address,
-        feeAccount.address
-    );
-    const txr = await deployer.waitForDeployment();
-    const tx = await hardhat.ethers.provider.getTransactionReceipt(txr.deploymentTransaction().hash)
-    const log = deployer.interface.parseLog(tx.logs[0]);
-    const verifyProxy = verifierFactory.attach(log.args.verifier);
-    const zkLinkProxy = zkLinkFactory.attach(log.args.zkLink);
-    const peripheryProxy = peripheryFactory.attach(log.args.zkLink);
-    const upgradeGatekeeper = log.args.upgradeGatekeeper;
+    const zkLinkTargetInitializationParameters = abiCoder.encode(['address','address','bytes'], [verifyProxy.target, governor.address, zkLinkInitParams]);
+    const zkLinkProxy = await proxyFactory.deploy(zkLink.target, zkLinkTargetInitializationParameters);
+    const zkLinkContract = zkLinkFactory.attach(zkLinkProxy.target);
+    const peripheryContract = peripheryFactory.attach(zkLinkProxy.target);
+
+    // deploy upgradeGatekeeper
+    const upgradeGatekeeperFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
+    const upgradeGatekeeper = await upgradeGatekeeperFactory.connect(governor).deploy(zkLinkProxy.target);
+
+    // transfer master ship of proxy
+    await verifyProxy.transferMastership(upgradeGatekeeper.target);
+    await zkLinkProxy.transferMastership(upgradeGatekeeper.target);
+
+    // add upgradeable
+    await upgradeGatekeeper.connect(governor).addUpgradeable(verifyProxy.target);
+    await upgradeGatekeeper.connect(governor).addUpgradeable(zkLinkProxy.target);
+
+    // set validator
+    await peripheryContract.connect(governor).setValidator(validator.address, true);
 
     // add some tokens
     const ethId = 33;
     const ethAddress = ETH_ADDRESS;
-    await peripheryProxy.connect(governor).addToken(ethId, ethAddress, 18);
+    await peripheryContract.connect(governor).addToken(ethId, ethAddress, 18);
 
     const stFactory = await hardhat.ethers.getContractFactory('StandardToken');
     const token2 = await stFactory.deploy("Token2", "T2");
     const token2Id = 34;
-    await peripheryProxy.connect(governor).addToken(token2Id, token2.target, 18);
+    await peripheryContract.connect(governor).addToken(token2Id, token2.target, 18);
 
     const token4 = await stFactory.deploy("Token4", "T4");
     const token4Id = 17;
-    await peripheryProxy.connect(governor).addToken(token4Id, token4.target, 18);
+    await peripheryContract.connect(governor).addToken(token4Id, token4.target, 18);
 
     const stdFactory = await hardhat.ethers.getContractFactory('StandardTokenWithDecimals');
     const token5 = await stdFactory.deploy("Token5", "T5", 6);
     const token5Id = 36;
-    await peripheryProxy.connect(governor).addToken(token5Id, token5.target, 6);
+    await peripheryContract.connect(governor).addToken(token5Id, token5.target, 6);
 
     // L2 gateway
     const gatewayFactory = await hardhat.ethers.getContractFactory('L2GatewayMock');
     const gateway = await gatewayFactory.deploy();
 
     return {
-        zkLink: zkLinkProxy,
-        periphery: peripheryProxy,
-        verifier: verifyProxy,
+        zkLink: zkLinkContract,
+        periphery: peripheryContract,
+        verifier: verifyContract,
         upgradeGatekeeper: upgradeGatekeeper,
         governor: governor,
         validator: validator,
