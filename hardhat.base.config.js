@@ -46,6 +46,7 @@ const hardhatUserConfig = {
   },
   solpp: {
     defs: {
+      DEFAULT_FEE_ADDRESS: "0x199AaA230f18432a715528B4091120cdCc7D9779",
       BLOCK_PERIOD: "1 seconds",
       UPGRADE_NOTICE_PERIOD: 0,
       PRIORITY_EXPIRATION: 0,
