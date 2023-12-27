@@ -52,7 +52,6 @@ task("deployZkLink", "Deploy zklink contracts")
             } else {
                 verifier = await contractDeployer.deployContract('Verifier', []);
             }
-            await verifier.waitForDeployment()
             verifierTarget = await verifier.getAddress();
             deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifierTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -72,7 +71,6 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_VERIFIER_PROXY in deployLog) || force) {
             console.log('deploy verifier proxy...');
             let proxy = await contractDeployer.deployContract('Proxy', [verifierTarget, verifierTargetInitializationParameters]);
-            await proxy.waitForDeployment();
             verifierProxy = await proxy.getAddress();
             deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY] = verifierProxy;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -91,7 +89,6 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_PERIPHERY_TARGET in deployLog) || force) {
             console.log('deploy periphery target...');
             let periphery = await contractDeployer.deployContract('ZkLinkPeriphery', []);
-            await periphery.waitForDeployment();
             peripheryTarget = await periphery.getAddress();
             deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = peripheryTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -110,7 +107,6 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_ZKLINK_TARGET in deployLog) || force) {
             console.log('deploy zkLink target...');
             let zkLink = await contractDeployer.deployContract('ZkLink', [peripheryTarget]);
-            await zkLink.waitForDeployment();
             zkLinkTarget = await zkLink.getAddress();
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTarget;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -129,13 +125,12 @@ task("deployZkLink", "Deploy zklink contracts")
         let zkLinkDeployTxHash;
         let zkLinkDeployBlockNumber;
         let zkLinkInitParams = isMasterChain ?
-            abiCoder.encode(["bytes32"], [genesisRoot]) :
-            abiCoder.encode(["uint32"], [blockNumber]);
-        let zkLinkTargetInitializationParameters = abiCoder.encode(['address','address','bytes'], [verifierProxy, deployerWallet.address, zkLinkInitParams]);
+            abiCoder.encode(['address','address', "bytes32"], [verifierProxy, deployerWallet.address, genesisRoot]) :
+            abiCoder.encode(['address','address', "uint32"], [verifierProxy, deployerWallet.address, blockNumber]);
+        console.log("zklink init params: ", zkLinkInitParams);
         if (!(logName.DEPLOY_LOG_ZKLINK_PROXY in deployLog) || force) {
             console.log('deploy zklink proxy...');
-            let proxy = await contractDeployer.deployContract('Proxy', [zkLinkTarget, zkLinkTargetInitializationParameters]);
-            await proxy.waitForDeployment();
+            let proxy = await contractDeployer.deployContract('Proxy', [zkLinkTarget, zkLinkInitParams]);
             const deploymentTransaction = await proxy.deploymentTransaction();
             const transaction = await deploymentTransaction.getTransaction();
             zkLinkProxy = await proxy.getAddress();
@@ -154,7 +149,7 @@ task("deployZkLink", "Deploy zklink contracts")
         console.log('deploy zklink tx hash', zkLinkDeployTxHash);
         console.log('deploy zklink block number', zkLinkDeployBlockNumber);
         if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
-            await verifyContractCode(hardhat, zkLinkProxy, [zkLinkTarget, zkLinkTargetInitializationParameters]);
+            await verifyContractCode(hardhat, zkLinkProxy, [zkLinkTarget, zkLinkInitParams]);
             deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
@@ -164,7 +159,6 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_GATEKEEPER in deployLog) || force) {
             console.log('deploy upgrade gatekeeper...');
             let contract = await contractDeployer.deployContract('UpgradeGatekeeper', [zkLinkProxy]);
-            await contract.waitForDeployment();
             upgradeGatekeeper = await contract.getAddress();
             deployLog[logName.DEPLOY_LOG_GATEKEEPER] = upgradeGatekeeper;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
