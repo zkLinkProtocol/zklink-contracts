@@ -54,6 +54,7 @@ const hardhatUserConfig = {
       MAX_CHAIN_ID: 4,
       ALL_CHAINS: 15,
       MASTER_CHAIN_ID: 1,
+      SYNC_TYPE: 0
     },
   },
   gasReporter: {

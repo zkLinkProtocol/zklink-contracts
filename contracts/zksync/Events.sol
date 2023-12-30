@@ -66,8 +66,10 @@ interface Events {
     /// @notice Token pause status update
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
+    // #if SYNC_TYPE == 1
     /// @notice Sync service changed
-    event SetSyncService(address indexed newSyncService);
+    event SetSyncService(uint8 chainId, address newSyncService);
+    // #endif
 
     /// @notice Gateway address changed
     event SetGateway(address indexed newGateway);
@@ -77,9 +79,14 @@ interface Events {
     event SendSyncHash(bytes32 syncHash);
     // #endif
 
-    // #if CHAIN_ID == MASTER_CHAIN_ID
+    // #if (CHAIN_ID == MASTER_CHAIN_ID) && (SYNC_TYPE == 1)
     /// @notice Event emitted when receive sync hash from a slaver chain
     event ReceiveSyncHash(uint8 slaverChainId, bytes32 syncHash);
+    // #endif
+
+    // #if SYNC_TYPE != 0
+    /// @notice Event emitted when send sync message
+    event SynchronizationFee(uint256 fee);
     // #endif
 }
 

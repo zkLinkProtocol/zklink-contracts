@@ -80,32 +80,25 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
     }
 
     // #if CHAIN_ID != MASTER_CHAIN_ID
-    /// @notice Estimate send sync hash fee
-    /// @param syncHash the sync hash of stored block
-    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee, uint zroFee) {
-        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
+    function estimateSendSyncHashFee(uint8 masterChainId, bytes32 syncHash) external view returns (uint nativeFee) {
+        uint16 dstChainId = zkLinkChainIdToLZChainId[masterChainId];
         checkDstChainId(dstChainId);
         bytes memory payload = buildSyncHashPayload(syncHash);
-        return endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
+        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
     }
 
-    function sendSyncHash(bytes32 syncHash) external override onlyZkLink payable {
+    function sendSyncHash(uint8 masterChainId, bytes32 syncHash) external override onlyZkLink payable {
         // ===Checks===
         // send msg to master chain
-        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
+        uint16 dstChainId = zkLinkChainIdToLZChainId[masterChainId];
         bytes memory trustedRemote = checkDstChainId(dstChainId);
 
         // ===Interactions===
         // send LayerZero message
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
         bytes memory payload = buildSyncHashPayload(syncHash);
-        // fee = value - refund
-        uint256 originMsgValue = msg.value;
-        uint256 originBalance= tx.origin.balance;
         // solhint-disable-next-line check-send-result
         endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
-        // log the fee payed to layerzero
-        emit SynchronizationFee(originMsgValue - (tx.origin.balance - originBalance));
     }
 
     function buildSyncHashPayload(bytes32 syncHash) internal pure returns (bytes memory payload) {
@@ -114,76 +107,30 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
 
     function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
         // unpack payload
-        uint8 masterChainId = lzChainIdToZKLinkChainId[srcChainId];
-        require(masterChainId == MASTER_CHAIN_ID, "require master chain");
         uint32 blockNumber = abi.decode(payload, (uint32));
         zklink.receiveBlockConfirmation(blockNumber);
     }
     // #endif
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
-    /// @notice Estimate the total fee of sending confirm block message to all slaver chains
-    /// @param blockNumber the height of stored block
-    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee, uint totalZroFee) {
-        totalNativeFee = 0;
-        totalZroFee = 0;
-        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
-            uint8 chainId = i + 1;
-            if (chainId == CHAIN_ID) {
-                continue;
-            }
-            uint256 chainIndex = 1 << chainId - 1;
-            if (chainIndex & ALL_CHAINS == chainIndex) {
-                uint16 dstChainId = zkLinkChainIdToLZChainId[chainId];
-                checkDstChainId(dstChainId);
-                bytes memory payload = buildConfirmPayload(blockNumber);
-                (uint nativeFee, uint zroFee) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
-                totalNativeFee += nativeFee;
-                totalZroFee += zroFee;
-            }
-        }
+    function estimateConfirmBlockFee(uint8 destZkLinkChainId, uint32 blockNumber) external view returns (uint nativeFee) {
+        uint16 dstChainId = zkLinkChainIdToLZChainId[destZkLinkChainId];
+        checkDstChainId(dstChainId);
+        bytes memory payload = buildConfirmPayload(blockNumber);
+        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
     }
 
-    function confirmBlock(uint32 blockNumber) external override onlyZkLink payable {
-        uint256 originMsgValue = msg.value;
-        uint256 originBalance = address(this).balance - originMsgValue; // underflow is impossible
-
-        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
-            uint8 chainId = i + 1;
-            if (chainId == CHAIN_ID) {
-                continue;
-            }
-            uint256 chainIndex = 1 << chainId - 1;
-            if (chainIndex & ALL_CHAINS == chainIndex) {
-                _sendConfirmationMessage(blockNumber, chainId);
-            }
-        }
-        // left value should be greater equal than originBalance and refund left value to `msg.origin`
-        require(address(this).balance >= originBalance, "Msg value is not enough for bridge");
-        uint256 leftMsgValue = address(this).balance - originBalance;  // underflow is impossible
-        if (leftMsgValue > 0) {
-            // solhint-disable-next-line  avoid-low-level-calls
-            (bool success, ) = tx.origin.call{value: leftMsgValue}("");
-            require(success, "Refund failed");
-        }
-        // log the fee payed to layerzero
-        emit SynchronizationFee(originMsgValue - leftMsgValue);
-    }
-
-    /// @dev Send confirmation message to a slaver chain
-    /// @dev Take fee from this contract and refund fee to this contract
-    function _sendConfirmationMessage(uint32 blockNumber, uint8 zkLinkChainId) internal {
+    function confirmBlock(uint8 destZkLinkChainId, uint32 blockNumber) external override onlyZkLink payable {
         // ===Checks===
-        uint16 dstChainId = zkLinkChainIdToLZChainId[zkLinkChainId];
+        uint16 dstChainId = zkLinkChainIdToLZChainId[destZkLinkChainId];
         bytes memory trustedRemote = checkDstChainId(dstChainId);
 
         // ===Interactions===
         // send LayerZero message
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
         bytes memory payload = buildConfirmPayload(blockNumber);
-        // before refund, we send all balance of this contract and set refund address to this contract
         // solhint-disable-next-line check-send-result
-        endpoint.send{value:address(this).balance}(dstChainId, path, payload, payable(address(this)), address(0), new bytes(0));
+        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
     }
 
     function buildConfirmPayload(uint32 blockNumber) internal pure returns (bytes memory payload) {
