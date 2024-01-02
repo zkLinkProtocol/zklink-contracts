@@ -190,6 +190,14 @@ contract Storage is ZkLinkAcceptor, Config {
     }
     // #endif
 
+    // #if SYNC_TYPE == 2
+    /// @notice Check if msg sender is gateway
+    modifier onlyGateway() {
+        require(msg.sender == address(gateway), "7");
+        _;
+    }
+    // #endif
+
     /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
     function hashStoredBlockInfo(StoredBlockInfo memory _storedBlockInfo) internal pure returns (bytes32) {
         return keccak256(abi.encode(_storedBlockInfo));

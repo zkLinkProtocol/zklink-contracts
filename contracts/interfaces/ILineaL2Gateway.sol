@@ -24,4 +24,8 @@ interface ILineaL2Gateway is ILineaGateway, IL2Gateway {
     /// @param _subAccountId The sub account id
     /// @param _mapping If receive a mapping token on zkLink
     function claimERC20Callback(uint32 _txNonce, bool _isUSDC, address _nativeToken, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external;
+
+    /// @notice Claim block confirmation from message service
+    /// @param _blockNumber The confirmed block number
+    function claimBlockConfirmation(uint32 _blockNumber) external;
 }

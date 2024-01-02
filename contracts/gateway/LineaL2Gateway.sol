@@ -39,6 +39,10 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
         emit ClaimedDeposit(_txNonce);
     }
 
+    function claimBlockConfirmation(uint32 _blockNumber) external override onlyMessageService onlyRemoteGateway{
+        zkLink.receiveBlockConfirmation(_blockNumber);
+    }
+
     function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == _amount + coinbaseFee, "Invalid fee");
@@ -61,6 +65,30 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
         // send withdrawERC20 command to LineaL1Gateway(the second message send to L1)
         bytes memory executeData = abi.encodeCall(ILineaL1Gateway.claimERC20Callback, (isUSDC, nativeToken, _owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate));
         messageService.sendMessage{value: coinbaseFee}(remoteGateway, coinbaseFee, executeData);
+    }
+
+    function estimateSendSlaverSyncHashFee(bytes32 /**syncHash**/) external view returns (uint nativeFee) {
+        nativeFee = messageService.minimumFeeInWei();
+    }
+
+    function sendSlaverSyncHash(bytes32 syncHash) external payable override onlyZkLink whenNotPaused {
+        uint256 coinbaseFee = messageService.minimumFeeInWei();
+        require(msg.value == coinbaseFee, "Invalid fee");
+
+        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimSlaverSyncHash, (syncHash));
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
+    }
+
+    function estimateSendMasterSyncHashFee(uint32 /**blockNumber**/, bytes32 /**syncHash**/) external view returns (uint nativeFee) {
+        nativeFee = messageService.minimumFeeInWei();
+    }
+
+    function sendMasterSyncHash(uint32 blockNumber, bytes32 syncHash) external payable override onlyZkLink whenNotPaused {
+        uint256 coinbaseFee = messageService.minimumFeeInWei();
+        require(msg.value == coinbaseFee, "Invalid fee");
+
+        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimMasterSyncHash, (blockNumber, syncHash));
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
     }
 
     /// @notice Set zkLink address

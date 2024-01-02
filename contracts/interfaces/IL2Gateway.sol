@@ -21,4 +21,22 @@ interface IL2Gateway {
     /// @param _nonce SubAccount nonce, used to produce unique accept info
     /// @param _fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
     function withdrawERC20(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable;
+
+    /// @notice Return the fee of sending sync hash to ethereum
+    /// @param syncHash the sync hash
+    function estimateSendSlaverSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee);
+
+    /// @notice Send sync hash message to ethereum
+    /// @param syncHash the sync hash
+    function sendSlaverSyncHash(bytes32 syncHash) external payable;
+
+    /// @notice Return the fee of sending sync hash to ethereum
+    /// @param blockNumber the block number
+    /// @param syncHash the sync hash
+    function estimateSendMasterSyncHashFee(uint32 blockNumber, bytes32 syncHash) external view returns (uint nativeFee);
+
+    /// @notice Send sync hash message to ethereum
+    /// @param blockNumber the block number
+    /// @param syncHash the sync hash
+    function sendMasterSyncHash(uint32 blockNumber, bytes32 syncHash) external payable;
 }
