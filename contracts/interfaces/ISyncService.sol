@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 /// @title Sync service for sending cross chain message
 /// @author zk.link
 interface ISyncService {
-    // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Return the fee of sending sync hash to master chain
     /// @param masterChainId the master chain id defined by zkLink
     /// @param syncHash the sync hash
@@ -15,9 +14,7 @@ interface ISyncService {
     /// @param masterChainId the master chain id defined by zkLink
     /// @param syncHash the sync hash
     function sendSyncHash(uint8 masterChainId, bytes32 syncHash) external payable;
-    // #endif
 
-    // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Estimate the fee of sending confirm block message to slaver chain
     /// @param destZkLinkChainId the destination chain id defined by zkLink
     /// @param blockNumber the height of stored block
@@ -27,5 +24,4 @@ interface ISyncService {
     /// @param destZkLinkChainId the destination chain id defined by zkLink
     /// @param blockNumber the block height
     function confirmBlock(uint8 destZkLinkChainId, uint32 blockNumber) external payable;
-    // #endif
 }

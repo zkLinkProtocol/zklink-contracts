@@ -10,6 +10,9 @@ import "../interfaces/IZkLink.sol";
 /// @dev Do not initialize any variables of this contract
 /// Do not break the alignment of contract storage
 contract LayerZeroStorage {
+    /// @dev Master chain id defined by ZkLink
+    uint8 internal constant MASTER_CHAIN_ID = $(MASTER_CHAIN_ID);
+
     /// @notice zklink contract address
     IZkLink public zklink;
     /// @notice LayerZero endpoint that used to send and receive message

@@ -468,7 +468,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         ISyncService syncService = chainSyncServiceMap[MASTER_CHAIN_ID];
         uint256 leftMsgValue = msg.value;
-        uint256 nativeFee = syncService.estimateSendSyncHashFee(MASTER_CHAIN_ID, syncHash);
+        uint256 nativeFee = syncService.estimateSendSyncHashFee(MASTER_CHAIN_ID, _block.syncHash);
         syncService.sendSyncHash{value:nativeFee}(MASTER_CHAIN_ID, _block.syncHash);
 
         leftMsgValue -= nativeFee;
@@ -502,7 +502,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockSequence], "j1");
 
         uint256 leftMsgValue = msg.value;
-        uint256 nativeFee = gateway.estimateSendSlaverSyncHashFee(syncHash);
+        uint256 nativeFee = gateway.estimateSendSlaverSyncHashFee(_block.syncHash);
         gateway.sendSlaverSyncHash{value:nativeFee}(_block.syncHash);
 
         leftMsgValue -= nativeFee;

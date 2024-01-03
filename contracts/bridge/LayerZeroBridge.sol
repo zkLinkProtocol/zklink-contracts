@@ -79,7 +79,6 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         emit UpdateDestination(dstChainId, contractAddr);
     }
 
-    // #if CHAIN_ID != MASTER_CHAIN_ID
     function estimateSendSyncHashFee(uint8 masterChainId, bytes32 syncHash) external view returns (uint nativeFee) {
         uint16 dstChainId = zkLinkChainIdToLZChainId[masterChainId];
         checkDstChainId(dstChainId);
@@ -105,14 +104,6 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         payload = abi.encode(syncHash);
     }
 
-    function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
-        // unpack payload
-        uint32 blockNumber = abi.decode(payload, (uint32));
-        zklink.receiveBlockConfirmation(blockNumber);
-    }
-    // #endif
-
-    // #if CHAIN_ID == MASTER_CHAIN_ID
     function estimateConfirmBlockFee(uint8 destZkLinkChainId, uint32 blockNumber) external view returns (uint nativeFee) {
         uint16 dstChainId = zkLinkChainIdToLZChainId[destZkLinkChainId];
         checkDstChainId(dstChainId);
@@ -139,12 +130,16 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
 
     function _nonblockingLzReceive(uint16 srcChainId, bytes calldata /**srcAddress**/, uint64 /**nonce**/, bytes calldata payload) internal {
         // unpack payload
-        uint8 slaverChainId = lzChainIdToZKLinkChainId[srcChainId];
-        require(slaverChainId > 0, "zkLink chain id not config");
-        bytes32 syncHash = abi.decode(payload, (bytes32));
-        zklink.receiveSyncHash(slaverChainId, syncHash);
+        uint8 zkLinkChainId = lzChainIdToZKLinkChainId[srcChainId];
+        require(zkLinkChainId > 0, "zkLink chain id not config");
+        if (zkLinkChainId == MASTER_CHAIN_ID) {
+            bytes32 syncHash = abi.decode(payload, (bytes32));
+            zklink.receiveSyncHash(zkLinkChainId, syncHash);
+        } else {
+            uint32 blockNumber = abi.decode(payload, (uint32));
+            zklink.receiveBlockConfirmation(blockNumber);
+        }
     }
-    // #endif
 
     /// @notice Receive the bytes payload from the source chain via LayerZero
     /// @dev lzReceive can only be called by endpoint
