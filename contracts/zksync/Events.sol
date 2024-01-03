@@ -82,9 +82,6 @@ interface Events {
 
     /// @notice Event emitted when receive sync hash from a slaver chain
     event ReceiveSlaverSyncHash(uint8 slaverChainId, bytes32 syncHash);
-
-    /// @notice Event emitted when send sync message
-    event SynchronizationFee(uint256 fee);
 }
 
 /// @title Upgrade events

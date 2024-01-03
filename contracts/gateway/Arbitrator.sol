@@ -35,9 +35,6 @@ contract Arbitrator is Config, OwnableUpgradeable, UUPSUpgradeable, IArbitrator{
     /// @notice Event emitted when receive sync hash from master chain
     event ReceiveMasterSyncHash(uint32 blockNumber, bytes32 syncHash);
 
-    /// @notice Event emitted when send sync message
-    event SynchronizationFee(uint256 fee);
-
     /// @notice Event emitted when a block is synced
     event BlockSynced(uint32 blockNumber);
 
@@ -89,13 +86,24 @@ contract Arbitrator is Config, OwnableUpgradeable, UUPSUpgradeable, IArbitrator{
         return blockSyncHashes[blockNumber] == syncHash;
     }
 
+    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee) {
+        totalNativeFee = 0;
+        for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                IL1Gateway gateway = chainL1GatewayMap[chainId];
+                uint256 nativeFee = gateway.estimateConfirmBlockFee(blockNumber);
+                totalNativeFee += nativeFee;
+            }
+        }
+    }
+
     /// @notice Send block confirmation message to chains at the block height
     function confirmBlock(uint32 blockNumber) external payable {
         require(isBlockConfirmable(blockNumber), "Block can not confirm");
 
         // send confirm message to slaver chains
         uint256 leftMsgValue = msg.value;
-        uint256 totalNativeFee = 0;
         for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
             uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
@@ -104,7 +112,6 @@ contract Arbitrator is Config, OwnableUpgradeable, UUPSUpgradeable, IArbitrator{
                 require(leftMsgValue >= nativeFee, "Not enough fee");
                 gateway.confirmBlock{value:nativeFee}(blockNumber);
                 leftMsgValue -= nativeFee;
-                totalNativeFee += nativeFee;
             }
         }
 
@@ -114,8 +121,6 @@ contract Arbitrator is Config, OwnableUpgradeable, UUPSUpgradeable, IArbitrator{
             require(success, "Send left fee failed");
         }
 
-        // log the fee payed to sync service
-        emit SynchronizationFee(totalNativeFee);
         emit BlockSynced(blockNumber);
     }
 }

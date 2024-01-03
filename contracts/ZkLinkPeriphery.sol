@@ -395,7 +395,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // send confirm message to slaver chains
         uint32 blockNumber = _block.blockNumber;
         uint256 leftMsgValue = msg.value;
-        uint256 totalNativeFee = 0;
         for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
             uint8 chainId = i + 1;
             if (chainId == MASTER_CHAIN_ID) {
@@ -408,7 +407,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
                 require(leftMsgValue >= nativeFee, "n1");
                 syncService.confirmBlock{value:nativeFee}(chainId, blockNumber);
                 leftMsgValue -= nativeFee;
-                totalNativeFee += nativeFee;
             }
         }
         if (leftMsgValue > 0) {
@@ -416,9 +414,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (bool success, ) = msg.sender.call{value: leftMsgValue}("");
             require(success, "n2");
         }
-
-        // log the fee payed to sync service
-        emit SynchronizationFee(totalNativeFee);
 
         totalBlocksSynchronized = blockNumber;
         emit BlockSynced(blockNumber);
@@ -452,8 +447,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (bool success, ) = msg.sender.call{value: leftMsgValue}("");
             require(success, "j2");
         }
-        // log the fee payed to sync service
-        emit SynchronizationFee(nativeFee);
         emit SendMasterSyncHash(_block.blockNumber, syncHash);
     }
     // #endif
@@ -484,8 +477,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (bool success, ) = msg.sender.call{value: leftMsgValue}("");
             require(success, "j2");
         }
-        // log the fee payed to sync service
-        emit SynchronizationFee(nativeFee);
         emit SendSlaverSyncHash(_block.syncHash);
     }
 
@@ -520,8 +511,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
             (bool success, ) = msg.sender.call{value: leftMsgValue}("");
             require(success, "j2");
         }
-        // log the fee payed to sync service
-        emit SynchronizationFee(nativeFee);
         emit SendSlaverSyncHash(_block.syncHash);
     }
     // #endif
