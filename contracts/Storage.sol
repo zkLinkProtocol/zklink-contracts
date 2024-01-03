@@ -114,14 +114,12 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
 
-    // #if SYNC_TYPE == 1
     /// @dev Support multiple sync services, for example:
     /// <Linea, zkSync Era> - LayerZero
     /// <Linea, Scroll> - zkBridge
     /// chainId => sync service
     mapping(uint8 => ISyncService) public chainSyncServiceMap;
     mapping(address => bool) public syncServiceMap;
-    // #endif
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice block stored data
@@ -182,21 +180,17 @@ contract Storage is ZkLinkAcceptor, Config {
         _;
     }
 
-    // #if SYNC_TYPE == 1
     /// @notice Check if msg sender is sync service
     modifier onlySyncService() {
         require(syncServiceMap[msg.sender], "6");
         _;
     }
-    // #endif
 
-    // #if SYNC_TYPE == 2
     /// @notice Check if msg sender is gateway
     modifier onlyGateway() {
         require(msg.sender == address(gateway), "7");
         _;
     }
-    // #endif
 
     /// @notice Returns the keccak hash of the ABI-encoded StoredBlockInfo
     function hashStoredBlockInfo(StoredBlockInfo memory _storedBlockInfo) internal pure returns (bytes32) {

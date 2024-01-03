@@ -66,10 +66,8 @@ interface Events {
     /// @notice Token pause status update
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
-    // #if SYNC_TYPE == 1
     /// @notice Sync service changed
     event SetSyncService(uint8 chainId, address newSyncService);
-    // #endif
 
     /// @notice Gateway address changed
     event SetGateway(address indexed newGateway);

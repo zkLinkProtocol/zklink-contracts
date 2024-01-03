@@ -221,7 +221,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
     }
 
-    // #if SYNC_TYPE == 1
     /// @notice Set sync service address
     /// @param _syncService new sync service address
     function setSyncService(uint8 chainId, ISyncService _syncService) external onlyGovernor {
@@ -233,7 +232,6 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         syncServiceMap[address(_syncService)] = true;
         emit SetSyncService(chainId, address(_syncService));
     }
-    // #endif
 
     /// @notice Set gateway address
     /// @param _gateway gateway address
