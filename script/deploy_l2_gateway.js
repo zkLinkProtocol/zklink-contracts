@@ -1,78 +1,76 @@
 const fs = require("fs");
 const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
-const { verifyContractCode, createOrGetDeployLog } = require("./utils");
+const { verifyContractCode, createOrGetDeployLog, readDeployLogField} = require("./utils");
 const logName = require("./deploy_log_name");
-const gatewayConfig = require("./gateway");
+const {zkLinkConfig} = require("./zklink_config");
 
 task("deployL2Gateway", "Deploy L2 Gateway")
-  .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
-  .addParam("skipVerify", "Skip verify", false, types.boolean, true)
-  .setAction(async (taskArgs, hardhat) => {
-    const { network, upgrades, ethers } = hardhat;
-    const config = gatewayConfig[network.name];
-    if (!config) {
-      throw Error("network not support");
-    }
-    const { initializeParams, contractName } = config;
-    console.log(`
-        contractName:${contractName}
-        initializeParams:${initializeParams}
-        network: ${network.name}
-    `);
+    .addParam("zklink", "The zklink address (default get from zkLink deploy log)", undefined, types.string, true)
+    .addParam("force", "Fore redeploy all contracts", false, types.boolean, true)
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
+    .setAction(async (taskArgs, hardhat) => {
+        let zklink = taskArgs.zklink;
+        if (zklink === undefined) {
+            zklink = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
+        }
+        let force = taskArgs.force;
+        let skipVerify = taskArgs.skipVerify;
+        console.log('zklink', zklink);
+        console.log('force redeploy all contracts?', force);
+        console.log('skip verify contracts?', skipVerify);
 
-    const { deployLogPath, deployLog } = createOrGetDeployLog(
-      logName.DEPLOY_L2_GATEWAY_LOG_PREFIX
-    );
-    console.log("load deployLog:", deployLog);
+        const chainInfo = zkLinkConfig[process.env.NET];
+        if (chainInfo === undefined) {
+            console.log('current net not support');
+            return;
+        }
 
-    let instance = {
-      address: "",
-    };
+        const l2GatewayInfo = chainInfo.l2Gateway;
+        if (l2GatewayInfo === undefined) {
+            console.log('l2 gateway config not exist');
+            return;
+        }
 
-    try {
-      if (logName.DEPLOY_GATEWAY in deployLog) {
-        instance.address = deployLog[logName.DEPLOY_GATEWAY];
-      }
+        const { contractName, initializeParams } = l2GatewayInfo;
+        const allParams = [zklink].concat(initializeParams);
+        const { deployLogPath, deployLog } = createOrGetDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX);
 
-      if (!(logName.DEPLOY_GATEWAY_TARGET in deployLog) || force) {
-        console.log("start deploy contract");
-        const contract = await ethers.getContractFactory(contractName);
-        const tx = await upgrades.deployProxy(contract, initializeParams, {
-          kind: "uups",
-        });
-        instance.address = await tx.getAddress()
-        deployLog[logName.DEPLOY_GATEWAY] = instance.address;
-        console.log("instance address and wait deployed:", instance.address);
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        // deploy l2 gateway
+        let gatewayAddr;
+        if (!(logName.DEPLOY_GATEWAY in deployLog) || force) {
+            console.log('deploy l2 gateway...');
+            const contractFactory = await hardhat.ethers.getContractFactory(contractName);
+            const contract = await hardhat.upgrades.deployProxy(contractFactory, allParams, {kind: "uups"});
+            await contract.waitForDeployment();
+            const transaction = await contract.deploymentTransaction().getTransaction();
+            gatewayAddr = await contract.getAddress();
+            deployLog[logName.DEPLOY_GATEWAY] = gatewayAddr;
+            deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash;
+            deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = transaction.blockNumber;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        } else {
+            gatewayAddr = deployLog[logName.DEPLOY_GATEWAY];
+        }
+        console.log('l2 gateway', gatewayAddr);
 
-        const receipt = await tx.waitForDeployment()
-        console.log("deployed success:", instance.address);
-        const transaction = await receipt.deploymentTransaction().getTransaction()
-        deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash
-        deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = transaction.blockNumber
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-      }
+        let gatewayTargetAddr;
+        if (!(logName.DEPLOY_GATEWAY_TARGET in deployLog) || force) {
+            console.log('get l2 gateway target...');
+            gatewayTargetAddr = await getImplementationAddress(
+                hardhat.ethers.provider,
+                gatewayAddr
+            );
+            deployLog[logName.DEPLOY_GATEWAY_TARGET] = gatewayTargetAddr;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        } else {
+            gatewayTargetAddr = deployLog[logName.DEPLOY_GATEWAY_TARGET];
+        }
+        console.log("l2 gateway target", gatewayTargetAddr);
 
-      const impl = await getImplementationAddress(
-        hardhat.ethers.provider,
-        instance.address
-      );
-
-      console.log("impl address:", impl);
-      deployLog[logName.DEPLOY_GATEWAY_TARGET] = impl;
-      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-
-      // verify contract
-      if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
-        console.log("start verify contract");
-        await verifyContractCode(hardhat, impl, []);
-        deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
-      }
-    } catch (error) {
-      console.error("error:", error);
-      throw error
-    } finally {
-      console.log("finally log", deployLog);
-    }
-  });
+        // verify contract
+        if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
+            await verifyContractCode(hardhat, gatewayTargetAddr, []);
+            deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        }
+    });

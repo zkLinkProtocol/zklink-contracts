@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { verifyContractCode, createOrGetDeployLog, readDeployLogField, ChainContractDeployer} = require('./utils');
 const logName = require('./deploy_log_name');
-const {layerZero} = require("./layerzero");
+const {zkLinkConfig} = require("./zklink_config");
 
 task("deployLZBridge", "Deploy LayerZeroBridge")
     .addParam("zklink", "The zklink address (default get from zkLink deploy log)", undefined, types.string, true)
@@ -22,9 +22,15 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         await contractDeployer.init();
 
         // layerzero must exist
-        const lzInfo = layerZero[process.env.NET];
+        const chainInfo = zkLinkConfig[process.env.NET];
+        if (chainInfo === undefined) {
+            console.log('current net not support');
+            return;
+        }
+
+        const lzInfo = chainInfo.layerZero;
         if (lzInfo === undefined) {
-            console.log('LayerZero config not exist')
+            console.log('layerzero config not exist');
             return;
         }
 

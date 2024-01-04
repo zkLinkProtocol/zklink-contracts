@@ -32,10 +32,6 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         _;
     }
 
-    receive() external payable {
-        // receive the refund eth from layerzero endpoint when send msg
-    }
-
     /// @param _zklink The zklink contract address
     /// @param _endpoint The LayerZero endpoint
     constructor(IZkLink _zklink, ILayerZeroEndpoint _endpoint) {
@@ -62,34 +58,28 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         endpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
-    /// @notice Set mapping of zkLink chainId and lz chainId
+    /// @notice Set bridge destination
     /// @param zkLinkChainId zkLink chain id
     /// @param lzChainId LayerZero chain id
-    function setChainIdMap(uint8 zkLinkChainId, uint16 lzChainId) external onlyGovernor {
+    /// @param contractAddr LayerZeroBridge contract address on other chains
+    function setDestination(uint8 zkLinkChainId, uint16 lzChainId, bytes calldata contractAddr) external onlyGovernor {
         zkLinkChainIdToLZChainId[zkLinkChainId] = lzChainId;
         lzChainIdToZKLinkChainId[lzChainId] = zkLinkChainId;
-        emit UpdateChainIdMap(zkLinkChainId, lzChainId);
+        destinations[lzChainId] = contractAddr;
+        emit UpdateDestination(zkLinkChainId, lzChainId, contractAddr);
     }
 
-    /// @notice Set bridge destination
-    /// @param dstChainId LayerZero chain id on other chains
-    /// @param contractAddr LayerZeroBridge contract address on other chains
-    function setDestination(uint16 dstChainId, bytes calldata contractAddr) external onlyGovernor {
-        destinations[dstChainId] = contractAddr;
-        emit UpdateDestination(dstChainId, contractAddr);
-    }
-
-    function estimateSendSyncHashFee(uint8 masterChainId, bytes32 syncHash) external view returns (uint nativeFee) {
-        uint16 dstChainId = zkLinkChainIdToLZChainId[masterChainId];
+    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee) {
+        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
         checkDstChainId(dstChainId);
         bytes memory payload = buildSyncHashPayload(syncHash);
         (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
     }
 
-    function sendSyncHash(uint8 masterChainId, bytes32 syncHash) external override onlyZkLink payable {
+    function sendSyncHash(bytes32 syncHash) external override onlyZkLink payable {
         // ===Checks===
         // send msg to master chain
-        uint16 dstChainId = zkLinkChainIdToLZChainId[masterChainId];
+        uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
         bytes memory trustedRemote = checkDstChainId(dstChainId);
 
         // ===Interactions===

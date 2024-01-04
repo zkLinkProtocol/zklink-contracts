@@ -6,6 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
+import {IMessageService} from "../interfaces/linea/IMessageService.sol";
+import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
+import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IArbitrator} from "../interfaces/IArbitrator.sol";
 import {LineaGateway} from "./LineaGateway.sol";
 import "../ZkLinkAcceptor.sol";
@@ -21,6 +24,16 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
 
     /// @notice The arbitrator to confirm block
     IArbitrator public arbitrator;
+
+    /// @dev Modifier to make sure the caller is the known arbitrator.
+    modifier onlyArbitrator() {
+        require(msg.sender == address(arbitrator), "Not arbitrator");
+        _;
+    }
+
+    function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
+        __LineaGateway_init(_messageService, _tokenBridge, _usdcBridge);
+    }
 
     function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
@@ -64,7 +77,7 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
         require(msg.value == _amount, "Claim eth value not match");
 
         // send eth to receiver
-        address receiver = getWithdrawClaimReceiver(_owner, ETH_ADDRESS, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
+        address receiver = updateAcceptReceiver(_owner, ETH_ADDRESS, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = receiver.call{value: _amount}("");
         require(success, "Claim eth failed");
@@ -76,7 +89,7 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
         address targetToken = getTargetToken(_isUSDC, _nativeToken);
 
         // send token to receiver
-        address receiver = getWithdrawClaimReceiver(_owner, targetToken, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
+        address receiver = updateAcceptReceiver(_owner, targetToken, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
         IERC20(targetToken).safeTransfer(receiver, _amount);
         emit ClaimedWithdrawERC20(receiver, targetToken, _amount);
     }
@@ -93,9 +106,7 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
         nativeFee = messageService.minimumFeeInWei();
     }
 
-    function confirmBlock(uint32 blockNumber) external payable override {
-        require(msg.sender == address(arbitrator), "Not arbitrator");
-
+    function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == coinbaseFee, "Invalid fee");
 
@@ -123,19 +134,5 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
         require(success, "withdraw fee failed");
 
         emit WithdrawFee(_receiver, _amount);
-    }
-
-    /// @dev Return the receiver of withdraw claim
-    /// @dev If acceptor accepted this withdraw then return acceptor or return owner
-    function getWithdrawClaimReceiver(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) internal returns (address) {
-        bytes32 withdrawHash = getWithdrawHash(_accountIdOfNonce, _subAccountIdOfNonce, _nonce, _owner, _token, _amount, _fastWithdrawFeeRate);
-        address acceptor = accepts[withdrawHash];
-        address receiver = acceptor;
-        if (acceptor == address(0)) {
-            // receiver act as a acceptor
-            receiver = _owner;
-            accepts[withdrawHash] = _owner;
-        }
-        return receiver;
     }
 }

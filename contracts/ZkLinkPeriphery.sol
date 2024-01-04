@@ -456,7 +456,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @param syncHash the sync hash of stored block
     function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee) {
         ISyncService syncService = chainSyncServiceMap[MASTER_CHAIN_ID];
-        return syncService.estimateSendSyncHashFee(MASTER_CHAIN_ID, syncHash);
+        return syncService.estimateSendSyncHashFee(syncHash);
     }
 
     /// @notice Send sync hash to master chain
@@ -466,8 +466,8 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         ISyncService syncService = chainSyncServiceMap[MASTER_CHAIN_ID];
         uint256 leftMsgValue = msg.value;
-        uint256 nativeFee = syncService.estimateSendSyncHashFee(MASTER_CHAIN_ID, _block.syncHash);
-        syncService.sendSyncHash{value:nativeFee}(MASTER_CHAIN_ID, _block.syncHash);
+        uint256 nativeFee = syncService.estimateSendSyncHashFee(_block.syncHash);
+        syncService.sendSyncHash{value:nativeFee}(_block.syncHash);
 
         leftMsgValue -= nativeFee;
         if (leftMsgValue > 0) {

@@ -3,8 +3,9 @@ const { expect } = require('chai');
 const {deploy} = require("./utils");
 
 describe('LayerZero bridge unit tests', function () {
-    const lzChainIdInETH = 1;
-    const lzChainIdInBSC = 2;
+    const lzChainIdInETH = 101;
+    const lzChainIdInBSC = 202;
+    const zkLinkChainIdInBSC = 3;
     let networkGovernor,alice,lzBridgeInBSC,zklinkInETH,mockLzInETH;
     let lzInETH, lzBridgeInETH;
     before(async () => {
@@ -21,32 +22,22 @@ describe('LayerZero bridge unit tests', function () {
         lzBridgeInETH = await lzBridgeFactory.deploy(zklinkInETH.target, lzInETH.target);
     });
 
-    it('only network governor can set chain id map', async () => {
-        await expect(lzBridgeInETH.connect(alice).setChainIdMap(1, lzChainIdInETH))
-            .to.be.revertedWith('Caller is not governor');
-
-        await expect(lzBridgeInETH.connect(networkGovernor).setChainIdMap(1, lzChainIdInETH))
-            .to.be.emit(lzBridgeInETH, "UpdateChainIdMap")
-            .withArgs(1, lzChainIdInETH);
-    });
-
     it('only network governor can set destination', async () => {
-        await expect(lzBridgeInETH.connect(alice).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
+        await expect(lzBridgeInETH.connect(alice).setDestination(zkLinkChainIdInBSC, lzChainIdInBSC, lzBridgeInBSC.address))
             .to.be.revertedWith('Caller is not governor');
 
-        await expect(lzBridgeInETH.connect(networkGovernor).setDestination(lzChainIdInBSC, lzBridgeInBSC.address))
+        await expect(lzBridgeInETH.connect(networkGovernor).setDestination(zkLinkChainIdInBSC, lzChainIdInBSC, lzBridgeInBSC.address))
             .to.be.emit(lzBridgeInETH, "UpdateDestination")
-            .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase());
+            .withArgs(zkLinkChainIdInBSC, lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase());
     });
 
     it('if lzReceive failed, message must be stored', async () => {
         await lzBridgeInETH.connect(networkGovernor).setEndpoint(mockLzInETH.address);
         const srcPath = ethers.solidityPacked(["address","address"],[lzBridgeInBSC.address,lzBridgeInETH.target]);
-        await expect(lzBridgeInETH.connect(mockLzInETH).lzReceive(lzChainIdInBSC, srcPath, 1, "0x02"))
+        const nonce = 1;
+        const invalidPayload = "0x02";
+        await expect(lzBridgeInETH.connect(mockLzInETH).lzReceive(lzChainIdInBSC, srcPath, nonce, invalidPayload))
             .to.be.emit(lzBridgeInETH, "MessageFailed")
-            .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase(), 1, "0x02");
-
-        await expect(lzBridgeInETH.retryMessage(lzChainIdInBSC, lzBridgeInBSC.address, 1, "0x02"))
-        //     .to.be.reverted;
+            .withArgs(lzChainIdInBSC, lzBridgeInBSC.address.toLowerCase(), nonce, invalidPayload);
     });
 });

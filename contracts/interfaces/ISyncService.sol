@@ -6,14 +6,12 @@ pragma solidity ^0.8.0;
 /// @author zk.link
 interface ISyncService {
     /// @notice Return the fee of sending sync hash to master chain
-    /// @param masterChainId the master chain id defined by zkLink
     /// @param syncHash the sync hash
-    function estimateSendSyncHashFee(uint8 masterChainId, bytes32 syncHash) external view returns (uint nativeFee);
+    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee);
 
     /// @notice Send sync hash message to master chain
-    /// @param masterChainId the master chain id defined by zkLink
     /// @param syncHash the sync hash
-    function sendSyncHash(uint8 masterChainId, bytes32 syncHash) external payable;
+    function sendSyncHash(bytes32 syncHash) external payable;
 
     /// @notice Estimate the fee of sending confirm block message to slaver chain
     /// @param destZkLinkChainId the destination chain id defined by zkLink

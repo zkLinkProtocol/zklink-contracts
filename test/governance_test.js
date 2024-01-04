@@ -3,9 +3,9 @@ const { expect } = require('chai');
 
 describe('Governance unit tests', function () {
     let testContract;
-    let alice, bob, jack, lzBridgeInETH;
+    let alice, bob, jack, lzBridgeInETH, gateway;
     before(async () => {
-        [alice, bob, jack, lzBridgeInETH] = await hardhat.ethers.getSigners();
+        [alice, bob, jack, lzBridgeInETH, gateway] = await hardhat.ethers.getSigners();
         const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkPeripheryTest');
         testContract = await contractFactory.connect(alice).deploy();
         await testContract.setGovernor(alice.address);
@@ -64,12 +64,22 @@ describe('Governance unit tests', function () {
             .withArgs(jack.address, false);
     });
 
-    it('only network governor can set sync service', async () => {
-        await expect(testContract.connect(alice).setSyncService(lzBridgeInETH.address))
+    it('Only network governor can set sync service', async () => {
+        const chainId = 5;
+        await expect(testContract.connect(alice).setSyncService(chainId, lzBridgeInETH.address))
             .to.be.revertedWith('3');
 
-        await expect(testContract.connect(bob).setSyncService(lzBridgeInETH.address))
+        await expect(testContract.connect(bob).setSyncService(chainId, lzBridgeInETH.address))
             .to.be.emit(testContract, "SetSyncService")
-            .withArgs(lzBridgeInETH.address);
+            .withArgs(chainId, lzBridgeInETH.address);
+    });
+
+    it('Only network governor can set gateway', async () => {
+        await expect(testContract.connect(alice).setGateway(gateway.address))
+            .to.be.revertedWith('3');
+
+        await expect(testContract.connect(bob).setGateway(gateway.address))
+            .to.be.emit(testContract, "SetGateway")
+            .withArgs(gateway.address);
     });
 });

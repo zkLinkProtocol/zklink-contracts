@@ -31,7 +31,6 @@ contract LayerZeroStorage {
     /// payLoadHash is the keccak256 of message payload
     mapping(uint16 => mapping(bytes => mapping(uint64 => bytes32))) public failedMessages;
 
-    event UpdateChainIdMap(uint8 zkLinkChainId, uint16 lzChainId);
-    event UpdateDestination(uint16 indexed lzChainId, bytes destination);
-    event MessageFailed(uint16 indexed srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
+    event UpdateDestination(uint8 zkLinkChainId, uint16 lzChainId, bytes destination);
+    event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
 }

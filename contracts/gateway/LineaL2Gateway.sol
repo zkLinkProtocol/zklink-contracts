@@ -6,6 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
+import {IMessageService} from "../interfaces/linea/IMessageService.sol";
+import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
+import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 import {LineaGateway} from "./LineaGateway.sol";
 
@@ -19,6 +22,12 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
     modifier onlyZkLink() {
         require(msg.sender == address(zkLink), "Not zkLink contract");
         _;
+    }
+
+    function initialize(IZkLink _zkLink, IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
+        __LineaGateway_init(_messageService, _tokenBridge, _usdcBridge);
+
+        zkLink = _zkLink;
     }
 
     function claimETHCallback(uint32 _txNonce, bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
@@ -89,12 +98,5 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
 
         bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimMasterSyncHash, (blockNumber, syncHash));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
-    }
-
-    /// @notice Set zkLink address
-    /// @param _zkLink The zkLink address
-    function setZkLink(address _zkLink) external onlyOwner {
-        zkLink = IZkLink(_zkLink);
-        emit SetZkLink(_zkLink);
     }
 }

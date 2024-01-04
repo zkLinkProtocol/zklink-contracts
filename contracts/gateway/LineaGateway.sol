@@ -48,7 +48,11 @@ abstract contract LineaGateway is OwnableUpgradeable, UUPSUpgradeable, Reentranc
         _;
     }
 
-    function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
+    function __LineaGateway_init(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) internal onlyInitializing {
+        __LineaGateway_init_unchained(_messageService, _tokenBridge, _usdcBridge);
+    }
+
+    function __LineaGateway_init_unchained(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) internal onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();

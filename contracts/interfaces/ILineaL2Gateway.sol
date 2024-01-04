@@ -6,7 +6,6 @@ import {ILineaGateway} from "./ILineaGateway.sol";
 
 interface ILineaL2Gateway is ILineaGateway, IL2Gateway {
     event ClaimedDeposit(uint32 indexed _txNonce);
-    event SetZkLink(address _zkLink);
 
     /// @notice Claim ETH callback from message service
     /// @param _txNonce The deposit sequence of L1 gateway

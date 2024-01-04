@@ -1,5 +1,4 @@
 const { expect } = require('chai');
-const { BigNumber } = require('ethers');
 const { deploy,
     CHAIN_ID,
     EMPTY_STRING_KECCAK, IS_MASTER_CHAIN, createSlaverChainSyncHash
