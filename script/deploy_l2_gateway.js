@@ -35,6 +35,10 @@ task("deployL2Gateway", "Deploy L2 Gateway")
         const allParams = [zklink].concat(initializeParams);
         const { deployLogPath, deployLog } = createOrGetDeployLog(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX);
 
+        const [deployerWallet] = await hardhat.ethers.getSigners();
+        deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+
         // deploy l2 gateway
         let gatewayAddr;
         if (!(logName.DEPLOY_GATEWAY in deployLog) || force) {

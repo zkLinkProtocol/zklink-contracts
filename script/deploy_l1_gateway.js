@@ -37,7 +37,13 @@ task("deployL1Gateway", "Deploy L1 Gateway")
           return;
       }
 
-      const { deployLogPath, deployLog } = createOrGetDeployLog(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + targetNetwork);
+      const l1GatewayLogName = logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + targetNetwork;
+      const { deployLogPath, deployLog } = createOrGetDeployLog(l1GatewayLogName);
+
+      const [deployerWallet] = await hardhat.ethers.getSigners();
+      deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
+      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+
       // deploy l1 gateway
       let gatewayAddr;
       if (!(logName.DEPLOY_GATEWAY in deployLog) || force) {
