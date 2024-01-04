@@ -222,15 +222,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     /// @notice Set sync service address
+    /// @param _chainId zkLink chain id
     /// @param _syncService new sync service address
-    function setSyncService(uint8 chainId, ISyncService _syncService) external onlyGovernor {
-        ISyncService oldSyncService = chainSyncServiceMap[chainId];
+    function setSyncService(uint8 _chainId, ISyncService _syncService) external onlyGovernor {
+        ISyncService oldSyncService = chainSyncServiceMap[_chainId];
         if (address(oldSyncService) != address(0)) {
             syncServiceMap[address(oldSyncService)] = false;
         }
-        chainSyncServiceMap[chainId] = _syncService;
+        chainSyncServiceMap[_chainId] = _syncService;
         syncServiceMap[address(_syncService)] = true;
-        emit SetSyncService(chainId, address(_syncService));
+        emit SetSyncService(_chainId, address(_syncService));
     }
 
     /// @notice Set gateway address
