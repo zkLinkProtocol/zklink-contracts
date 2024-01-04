@@ -114,8 +114,12 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice A map of token address to id, 0 is invalid token id
     mapping(address => uint16) public tokenIds;
 
-    /// @notice A service that sending and receiving cross chain sync message
-    ISyncService public syncService;
+    /// @dev Support multiple sync services, for example:
+    /// <Linea, zkSync Era> - LayerZero
+    /// <Linea, Scroll> - zkBridge
+    /// chainId => sync service
+    mapping(uint8 => ISyncService) public chainSyncServiceMap;
+    mapping(address => bool) public syncServiceMap;
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice block stored data
@@ -178,7 +182,13 @@ contract Storage is ZkLinkAcceptor, Config {
 
     /// @notice Check if msg sender is sync service
     modifier onlySyncService() {
-        require(msg.sender == address(syncService), "6");
+        require(syncServiceMap[msg.sender], "6");
+        _;
+    }
+
+    /// @notice Check if msg sender is gateway
+    modifier onlyGateway() {
+        require(msg.sender == address(gateway), "7");
         _;
     }
 

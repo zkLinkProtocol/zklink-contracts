@@ -222,10 +222,16 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
 
     /// @notice Set sync service address
+    /// @param _chainId zkLink chain id
     /// @param _syncService new sync service address
-    function setSyncService(ISyncService _syncService) external onlyGovernor {
-        syncService = _syncService;
-        emit SetSyncService(address(_syncService));
+    function setSyncService(uint8 _chainId, ISyncService _syncService) external onlyGovernor {
+        ISyncService oldSyncService = chainSyncServiceMap[_chainId];
+        if (address(oldSyncService) != address(0)) {
+            syncServiceMap[address(oldSyncService)] = false;
+        }
+        chainSyncServiceMap[_chainId] = _syncService;
+        syncServiceMap[address(_syncService)] = true;
+        emit SetSyncService(_chainId, address(_syncService));
     }
 
     /// @notice Set gateway address
@@ -278,9 +284,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         emit BlockProven(currentTotalBlocksProven);
 
-        if (address(syncService) == address(0)) {
-            totalBlocksSynchronized = currentTotalBlocksProven;
-        }
+        // #if SYNC_TYPE == 0
+        totalBlocksSynchronized = currentTotalBlocksProven;
+        // #endif
     }
 
     /// @notice Reverts unExecuted blocks
@@ -339,11 +345,11 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // #endif
 
     // =======================Cross chain block synchronization======================
-
     // #if CHAIN_ID == MASTER_CHAIN_ID
+    // #if SYNC_TYPE == 1
     function receiveSyncHash(uint8 chainId, bytes32 syncHash) external onlySyncService {
         synchronizedChains[chainId] = syncHash;
-        emit ReceiveSyncHash(chainId, syncHash);
+        emit ReceiveSlaverSyncHash(chainId, syncHash);
     }
 
     /// @notice Check if received all syncHash from other chains at the block height
@@ -365,28 +371,113 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         return true;
     }
 
+    function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee) {
+        totalNativeFee = 0;
+        for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                if (chainId == MASTER_CHAIN_ID) {
+                    continue;
+                }
+                ISyncService syncService = chainSyncServiceMap[chainId];
+                uint nativeFee = syncService.estimateConfirmBlockFee(chainId, blockNumber);
+                totalNativeFee += nativeFee;
+            }
+        }
+    }
+
     /// @notice Send block confirmation message to all other slaver chains at the block height
     function confirmBlock(StoredBlockInfo memory _block) external onlyValidator payable {
         require(isBlockConfirmable(_block), "n0");
 
         // send confirm message to slaver chains
         uint32 blockNumber = _block.blockNumber;
-        syncService.confirmBlock{value:msg.value}(blockNumber);
+        uint256 leftMsgValue = msg.value;
+        for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
+            uint256 chainIndex = 1 << chainId - 1;
+            if (chainIndex & ALL_CHAINS == chainIndex) {
+                if (chainId == MASTER_CHAIN_ID) {
+                    continue;
+                }
+                ISyncService syncService = chainSyncServiceMap[chainId];
+                uint nativeFee = syncService.estimateConfirmBlockFee(chainId, blockNumber);
+                require(leftMsgValue >= nativeFee, "n1");
+                syncService.confirmBlock{value:nativeFee}(chainId, blockNumber);
+                leftMsgValue -= nativeFee;
+            }
+        }
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "n2");
+        }
 
         totalBlocksSynchronized = blockNumber;
         emit BlockSynced(blockNumber);
     }
     // #endif
 
+    // #if SYNC_TYPE == 2
+    /// @notice Estimate send sync hash fee
+    /// @param syncHash the sync hash of stored block
+    function estimateSendMasterSyncHashFee(uint32 blockNumber, bytes32 syncHash) external view returns (uint nativeFee) {
+        return gateway.estimateSendMasterSyncHashFee(blockNumber, syncHash);
+    }
+
+    /// @notice Send sync hash to ethereum
+    function sendMasterSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
+        require(_block.blockNumber > totalBlocksSynchronized && _block.blockNumber <= totalBlocksProven, "j0");
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockNumber], "j1");
+
+        bytes32 syncHash = EMPTY_STRING_KECCAK;
+        for (uint i = 0; i < _block.syncHashs.length; ++i) {
+            syncHash = Utils.concatTwoHash(syncHash, _block.syncHashs[i].syncHash);
+        }
+
+        uint256 leftMsgValue = msg.value;
+        uint256 nativeFee = gateway.estimateSendMasterSyncHashFee(_block.blockNumber, syncHash);
+        gateway.sendMasterSyncHash{value:nativeFee}(_block.blockNumber, syncHash);
+
+        leftMsgValue -= nativeFee;
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "j2");
+        }
+        emit SendMasterSyncHash(_block.blockNumber, syncHash);
+    }
+    // #endif
+    // #endif
+
     // #if CHAIN_ID != MASTER_CHAIN_ID
+    // #if SYNC_TYPE == 1
+    /// @notice Estimate send sync hash fee
+    /// @param syncHash the sync hash of stored block
+    function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee) {
+        ISyncService syncService = chainSyncServiceMap[MASTER_CHAIN_ID];
+        return syncService.estimateSendSyncHashFee(syncHash);
+    }
+
     /// @notice Send sync hash to master chain
     function sendSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
         require(_block.blockNumber > totalBlocksSynchronized, "j0");
         require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockSequence], "j1");
-        syncService.sendSyncHash{value:msg.value}(_block.syncHash);
-        emit SendSyncHash(_block.syncHash);
+
+        ISyncService syncService = chainSyncServiceMap[MASTER_CHAIN_ID];
+        uint256 leftMsgValue = msg.value;
+        uint256 nativeFee = syncService.estimateSendSyncHashFee(_block.syncHash);
+        syncService.sendSyncHash{value:nativeFee}(_block.syncHash);
+
+        leftMsgValue -= nativeFee;
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "j2");
+        }
+        emit SendSlaverSyncHash(_block.syncHash);
     }
 
+    /// @notice Receive block confirmation from master chain
     function receiveBlockConfirmation(uint32 blockNumber) external onlySyncService {
         if (blockNumber > totalBlocksSynchronized) {
             totalBlocksSynchronized = blockNumber;
@@ -395,6 +486,42 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
     // #endif
 
+    // #if SYNC_TYPE == 2
+    /// @notice Estimate send sync hash fee
+    /// @param syncHash the sync hash of stored block
+    function estimateSendSlaverSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee) {
+        return gateway.estimateSendSlaverSyncHashFee(syncHash);
+    }
+
+    /// @notice Send sync hash to master chain
+    function sendSlaverSyncHash(StoredBlockInfo memory _block) external onlyValidator payable {
+        require(_block.blockNumber > totalBlocksSynchronized, "j0");
+        require(hashStoredBlockInfo(_block) == storedBlockHashes[_block.blockSequence], "j1");
+
+        uint256 leftMsgValue = msg.value;
+        uint256 nativeFee = gateway.estimateSendSlaverSyncHashFee(_block.syncHash);
+        gateway.sendSlaverSyncHash{value:nativeFee}(_block.syncHash);
+
+        leftMsgValue -= nativeFee;
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "j2");
+        }
+        emit SendSlaverSyncHash(_block.syncHash);
+    }
+    // #endif
+    // #endif
+
+    // #if SYNC_TYPE == 2
+    /// @notice Receive block confirmation from master chain
+    function receiveBlockConfirmation(uint32 blockNumber) external onlyGateway {
+        if (blockNumber > totalBlocksSynchronized) {
+            totalBlocksSynchronized = blockNumber;
+            emit BlockSynced(blockNumber);
+        }
+    }
+    // #endif
     // =======================Withdraw to L1======================
     /// @notice Withdraw token to L1 for user by gateway
     /// @param owner User receive token on L1

@@ -10,14 +10,6 @@ import "../interfaces/IZkLink.sol";
 /// @dev Do not initialize any variables of this contract
 /// Do not break the alignment of contract storage
 contract LayerZeroStorage {
-    /// @dev Chain id defined by ZkLink
-    uint8 internal constant CHAIN_ID = $(CHAIN_ID);
-    /// @dev Min chain id defined by ZkLink
-    uint8 internal constant MIN_CHAIN_ID = 1;
-    /// @dev Max chain id defined by ZkLink
-    uint8 internal constant MAX_CHAIN_ID = $(MAX_CHAIN_ID);
-    /// @dev All chain index, for example [1, 2, 3, 4] => 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 = 15
-    uint256 internal constant ALL_CHAINS = $(ALL_CHAINS);
     /// @dev Master chain id defined by ZkLink
     uint8 internal constant MASTER_CHAIN_ID = $(MASTER_CHAIN_ID);
 
@@ -39,8 +31,6 @@ contract LayerZeroStorage {
     /// payLoadHash is the keccak256 of message payload
     mapping(uint16 => mapping(bytes => mapping(uint64 => bytes32))) public failedMessages;
 
-    event UpdateChainIdMap(uint8 zkLinkChainId, uint16 lzChainId);
-    event UpdateDestination(uint16 indexed lzChainId, bytes destination);
-    event MessageFailed(uint16 indexed srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
-    event SynchronizationFee(uint256 fee);
+    event UpdateDestination(uint8 zkLinkChainId, uint16 lzChainId, bytes destination);
+    event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
 }

@@ -27,13 +27,8 @@ const MAX_ACCEPT_FEE_RATE = 10000;
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 // master or slaver chain
 const IS_MASTER_CHAIN = hardhat.config.solpp.defs.CHAIN_ID === hardhat.config.solpp.defs.MASTER_CHAIN_ID;
-
-async function calFee(tx) {
-    let gasPrice = tx.gasPrice;
-    let txr = await hardhat.ethers.provider.getTransactionReceipt(tx.hash);
-    let gasUsed = txr.gasUsed;
-    return hardhat.ethers.BigNumber.from(gasPrice).mul(hardhat.ethers.BigNumber.from(gasUsed));
-}
+// sync type
+const SYNC_TYPE = hardhat.config.solpp.defs.SYNC_TYPE;
 
 async function deploy() {
     const [defaultSender,governor,validator,alice,bob] = await hardhat.ethers.getSigners();
@@ -54,10 +49,9 @@ async function deploy() {
     const verifyContract = verifierFactory.attach(verifyProxy.target);
     const abiCoder = new hardhat.ethers.AbiCoder();
     const zkLinkInitParams = IS_MASTER_CHAIN ?
-          abiCoder.encode(["bytes32"], [GENESIS_ROOT]) :
-          abiCoder.encode(["uint32"], [0]);
-    const zkLinkTargetInitializationParameters = abiCoder.encode(['address','address','bytes'], [verifyProxy.target, governor.address, zkLinkInitParams]);
-    const zkLinkProxy = await proxyFactory.deploy(zkLink.target, zkLinkTargetInitializationParameters);
+          abiCoder.encode(['address','address', 'bytes32'], [verifyProxy.target, governor.address, GENESIS_ROOT]) :
+          abiCoder.encode(['address','address', 'uint32'], [verifyProxy.target, governor.address, 0]);
+    const zkLinkProxy = await proxyFactory.deploy(zkLink.target, zkLinkInitParams);
     const zkLinkContract = zkLinkFactory.attach(zkLinkProxy.target);
     const peripheryContract = peripheryFactory.attach(zkLinkProxy.target);
 
@@ -135,7 +129,6 @@ function createSlaverChainSyncHash(preBlockSyncHash, newBlockBlockNumber, newBlo
 }
 
 module.exports = {
-    calFee,
     deploy,
     createSlaverChainSyncHash,
     IS_MASTER_CHAIN,
@@ -155,5 +148,6 @@ module.exports = {
     MAX_USD_STABLE_TOKEN_ID,
     MAX_PROOF_COMMITMENT,
     MAX_ACCEPT_FEE_RATE,
-    ETH_ADDRESS
+    ETH_ADDRESS,
+    SYNC_TYPE
 };

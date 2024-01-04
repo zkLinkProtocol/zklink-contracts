@@ -14,4 +14,20 @@ contract L2GatewayMock is IL2Gateway {
         // transfer token to self
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
     }
+
+    function estimateSendSlaverSyncHashFee(bytes32) external pure returns (uint nativeFee) {
+        nativeFee = 0;
+    }
+
+    function sendSlaverSyncHash(bytes32) external payable {
+        // do nothing
+    }
+
+    function estimateSendMasterSyncHashFee(uint32, bytes32) external pure returns (uint nativeFee) {
+        nativeFee = 0;
+    }
+
+    function sendMasterSyncHash(uint32, bytes32) external payable {
+        // do nothing
+    }
 }

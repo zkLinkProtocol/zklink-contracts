@@ -146,16 +146,16 @@ task("upgradeZkLink", "Upgrade zkLink")
         if (upgradeStatus === 0) {
             console.log('start upgrade...');
             const startUpgradeTx = await gatekeeper.connect(deployerWallet).startUpgrade(upgradeTargets);
-            console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
             await startUpgradeTx.wait();
+            console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
             upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
             console.log('upgrade status after start: ', upgradeStatus);
         }
 
         if (upgradeStatus === 1) {
             const finishUpgradeTx = await gatekeeper.connect(deployerWallet).finishUpgrade();
-            console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
             await finishUpgradeTx.wait();
+            console.info(`upgrade finish tx: ${finishUpgradeTx.hash}`);
             upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
             console.log('upgrade status after finish: ', upgradeStatus);
         }

@@ -378,15 +378,14 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
     function initOnchainOperationPubdataHashs() internal pure returns (uint256 slaverChainNum, bytes32[] memory onchainOperationPubdataHashs) {
         slaverChainNum = 0;
         onchainOperationPubdataHashs = new bytes32[](MAX_CHAIN_ID);
-        for(uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
-            uint8 chainId = i + 1;
-            if (chainId == CHAIN_ID) {
-                continue;
-            }
-            uint256 chainIndex = 1 << i;
+        for(uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
+            uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
+                if (chainId == CHAIN_ID) {
+                    continue;
+                }
                 slaverChainNum++;
-                onchainOperationPubdataHashs[i] = EMPTY_STRING_KECCAK;
+                onchainOperationPubdataHashs[chainId - MIN_CHAIN_ID] = EMPTY_STRING_KECCAK;
             }
         }
     }
@@ -499,9 +498,9 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // log the last new committed block number
         emit BlockCommit(_lastCommittedBlockData.blockNumber);
 
-        if (address(syncService) == address(0)) {
-            totalBlocksSynchronized = _lastCommittedBlockData.blockNumber;
-        }
+        // #if SYNC_TYPE == 0
+        totalBlocksSynchronized = _lastCommittedBlockData.blockNumber;
+        // #endif
     }
 
     /// @dev Process one block commit using previous block StoredBlockInfo,

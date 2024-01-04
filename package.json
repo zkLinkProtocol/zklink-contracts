@@ -15,12 +15,19 @@
     "hardhat": "^2.19.3"
   },
   "scripts": {
-    "compile-master": "MASTER_UNITTEST=true npx hardhat compile",
-    "compile-slaver": "SLAVER_UNITTEST=true npx hardhat compile",
-    "test-master": "MASTER_UNITTEST=true npx hardhat test",
-    "test-slaver": "SLAVER_UNITTEST=true npx hardhat test",
-    "flatten-master": "MASTER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js",
-    "flatten-slaver": "SLAVER_UNITTEST=true npx hardhat run script/combine_zklink_abi.js"
+    "compile": "npx hardhat compile",
+    "compile-origin-master": "SYNC_TYPE=1 MASTER=true npx hardhat compile",
+    "compile-origin-slaver": "SYNC_TYPE=1 MASTER=false npx hardhat compile",
+    "compile-nexus-master": "SYNC_TYPE=2 MASTER=true npx hardhat compile",
+    "compile-nexus-slaver": "SYNC_TYPE=2 MASTER=false npx hardhat compile",
+    "test-origin-master": "SYNC_TYPE=1 MASTER=true npx hardhat test",
+    "test-origin-slaver": "SYNC_TYPE=1 MASTER=false npx hardhat test",
+    "test-nexus-master": "SYNC_TYPE=2 MASTER=true npx hardhat test",
+    "test-nexus-slaver": "SYNC_TYPE=2 MASTER=false npx hardhat test",
+    "flatten-origin-master": "SYNC_TYPE=1 MASTER=true npx hardhat run script/combine_zklink_abi.js",
+    "flatten-origin-slaver": "SYNC_TYPE=1 MASTER=false npx hardhat run script/combine_zklink_abi.js",
+    "flatten-nexus-master": "SYNC_TYPE=2 MASTER=true npx hardhat run script/combine_zklink_abi.js",
+    "flatten-nexus-slaver": "SYNC_TYPE=2 MASTER=false npx hardhat run script/combine_zklink_abi.js"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.5",

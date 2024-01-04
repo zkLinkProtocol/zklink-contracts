@@ -86,6 +86,12 @@ contract Config {
     /// @dev Master chain id defined by ZkLink
     uint8 internal constant MASTER_CHAIN_ID = $(MASTER_CHAIN_ID);
 
+    /// @dev NONE, ORIGIN, NEXUS
+    uint8 internal constant SYNC_TYPE = $(SYNC_TYPE);
+    uint8 internal constant SYNC_NONE = 0;
+    uint8 internal constant SYNC_ORIGIN = 1;
+    uint8 internal constant SYNC_NEXUS = 2;
+
     /// @dev Token decimals is a fixed value at layer two in ZkLink
     uint8 internal constant TOKEN_DECIMALS_OF_LAYER2 = 18;
 

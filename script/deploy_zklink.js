@@ -178,6 +178,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const contractFactory = await hardhat.ethers.getContractFactory('Proxy');
             const contract = contractFactory.attach(verifierProxy);
             const tx = await contract.connect(deployerWallet).transferMastership(upgradeGatekeeper);
+            await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_VERIFIER_TRAMSFER_MASTERSHIP] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -188,6 +189,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const contractFactory = await hardhat.ethers.getContractFactory('Proxy');
             const contract = contractFactory.attach(zkLinkProxy);
             const tx = await contract.connect(deployerWallet).transferMastership(upgradeGatekeeper);
+            await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_ZKLINK_TRAMSFER_MASTERSHIP] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -199,6 +201,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const contractFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
             const contract = contractFactory.attach(upgradeGatekeeper);
             const tx = await contract.connect(deployerWallet).addUpgradeable(verifierProxy);
+            await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_VERIFIER_ADD_UPGRADE] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -209,6 +212,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const contractFactory = await hardhat.ethers.getContractFactory('UpgradeGatekeeper');
             const contract = contractFactory.attach(upgradeGatekeeper);
             const tx = await contract.connect(deployerWallet).addUpgradeable(zkLinkProxy);
+            await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_VERIFIER_ADD_UPGRADE] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -220,6 +224,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const contractFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
             const contract = contractFactory.attach(zkLinkProxy);
             const tx = await contract.connect(deployerWallet).setValidator(validator, true);
+            await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_ZKLINK_SET_VALIDATOR] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));

@@ -97,4 +97,18 @@ abstract contract ZkLinkAcceptor {
     function getWithdrawHash(uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce, address owner, address token, uint128 amount, uint16 fastWithdrawFeeRate) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, token, amount, fastWithdrawFeeRate));
     }
+
+    /// @dev Update the receiver of withdraw claim
+    /// @dev If acceptor accepted this withdraw then return acceptor or return owner
+    function updateAcceptReceiver(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) internal returns (address) {
+        bytes32 withdrawHash = getWithdrawHash(_accountIdOfNonce, _subAccountIdOfNonce, _nonce, _owner, _token, _amount, _fastWithdrawFeeRate);
+        address acceptor = accepts[withdrawHash];
+        address receiver = acceptor;
+        if (acceptor == address(0)) {
+            // receiver act as a acceptor
+            receiver = _owner;
+            accepts[withdrawHash] = _owner;
+        }
+        return receiver;
+    }
 }

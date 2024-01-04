@@ -2,11 +2,13 @@
 pragma solidity ^0.8.0;
 
 import {ILineaGateway} from "./ILineaGateway.sol";
+import {IL1Gateway} from "./IL1Gateway.sol";
 
-interface ILineaL1Gateway is ILineaGateway {
+interface ILineaL1Gateway is IL1Gateway, ILineaGateway {
     event Deposit(uint32 indexed txNonce, address token, uint256 amount, bytes32 zklinkAddress, uint8 subAccountId, bool _mapping);
     event ClaimedWithdrawETH(address _receiver, uint256 _amount);
     event ClaimedWithdrawERC20(address _receiver, address _token, uint256 _amount);
+    event SetArbitrator(address arbitrator);
     event SetFee(uint64 fee);
     event WithdrawFee(address receiver, uint256 amount);
 
@@ -42,4 +44,13 @@ interface ILineaL1Gateway is ILineaGateway {
     /// @param _nonce SubAccount nonce, used to produce unique accept info
     /// @param _fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
     function claimERC20Callback(bool _isUSDC, address _nativeToken, address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external;
+
+    /// @notice Claim sync hash from message service
+    /// @param _syncHash The sync hash of slaver chain
+    function claimSlaverSyncHash(bytes32 _syncHash) external;
+
+    /// @notice Claim sync hash from message service
+    /// @param _blockNumber The block number
+    /// @param _syncHash The sync hash of master chain
+    function claimMasterSyncHash(uint32 _blockNumber, bytes32 _syncHash) external;
 }

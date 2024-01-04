@@ -67,20 +67,19 @@ interface Events {
     event TokenPausedUpdate(uint16 indexed token, bool paused);
 
     /// @notice Sync service changed
-    event SetSyncService(address indexed newSyncService);
+    event SetSyncService(uint8 chainId, address newSyncService);
 
     /// @notice Gateway address changed
     event SetGateway(address indexed newGateway);
 
-    // #if CHAIN_ID != MASTER_CHAIN_ID
     /// @notice Event emitted when send sync hash to master chain
-    event SendSyncHash(bytes32 syncHash);
-    // #endif
+    event SendSlaverSyncHash(bytes32 syncHash);
 
-    // #if CHAIN_ID == MASTER_CHAIN_ID
+    /// @notice Event emitted when send sync hash to arbitration
+    event SendMasterSyncHash(uint32 blockNumber, bytes32 syncHash);
+
     /// @notice Event emitted when receive sync hash from a slaver chain
-    event ReceiveSyncHash(uint8 slaverChainId, bytes32 syncHash);
-    // #endif
+    event ReceiveSlaverSyncHash(uint8 slaverChainId, bytes32 syncHash);
 }
 
 /// @title Upgrade events
