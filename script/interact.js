@@ -360,7 +360,11 @@ task("changeGovernorOfZkLink", "Set the network governor of ZkLink")
 
 
 task("setL1RemoteGateway", "Set l2 gateway address to l1 gateway")
+    .addParam("l2Network", "l2 network name that gateway deployed", undefined, types.string, false)
     .setAction(async (taskArgs, hardhat) => {
+        const l2Network = taskArgs.l2Network;
+        console.log('l2Network', l2Network);
+
         const chainInfo = zkLinkConfig[process.env.NET];
         if (chainInfo === undefined) {
             console.log('current net not support');
@@ -372,37 +376,32 @@ task("setL1RemoteGateway", "Set l2 gateway address to l1 gateway")
             console.log('l1 gateway info not exist');
             return;
         }
+        const l2ChainInfo = zkLinkConfig[l2Network];
+        if (l2ChainInfo === undefined) {
+            console.log('l2 chain info not exist');
+            return;
+        }
+        const chainL1GatewayInfo = l1GatewayInfo[l2Network];
+        if (chainL1GatewayInfo === undefined) {
+            console.log('l1 gateway info of l2 chain not exist');
+            return;
+        }
 
         const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
         console.log('governor', governor.address);
 
-        const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
-        for (const chainL1GatewayInfo of l1GatewayInfo) {
-            console.log('set l2 gateway for', chainL1GatewayInfo.net);
-            const targetChainConfig = zkLinkConfig[chainL1GatewayInfo.net];
-            if (targetChainConfig === undefined) {
-                console.log('target chain config not exist', chainL1GatewayInfo.net);
-                continue;
-            }
-            const chainIndex = 1 << targetChainConfig.zkLinkChainId - 1;
-            if ((chainIndex & ALL_CHAINS) !== chainIndex) {
-                console.log('skip target chain', chainL1GatewayInfo.net);
-                continue;
-            }
+        let l1GatewayAddr =  readDeployContract(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + l2Network, logName.DEPLOY_GATEWAY);
+        let l2GatewayAddr =  readDeployContract(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_GATEWAY, l2Network);
+        console.log('l1 gateway', l1GatewayAddr);
+        console.log('l2 gateway', l2GatewayAddr);
 
-            let l1GatewayAddr =  readDeployContract(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + chainL1GatewayInfo.net, logName.DEPLOY_GATEWAY);
-            let l2GatewayAddr =  readDeployContract(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_GATEWAY, chainL1GatewayInfo.net);
-            console.log('l1 gateway', l1GatewayAddr);
-            console.log('l2 gateway', l2GatewayAddr);
+        const contractFactory = await hardhat.ethers.getContractFactory(chainL1GatewayInfo.contractName);
+        const contract = await contractFactory.attach(l1GatewayAddr);
 
-            const contractFactory = await hardhat.ethers.getContractFactory(chainL1GatewayInfo.contractName);
-            const contract = await contractFactory.attach(l1GatewayAddr);
-
-            const tx = await contract.connect(governor).setRemoteGateway(l2GatewayAddr);
-            await tx.wait();
-            console.log("tx:", tx.hash);
-        }
+        const tx = await contract.connect(governor).setRemoteGateway(l2GatewayAddr);
+        await tx.wait();
+        console.log("tx:", tx.hash);
     });
 
 task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")

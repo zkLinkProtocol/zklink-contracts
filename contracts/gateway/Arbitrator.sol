@@ -55,7 +55,7 @@ contract Arbitrator is Config, OwnableUpgradeable, UUPSUpgradeable, IArbitrator{
 
     function receiveSlaverSyncHash(bytes32 syncHash) external override {
         uint8 chainId = l1GatewayChainMap[msg.sender];
-        require(chainId > 0, "Caller is not slaver chain l1 gateway");
+        require(chainId > 0 && chainId != MASTER_CHAIN_ID, "Caller is not slaver chain l1 gateway");
         synchronizedChains[chainId] = syncHash;
         emit ReceiveSlaverSyncHash(chainId, syncHash);
     }

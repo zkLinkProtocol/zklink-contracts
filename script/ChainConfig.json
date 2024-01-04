@@ -30,9 +30,8 @@
       "chainId": 101,
       "address": "0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675"
     },
-    "l1Gateway": [
-      {
-        "net": "LINEA",
+    "l1Gateway": {
+      "LINEA": {
         "contractName": "LineaL1Gateway",
         "initializeParams": [
           "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -40,7 +39,7 @@
           "0x504A330327A089d8364C4ab3811Ee26976d388ce"
         ]
       }
-    ]
+    }
   },
   "ZKSYNC": {
     "mainnet": true,
@@ -177,9 +176,8 @@
       "chainId": 10121,
       "address": "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23"
     },
-    "l1Gateway": [
-      {
-        "net": "LINEATEST",
+    "l1Gateway": {
+      "LINEATEST": {
         "contractName": "LineaL1Gateway",
         "initializeParams": [
           "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
@@ -187,7 +185,7 @@
           "0x32d123756d32d3ed6580935f8edf416e57b940f4"
         ]
       }
-    ]
+    }
   },
   "SEPOLIA": {
     "mainnet": false,
