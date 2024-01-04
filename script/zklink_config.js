@@ -1,5 +1,5 @@
 // zkLink chain info
-const zkLinkConfig = require("./ZkLinkConfig.json");
+const zkLinkConfig = require("./ChainConfig.json");
 
 function getChainConfig(zkLinkConfig, chainId, mainnet) {
     for (let [net, chainConfig] of Object.entries(zkLinkConfig)) {
