@@ -377,8 +377,20 @@ task("setL1RemoteGateway", "Set l2 gateway address to l1 gateway")
         const governor = await hardhat.ethers.getSigner(governorAddress);
         console.log('governor', governor.address);
 
+        const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
         for (const chainL1GatewayInfo of l1GatewayInfo) {
             console.log('set l2 gateway for', chainL1GatewayInfo.net);
+            const targetChainConfig = zkLinkConfig[chainL1GatewayInfo.net];
+            if (targetChainConfig === undefined) {
+                console.log('target chain config not exist', chainL1GatewayInfo.net);
+                continue;
+            }
+            const chainIndex = 1 << targetChainConfig.zkLinkChainId - 1;
+            if ((chainIndex & ALL_CHAINS) !== chainIndex) {
+                console.log('skip target chain', chainL1GatewayInfo.net);
+                continue;
+            }
+
             let l1GatewayAddr =  readDeployContract(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + chainL1GatewayInfo.net, logName.DEPLOY_GATEWAY);
             let l2GatewayAddr =  readDeployContract(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_GATEWAY, chainL1GatewayInfo.net);
             console.log('l1 gateway', l1GatewayAddr);

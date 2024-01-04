@@ -25,10 +25,21 @@ task("deployL1Gateway", "Deploy L1 Gateway")
           return;
       }
 
+      const ALL_CHAINS = hardhat.config.solpp.defs.ALL_CHAINS;
       for (const chainL1GatewayInfo of l1GatewayInfo) {
           const { net, contractName, initializeParams } = chainL1GatewayInfo;
-          const { deployLogPath, deployLog } = createOrGetDeployLog(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + net);
+          const targetChainConfig = zkLinkConfig[net];
+          if (targetChainConfig === undefined) {
+              console.log('target chain config not exist', net);
+              continue;
+          }
+          const chainIndex = 1 << targetChainConfig.zkLinkChainId - 1;
+          if ((chainIndex & ALL_CHAINS) !== chainIndex) {
+              console.log('skip target chain', net);
+              continue;
+          }
 
+          const { deployLogPath, deployLog } = createOrGetDeployLog(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + net);
           // deploy l1 gateway
           let gatewayAddr;
           if (!(logName.DEPLOY_GATEWAY in deployLog) || force) {
