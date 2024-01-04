@@ -36,7 +36,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
 
         const {deployLogPath,deployLog} = createOrGetDeployLog(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX);
 
-        deployLog[logName.DEPLOY_LOG_DEPLOYER] = contractDeployer.deployerWallet.address;
+        deployLog[logName.DEPLOY_LOG_GOVERNOR] = contractDeployer.deployerWallet.address;
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
         // deploy lz bridge

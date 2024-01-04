@@ -104,7 +104,7 @@ task("configLayerZeroBridge", "Set chain destination address for layerzero bridg
         }
 
         const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
-        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const governorAddress = readDeployLogField(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
         console.log('bridge', bridgeAddr);
@@ -387,11 +387,12 @@ task("setL1RemoteGateway", "Set l2 gateway address to l1 gateway")
             return;
         }
 
-        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const l1GatewayLogName = logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + l2Network;
+        const governorAddress = readDeployLogField(l1GatewayLogName, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
         console.log('governor', governor.address);
 
-        let l1GatewayAddr =  readDeployContract(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + l2Network, logName.DEPLOY_GATEWAY);
+        let l1GatewayAddr =  readDeployContract(l1GatewayLogName, logName.DEPLOY_GATEWAY);
         let l2GatewayAddr =  readDeployContract(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_GATEWAY, l2Network);
         console.log('l1 gateway', l1GatewayAddr);
         console.log('l2 gateway', l2GatewayAddr);
@@ -425,7 +426,7 @@ task("setL2RemoteGateway", "set l1 gateway address to l2 gateway")
         }
         let l1GatewayAddr =  readDeployContract(logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + process.env.NET, logName.DEPLOY_GATEWAY, ethConfig.net);
         let l2GatewayAddr =  readDeployContract(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_GATEWAY);
-        const governorAddress = readDeployLogField(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const governorAddress = readDeployLogField(logName.DEPLOY_L2_GATEWAY_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
         console.log('l1 gateway', l1GatewayAddr);
