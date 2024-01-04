@@ -373,13 +373,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
     function estimateConfirmBlockFee(uint32 blockNumber) external view returns (uint totalNativeFee) {
         totalNativeFee = 0;
-        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
-            uint8 chainId = i + 1;
-            if (chainId == MASTER_CHAIN_ID) {
-                continue;
-            }
+        for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
             uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
+                if (chainId == MASTER_CHAIN_ID) {
+                    continue;
+                }
                 ISyncService syncService = chainSyncServiceMap[chainId];
                 uint nativeFee = syncService.estimateConfirmBlockFee(chainId, blockNumber);
                 totalNativeFee += nativeFee;
@@ -394,13 +393,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // send confirm message to slaver chains
         uint32 blockNumber = _block.blockNumber;
         uint256 leftMsgValue = msg.value;
-        for (uint8 i = 0; i < MAX_CHAIN_ID; ++i) {
-            uint8 chainId = i + 1;
-            if (chainId == MASTER_CHAIN_ID) {
-                continue;
-            }
+        for (uint8 chainId = MIN_CHAIN_ID; chainId <= MAX_CHAIN_ID; ++chainId) {
             uint256 chainIndex = 1 << chainId - 1;
             if (chainIndex & ALL_CHAINS == chainIndex) {
+                if (chainId == MASTER_CHAIN_ID) {
+                    continue;
+                }
                 ISyncService syncService = chainSyncServiceMap[chainId];
                 uint nativeFee = syncService.estimateConfirmBlockFee(chainId, blockNumber);
                 require(leftMsgValue >= nativeFee, "n1");
