@@ -79,20 +79,25 @@ if (process.env.NET !== undefined) {
   if (netConfig.etherscan !== undefined) {
     hardhatUserConfig.etherscan = netConfig.etherscan;
   }
-} else if (process.env.MASTER_UNITTEST !== undefined) {
+} else if (process.env.MASTER === "true") {
   hardhatUserConfig.solpp.defs.CHAIN_ID = 1;
   hardhatUserConfig.solpp.defs.MAX_CHAIN_ID = 4;
   hardhatUserConfig.solpp.defs.ALL_CHAINS = 11; // [1,3,4]
   hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
-} else if (process.env.SLAVER_UNITTEST !== undefined) {
+} else if (process.env.MASTER === "false") {
   hardhatUserConfig.solpp.defs.CHAIN_ID = 2;
   hardhatUserConfig.solpp.defs.MAX_CHAIN_ID = 4;
   hardhatUserConfig.solpp.defs.ALL_CHAINS = 11; // [1,3,4]
   hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID = 1;
 }
+if (process.env.SYNC_TYPE !== undefined) {
+  hardhatUserConfig.solpp.defs.SYNC_TYPE = process.env.SYNC_TYPE;
+}
 
 hardhatUserConfig.isMasterChain =
   hardhatUserConfig.solpp.defs.CHAIN_ID ===
   hardhatUserConfig.solpp.defs.MASTER_CHAIN_ID;
+
+hardhatUserConfig.syncType = hardhatUserConfig.solpp.defs.SYNC_TYPE;
 
 module.exports = hardhatUserConfig;
