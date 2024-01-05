@@ -5,17 +5,11 @@ import {ILineaGateway} from "./ILineaGateway.sol";
 import {IL1Gateway} from "./IL1Gateway.sol";
 
 interface ILineaL1Gateway is IL1Gateway, ILineaGateway {
-    event Deposit(uint32 indexed txNonce, address token, uint256 amount, bytes32 zklinkAddress, uint8 subAccountId, bool _mapping);
-    event ClaimedWithdrawETH(address _receiver, uint256 _amount);
-    event ClaimedWithdrawERC20(address _receiver, address _token, uint256 _amount);
-    event SetArbitrator(address arbitrator);
-    event SetFee(uint64 fee);
-    event WithdrawFee(address receiver, uint256 amount);
-
     /// @notice Deposit ETH to zkLink on Linea
+    /// @param _amount The amount to deposit
     /// @param _zkLinkAddress The zkLink address deposited to
     /// @param _subAccountId The sub account id
-    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable;
+    function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable;
 
     /// @notice Deposit ERC20 to zkLink on Linea
     /// @param _token The token on L1

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -13,8 +9,9 @@ import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 
 import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
+import {BaseGateway} from "./BaseGateway.sol";
 
-abstract contract LineaGateway is OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ILineaGateway {
+abstract contract LineaGateway is BaseGateway, ILineaGateway {
     using SafeERC20 for IERC20;
 
     /// @notice Linea message service on local chain
@@ -26,15 +23,12 @@ abstract contract LineaGateway is OwnableUpgradeable, UUPSUpgradeable, Reentranc
     /// @notice Linea USDC bridge on local chain
     IUSDCBridge public usdcBridge;
 
-    /// @notice Gateway address on remote chain
-    address public remoteGateway;
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[47] private __gap;
 
     /// @dev Modifier to make sure the caller is the known message service.
     modifier onlyMessageService() {
@@ -49,21 +43,15 @@ abstract contract LineaGateway is OwnableUpgradeable, UUPSUpgradeable, Reentranc
     }
 
     function __LineaGateway_init(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) internal onlyInitializing {
+        __BaseGateway_init();
         __LineaGateway_init_unchained(_messageService, _tokenBridge, _usdcBridge);
     }
 
     function __LineaGateway_init_unchained(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) internal onlyInitializing {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-        __ReentrancyGuard_init();
-        __Pausable_init();
-
         messageService = _messageService;
         tokenBridge = _tokenBridge;
         usdcBridge = _usdcBridge;
     }
-
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function claimETH(uint256 _value, bytes calldata _callData, uint256 _nonce) external override nonReentrant whenNotPaused {
         // no fee on remote chain
@@ -81,23 +69,6 @@ abstract contract LineaGateway is OwnableUpgradeable, UUPSUpgradeable, Reentranc
         // execute command
         // no value and no fee on remote chain
         messageService.claimMessage(remoteGateway, address(this), 0, 0, payable(msg.sender), _cbCallData, _cbNonce);
-    }
-
-    /// @notice Set remote Gateway address
-    /// @param _remoteGateway remote gateway address
-    function setRemoteGateway(address _remoteGateway) external onlyOwner {
-        remoteGateway = _remoteGateway;
-        emit SetRemoteGateway(_remoteGateway);
-    }
-
-    /// @dev Pause the contract, can only be called by the owner
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /// @dev Unpause the contract, can only be called by the owner
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     /// @dev Bridge token to remote gateway
