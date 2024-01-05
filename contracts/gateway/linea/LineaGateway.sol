@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IMessageService} from "../interfaces/linea/IMessageService.sol";
-import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
-import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
+import {IMessageService} from "../../interfaces/linea/IMessageService.sol";
+import {IUSDCBridge} from "../../interfaces/linea/IUSDCBridge.sol";
+import {ITokenBridge} from "../../interfaces/linea/ITokenBridge.sol";
 
-import {ILineaGateway} from "../interfaces/ILineaGateway.sol";
-import {BaseGateway} from "./BaseGateway.sol";
+import {ILineaGateway} from "../../interfaces/linea/ILineaGateway.sol";
+import {BaseGateway} from "../BaseGateway.sol";
 
 abstract contract LineaGateway is BaseGateway, ILineaGateway {
     using SafeERC20 for IERC20;

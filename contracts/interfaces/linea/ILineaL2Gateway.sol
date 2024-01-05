@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
-import {IL2Gateway} from "./IL2Gateway.sol";
+import {IL2Gateway} from "../IL2Gateway.sol";
 import {ILineaGateway} from "./ILineaGateway.sol";
 
 interface ILineaL2Gateway is ILineaGateway, IL2Gateway {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {ILineaGateway} from "./ILineaGateway.sol";
-import {IL1Gateway} from "./IL1Gateway.sol";
+import {IL1Gateway} from "../IL1Gateway.sol";
 
 interface ILineaL1Gateway is IL1Gateway, ILineaGateway {
     /// @notice Deposit ETH to zkLink on Linea

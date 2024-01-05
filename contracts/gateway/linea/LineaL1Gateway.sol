@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
-import {IL2Gateway} from "../interfaces/IL2Gateway.sol";
-import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
-import {IMessageService} from "../interfaces/linea/IMessageService.sol";
-import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
-import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
+import {ILineaL2Gateway} from "../../interfaces/linea/ILineaL2Gateway.sol";
+import {ILineaL1Gateway} from "../../interfaces/linea/ILineaL1Gateway.sol";
+import {IMessageService} from "../../interfaces/linea/IMessageService.sol";
+import {IUSDCBridge} from "../../interfaces/linea/IUSDCBridge.sol";
+import {ITokenBridge} from "../../interfaces/linea/ITokenBridge.sol";
+import {IL2Gateway} from "../../interfaces/IL2Gateway.sol";
 import {LineaGateway} from "./LineaGateway.sol";
-import {L1BaseGateway} from "./L1BaseGateway.sol";
+import {L1BaseGateway} from "../L1BaseGateway.sol";
 
 contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
     using SafeERC20 for IERC20;
