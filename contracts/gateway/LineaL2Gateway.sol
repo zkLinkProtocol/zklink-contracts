@@ -11,23 +11,16 @@ import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
 import {IZkLink} from "../interfaces/IZkLink.sol";
 import {LineaGateway} from "./LineaGateway.sol";
+import {L2BaseGateway} from "./L2BaseGateway.sol";
 
-contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
+contract LineaL2Gateway is L2BaseGateway, LineaGateway, ILineaL2Gateway {
     using SafeERC20 for IERC20;
 
-    /// @notice The zkLink contract
-    IZkLink public zkLink;
-
-    /// @dev Ensure withdraw come from zkLink
-    modifier onlyZkLink() {
-        require(msg.sender == address(zkLink), "Not zkLink contract");
-        _;
-    }
+    event ClaimedDeposit(uint32 indexed _txNonce);
 
     function initialize(IZkLink _zkLink, IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
+        __L2BaseGateway_init(_zkLink);
         __LineaGateway_init(_messageService, _tokenBridge, _usdcBridge);
-
-        zkLink = _zkLink;
     }
 
     function claimETHCallback(uint32 _txNonce, bytes32 _zkLinkAddress, uint8 _subAccountId, uint256 _amount) external payable onlyMessageService onlyRemoteGateway {
@@ -52,12 +45,20 @@ contract LineaL2Gateway is LineaGateway, ILineaL2Gateway {
         zkLink.receiveBlockConfirmation(_blockNumber);
     }
 
+    function estimateWithdrawETHFee(address /**_owner**/, uint128 /**_amount**/, uint32 /**_accountIdOfNonce**/, uint8 /**_subAccountIdOfNonce**/, uint32 /**_nonce**/, uint16 /**_fastWithdrawFeeRate**/) external view returns (uint256 nativeFee) {
+        nativeFee = messageService.minimumFeeInWei();
+    }
+
     function withdrawETH(address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == _amount + coinbaseFee, "Invalid fee");
 
         bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimETHCallback, (_owner, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
+    }
+
+    function estimateWithdrawERC20Fee(address /**_owner**/, address /**_token**/, uint128 /**_amount**/, uint32 /**_accountIdOfNonce**/, uint8 /**_subAccountIdOfNonce**/, uint32 /**_nonce**/, uint16 /**_fastWithdrawFeeRate**/) external view returns (uint256 nativeFee) {
+        nativeFee = messageService.minimumFeeInWei() * 2;
     }
 
     function withdrawERC20(address _owner, address _token, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external payable override onlyZkLink whenNotPaused {

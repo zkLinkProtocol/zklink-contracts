@@ -523,6 +523,15 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     }
     // #endif
     // =======================Withdraw to L1======================
+    /// @notice Estimate the fee to withdraw token to L1 for user by gateway
+    function estimateWithdrawToL1Fee(address owner, address token, uint128 amount, uint16 fastWithdrawFeeRate, uint32 accountIdOfNonce, uint8 subAccountIdOfNonce, uint32 nonce) public view returns (uint256 nativeFee) {
+        if (token == ETH_ADDRESS) {
+            nativeFee = gateway.estimateWithdrawETHFee(owner, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
+        } else {
+            nativeFee = gateway.estimateWithdrawERC20Fee(owner, token, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
+        }
+    }
+
     /// @notice Withdraw token to L1 for user by gateway
     /// @param owner User receive token on L1
     /// @param token Token address
@@ -537,6 +546,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         bytes32 withdrawHash = getWithdrawHash(accountIdOfNonce, subAccountIdOfNonce, nonce, owner, token, amount, fastWithdrawFeeRate);
         require(pendingL1Withdraws[withdrawHash] == true, "M0");
 
+        // ensure supply fee
+        uint256 fee = estimateWithdrawToL1Fee(owner, token, amount, fastWithdrawFeeRate, accountIdOfNonce, subAccountIdOfNonce, nonce);
+        require(msg.value >= fee, "M1");
+
         // ===Effects===
         pendingL1Withdraws[withdrawHash] = false;
 
@@ -544,11 +557,19 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // transfer token to gateway
         // send msg.value as bridge fee to gateway
         if (token == ETH_ADDRESS) {
-            gateway.withdrawETH{value: msg.value + amount}(owner, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
+            gateway.withdrawETH{value: fee + amount}(owner, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         } else {
             IERC20(token).safeApprove(address(gateway), amount);
-            gateway.withdrawERC20{value: msg.value}(owner, token, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
+            gateway.withdrawERC20{value: fee}(owner, token, amount, accountIdOfNonce, subAccountIdOfNonce, nonce, fastWithdrawFeeRate);
         }
+
+        uint256 leftMsgValue = msg.value - fee;
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "M2");
+        }
+
         emit WithdrawalL1(withdrawHash);
     }
 }

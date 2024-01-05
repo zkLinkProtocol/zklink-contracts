@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
+import {IL2Gateway} from "../interfaces/IL2Gateway.sol";
 import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
 import {IMessageService} from "../interfaces/linea/IMessageService.sol";
 import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
@@ -107,7 +108,7 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         uint256 coinbaseFee = estimateConfirmBlockFee(blockNumber);
         require(msg.value == coinbaseFee, "Invalid fee");
 
-        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimBlockConfirmation, (blockNumber));
+        bytes memory callData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
     }
 
