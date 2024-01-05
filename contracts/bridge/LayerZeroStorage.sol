@@ -4,15 +4,13 @@ pragma solidity ^0.8.0;
 
 import "./ILayerZeroEndpoint.sol";
 import "../interfaces/IZkLink.sol";
+import {Config} from "../zksync/Config.sol";
 
 /// @title LayerZero bridge storage
 /// @author zk.link
 /// @dev Do not initialize any variables of this contract
 /// Do not break the alignment of contract storage
-contract LayerZeroStorage {
-    /// @dev Master chain id defined by ZkLink
-    uint8 internal constant MASTER_CHAIN_ID = $(MASTER_CHAIN_ID);
-
+contract LayerZeroStorage is Config {
     /// @notice zklink contract address
     IZkLink public zklink;
     /// @notice LayerZero endpoint that used to send and receive message

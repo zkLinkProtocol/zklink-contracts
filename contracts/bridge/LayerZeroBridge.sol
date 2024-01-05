@@ -122,7 +122,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         // unpack payload
         uint8 zkLinkChainId = lzChainIdToZKLinkChainId[srcChainId];
         require(zkLinkChainId > 0, "zkLink chain id not config");
-        if (zkLinkChainId == MASTER_CHAIN_ID) {
+        if (CHAIN_ID == MASTER_CHAIN_ID) {
             bytes32 syncHash = abi.decode(payload, (bytes32));
             zklink.receiveSyncHash(zkLinkChainId, syncHash);
         } else {
