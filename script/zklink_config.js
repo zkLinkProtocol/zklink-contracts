@@ -1,9 +1,9 @@
 // zkLink chain info
 const zkLinkConfig = require("./ChainConfig.json");
 
-function getChainConfig(zkLinkConfig, chainId, mainnet) {
+function getChainConfig(zkLinkConfig, chainIdOrNet, mainnet) {
     for (let [net, chainConfig] of Object.entries(zkLinkConfig)) {
-        if (chainConfig.zkLinkChainId === chainId && chainConfig.mainnet === mainnet) {
+        if ((chainConfig.zkLinkChainId === chainIdOrNet || net === chainIdOrNet) && chainConfig.mainnet === mainnet) {
             return {
                 net: net,
                 chainConfig: chainConfig

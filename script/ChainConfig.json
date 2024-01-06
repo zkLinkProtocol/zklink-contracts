@@ -38,13 +38,6 @@
           "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
           "0x504A330327A089d8364C4ab3811Ee26976d388ce"
         ]
-      },
-      "ZKSYNC": {
-        "contractName": "ZkSyncL1Gateway",
-        "initializeParams": [
-          "0x32400084c286cf3e17e7b677ea9583e60a000324",
-          "0x57891966931Eb4Bb6FB81430E6cE0A03AAbDe063"
-        ]
       }
     }
   },
@@ -54,12 +47,6 @@
     "layerZero": {
       "chainId": 165,
       "address": "0x9b896c0e23220469C7AE69cb4BbAE391eAa4C8da"
-    },
-    "l2Gateway": {
-      "contractName": "ZkSyncL2Gateway",
-      "initializeParams": [
-        "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102"
-      ]
     }
   },
   "SCROLL": {
@@ -197,13 +184,6 @@
           "0x2D8b29213cCE9DeF01A01718078950C429F9A806",
           "0x32d123756d32d3ed6580935f8edf416e57b940f4"
         ]
-      },
-      "ZKSYNCTEST": {
-        "contractName": "ZkSyncL1Gateway",
-        "initializeParams": [
-          "0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319",
-          "0x927DdFcc55164a59E0F33918D13a2D559bC10ce7"
-        ]
       }
     }
   },
@@ -221,12 +201,6 @@
     "layerZero": {
       "chainId": 10165,
       "address": "0x093D2CF57f764f09C3c2Ac58a42A2601B8C79281"
-    },
-    "l2Gateway": {
-      "contractName": "ZkSyncL2Gateway",
-      "initializeParams": [
-        "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b"
-      ]
     }
   },
   "SCROLLTEST": {

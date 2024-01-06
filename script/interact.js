@@ -167,6 +167,54 @@ task("configLayerZeroBridge", "Set chain destination address for layerzero bridg
         }
     });
 
+task("updateLayerZeroBridge", "Update chain destination address for layerzero bridge")
+    .addParam("targetNet", "The target net name")
+    .setAction(async (taskArgs, hardhat) => {
+        const chainInfo = zkLinkConfig[process.env.NET];
+        if (chainInfo === undefined) {
+            console.log('current net not support');
+            return;
+        }
+
+        const lzInfo = chainInfo.layerZero;
+        if (lzInfo === undefined) {
+            console.log('layerzero not support current net');
+            return;
+        }
+
+        const targetNet = taskArgs.targetNet;
+        console.log('target net', targetNet);
+        let targetConfig = getChainConfig(zkLinkConfig, targetNet, chainInfo.mainnet);
+        if (targetConfig.chainConfig === undefined) {
+            console.log("target chain config not found");
+            return;
+        }
+        const targetLayerZeroConfig = targetConfig.layerZero;
+        if (targetLayerZeroConfig === undefined) {
+            console.log(`layerzero not support target chain`);
+            return;
+        }
+
+        const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
+        const governorAddress = readDeployLogField(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
+        const governor = await hardhat.ethers.getSigner(governorAddress);
+
+        console.log('bridge', bridgeAddr);
+        console.log('governor', governor.address);
+
+        const balance = await hardhat.ethers.provider.getBalance(governor.address);
+        console.log('governor balance', hardhat.ethers.formatEther(balance));
+
+        const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
+        const bridgeContract = bridgeFactory.attach(bridgeAddr);
+
+        const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, targetNet);
+        console.log("set destination...", dstBridgeAddr);
+        const tx1 = await bridgeContract.connect(governor).setDestination(targetConfig.zkLinkChainId, targetLayerZeroConfig.chainId, dstBridgeAddr);
+        await tx1.wait();
+        console.log('set destination tx hash:', tx1.hash);
+    });
+
 task("addBridge", "Add bridge to zkLink")
     .addParam("bridge", "The bridge address (default get from deploy log)", undefined, types.string, true)
     .setAction(async (taskArgs, hardhat) => {

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyContractCode, getDeployLog } = require('./utils');
+const { verifyContractCode, getDeployLog, ChainContractDeployer} = require('./utils');
 const logName = require('./deploy_log_name');
 
 task("upgradeZkLink", "Upgrade zkLink")
@@ -14,22 +14,10 @@ task("upgradeZkLink", "Upgrade zkLink")
         }
         console.log('is master chain?', isMasterChain);
 
-        const network = hardhat.network;
-        const isZksync = network.zksync !== undefined && network.zksync;
-        console.log('is zksync?', isZksync);
-        // use the first account of accounts in the hardhat network config as the deployer
-        const deployerKey = hardhat.network.config.accounts[0];
-        let deployerWallet;
-        let zkSyncDeployer;
-        if (isZksync) {
-            const { Wallet: ZkSyncWallet, Provider: ZkSyncProvider } = require("../zksync/node_modules/zksync-ethers");
-            const { Deployer: ZkSyncDeployer } = require("../zksync/node_modules/@matterlabs/hardhat-zksync-deploy");
-            const zkSyncProvider = new ZkSyncProvider(hardhat.network.config.url);
-            deployerWallet = new ZkSyncWallet(deployerKey, zkSyncProvider);
-            zkSyncDeployer = new ZkSyncDeployer(hardhat, deployerWallet);
-        } else {
-            [deployerWallet] = await hardhat.ethers.getSigners();
-        }
+        const contractDeployer = new ChainContractDeployer(hardhat);
+        await contractDeployer.init();
+        const deployerWallet = contractDeployer.deployerWallet;
+
         let upgradeVerifier = taskArgs.upgradeVerifier;
         let upgradeZkLink = taskArgs.upgradeZkLink;
         let skipVerify = taskArgs.skipVerify;
@@ -72,9 +60,7 @@ task("upgradeZkLink", "Upgrade zkLink")
             if (upgradeVerifier) {
                 if (isMasterChain) {
                     console.log('deploy verifier target...');
-                    const verifierFactory = await hardhat.ethers.getContractFactory('Verifier');
-                    let verifier = await verifierFactory.connect(deployerWallet).deploy();
-                    await verifier.waitForDeployment();
+                    const verifier = await contractDeployer.deployContract('Verifier', []);
                     const verifierTargetAddr = await verifier.getAddress();
                     deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifierTargetAddr;
                     console.log('verifier target', verifierTargetAddr);
@@ -90,15 +76,7 @@ task("upgradeZkLink", "Upgrade zkLink")
             // zkLink
             if (upgradeZkLink) {
                 console.log('deploy periphery target...');
-                let periphery;
-                if (isZksync) {
-                    const peripheryArtifact = await zkSyncDeployer.loadArtifact('ZkLinkPeriphery');
-                    periphery = await zkSyncDeployer.deploy(peripheryArtifact);
-                } else {
-                    const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
-                    periphery = await peripheryFactory.connect(deployerWallet).deploy();
-                }
-                await periphery.waitForDeployment();
+                let periphery = await contractDeployer.deployContract('ZkLinkPeriphery', []);
                 const peripheryTargetAddr = await periphery.getAddress();
                 deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = peripheryTargetAddr;
                 console.log('periphery target', peripheryTargetAddr);
@@ -108,15 +86,7 @@ task("upgradeZkLink", "Upgrade zkLink")
                 }
 
                 console.log('deploy zkLink target...');
-                let zkLink;
-                if (isZksync) {
-                    const zkLinkArtifact = await zkSyncDeployer.loadArtifact('ZkLink');
-                    zkLink = await zkSyncDeployer.deploy(zkLinkArtifact, [peripheryTargetAddr]);
-                } else {
-                    const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
-                    zkLink = await zkLinkFactory.connect(deployerWallet).deploy(peripheryTargetAddr);
-                }
-                await zkLink.waitForDeployment();
+                let zkLink = await contractDeployer.deployContract('ZkLink', [peripheryTargetAddr]);
                 const zkLinkTargetAddr = await zkLink.getAddress();
                 deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTargetAddr;
                 console.log('zkLink target', zkLinkTargetAddr);
