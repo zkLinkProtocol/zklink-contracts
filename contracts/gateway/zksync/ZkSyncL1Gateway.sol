@@ -56,6 +56,22 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         tokenBridge = _tokenBridge;
     }
 
+    function setFinalizeDepositL2GasLimit(uint256 _finalizeDepositL2GasLimit) external onlyOwner {
+        finalizeDepositL2GasLimit = _finalizeDepositL2GasLimit;
+    }
+
+    function setClaimETHL2GasLimit(uint256 _claimETHL2GasLimit) external onlyOwner {
+        claimETHL2GasLimit = _claimETHL2GasLimit;
+    }
+
+    function setClaimERC20L2GasLimit(uint256 _claimERC20L2GasLimit) external onlyOwner {
+        claimERC20L2GasLimit = _claimERC20L2GasLimit;
+    }
+
+    function setClaimBlockConfirmationL2GasLimit(uint256 _claimBlockConfirmationL2GasLimit) external onlyOwner {
+        claimBlockConfirmationL2GasLimit = _claimBlockConfirmationL2GasLimit;
+    }
+
     function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
         require(_amount > 0, "Invalid eth amount");
@@ -67,7 +83,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
 
         uint32 _txNonce = txNonce;
         bytes memory executeData = abi.encodeCall(IZkSyncL2Gateway.claimETH, (_txNonce, _zkLinkAddress, _subAccountId, _amount));
-        messageService.requestL2Transaction{value: requiredValue}(remoteGateway, _amount, executeData, claimETHL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), msg.sender);
+        messageService.requestL2Transaction{value: requiredValue}(remoteGateway, _amount, executeData, claimETHL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
 
         if (leftMsgValue > 0) {
             // solhint-disable-next-line avoid-low-level-calls
@@ -92,7 +108,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         uint256 leftMsgValue = msg.value;
         uint256 bridgeTokenFee = messageService.l2TransactionBaseCost(tx.gasprice, finalizeDepositL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA);
         require(leftMsgValue >= bridgeTokenFee, "Insufficient fee for bridge token");
-        tokenBridge.deposit{value: bridgeTokenFee}(remoteGateway, _token, _amount, finalizeDepositL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, msg.sender);
+        tokenBridge.deposit{value: bridgeTokenFee}(remoteGateway, _token, _amount, finalizeDepositL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, tx.origin);
         leftMsgValue -= bridgeTokenFee;
 
         // send depositERC20 command to ZkSyncL2Gateway(the second message send to ZkSync)
@@ -100,7 +116,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         require(leftMsgValue >= claimDepositFee, "Insufficient fee for claim token");
         uint32 _txNonce = txNonce;
         bytes memory executeData = abi.encodeCall(IZkSyncL2Gateway.claimERC20, (_txNonce, _token, _amount, _zkLinkAddress, _subAccountId, _mapping));
-        messageService.requestL2Transaction{value: claimDepositFee}(remoteGateway, 0, executeData, claimERC20L2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), msg.sender);
+        messageService.requestL2Transaction{value: claimDepositFee}(remoteGateway, 0, executeData, claimERC20L2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
         leftMsgValue -= claimDepositFee;
 
         if (leftMsgValue > 0) {

@@ -90,10 +90,12 @@ contract ZkSyncL2Gateway is ZkSyncMessageConfig, L2BaseGateway, BaseGateway, IZk
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
 
         // bridge token to remoteGateway(the first message send to L1)
+        IERC20(_token).safeApprove(address(tokenBridge), _amount);
         tokenBridge.withdraw(remoteGateway, _token, _amount);
 
         // send withdrawERC20 command to ZkSyncL1Gateway(the second message send to L1)
         address l1Token = tokenBridge.l1TokenAddress(_token);
+        require(l1Token != address(0), "L1 token not exist");
         bytes memory callData = abi.encodePacked(IZkSyncL1Gateway.finalizeMessage.selector, MESSAGE_WITHDRAW_ERC20, _owner, l1Token, _amount, _accountIdOfNonce, _subAccountIdOfNonce, _nonce, _fastWithdrawFeeRate);
         L2_MESSENGER.sendToL1(callData);
     }
