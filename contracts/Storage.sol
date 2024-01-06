@@ -82,21 +82,21 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @dev Priority Requests mapping (request id - operation)
     /// Contains op type, pubdata and expiration block of unsatisfied requests.
     /// Numbers are in order of requests receiving
-    mapping(uint64 => Operations.PriorityOperation) internal priorityRequests;
+    mapping(uint64 => Operations.PriorityOperation) public priorityRequests;
 
     /// @notice User authenticated fact hashes for some nonce.
     mapping(address => mapping(uint32 => bytes32)) public authFacts;
 
     /// @dev Timer for authFacts entry reset (address, nonce -> timer).
     /// Used when user wants to reset `authFacts` for some nonce.
-    mapping(address => mapping(uint32 => uint256)) internal authFactsResetTimer;
+    mapping(address => mapping(uint32 => uint256)) public authFactsResetTimer;
 
     /// @dev Stored hashed StoredBlockInfo for some block number
-    mapping(uint32 => bytes32) internal storedBlockHashes;
+    mapping(uint32 => bytes32) public storedBlockHashes;
 
     /// @dev Store sync hash for slaver chains
     /// chainId => syncHash
-    mapping(uint8 => bytes32) internal synchronizedChains;
+    mapping(uint8 => bytes32) public synchronizedChains;
 
     /// @notice A set of permitted validators
     mapping(address => bool) public validators;

@@ -6,8 +6,16 @@ import "../interfaces/IL2Gateway.sol";
 
 contract L2GatewayMock is IL2Gateway {
 
+    function estimateWithdrawETHFee(address /**_owner**/, uint128 /**_amount**/, uint32 /**_accountIdOfNonce**/, uint8 /**_subAccountIdOfNonce**/, uint32 /**_nonce**/, uint16 /**_fastWithdrawFeeRate**/) external view returns (uint256 nativeFee) {
+        nativeFee = 0;
+    }
+
     function withdrawETH(address /**_owner*/, uint128 /**_amount*/, uint32 /**_accountIdOfNonce*/, uint8 /**_subAccountIdOfNonce*/, uint32 /**_nonce*/, uint16 /**_fastWithdrawFeeRate*/) external payable {
         // do nothing
+    }
+
+    function estimateWithdrawERC20Fee(address /**_owner**/, address /**_token**/, uint128 /**_amount**/, uint32 /**_accountIdOfNonce**/, uint8 /**_subAccountIdOfNonce**/, uint32 /**_nonce**/, uint16 /**_fastWithdrawFeeRate**/) external view returns (uint256 nativeFee) {
+        nativeFee = 0;
     }
 
     function withdrawERC20(address /**_owner*/, address _token, uint128 _amount, uint32 /**_accountIdOfNonce*/, uint8  /**_subAccountIdOfNonce*/, uint32 /**_nonce*/, uint16 /**_fastWithdrawFeeRate*/) external payable {
@@ -28,6 +36,10 @@ contract L2GatewayMock is IL2Gateway {
     }
 
     function sendMasterSyncHash(uint32, bytes32) external payable {
+        // do nothing
+    }
+
+    function claimBlockConfirmation(uint32 _blockNumber) external {
         // do nothing
     }
 }

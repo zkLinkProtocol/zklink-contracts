@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ILineaL2Gateway} from "../interfaces/ILineaL2Gateway.sol";
-import {ILineaL1Gateway} from "../interfaces/ILineaL1Gateway.sol";
-import {IMessageService} from "../interfaces/linea/IMessageService.sol";
-import {IUSDCBridge} from "../interfaces/linea/IUSDCBridge.sol";
-import {ITokenBridge} from "../interfaces/linea/ITokenBridge.sol";
-import {IArbitrator} from "../interfaces/IArbitrator.sol";
+import {ILineaL2Gateway} from "../../interfaces/linea/ILineaL2Gateway.sol";
+import {ILineaL1Gateway} from "../../interfaces/linea/ILineaL1Gateway.sol";
+import {IMessageService} from "../../interfaces/linea/IMessageService.sol";
+import {IUSDCBridge} from "../../interfaces/linea/IUSDCBridge.sol";
+import {ITokenBridge} from "../../interfaces/linea/ITokenBridge.sol";
+import {IL2Gateway} from "../../interfaces/IL2Gateway.sol";
 import {LineaGateway} from "./LineaGateway.sol";
-import "../ZkLinkAcceptor.sol";
+import {L1BaseGateway} from "../L1BaseGateway.sol";
 
-contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
+contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
     using SafeERC20 for IERC20;
 
     /// @notice L2 claim message gas fee users should pay for
@@ -22,36 +22,34 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
     /// @notice Used to prevent off-chain monitoring events from being lost
     uint32 public txNonce;
 
-    /// @notice The arbitrator to confirm block
-    IArbitrator public arbitrator;
-
-    /// @dev Modifier to make sure the caller is the known arbitrator.
-    modifier onlyArbitrator() {
-        require(msg.sender == address(arbitrator), "Not arbitrator");
-        _;
-    }
+    event Deposit(uint32 indexed txNonce, address token, uint256 amount, bytes32 zklinkAddress, uint8 subAccountId, bool _mapping);
+    event ClaimedWithdrawETH(address _receiver, uint256 _amount);
+    event ClaimedWithdrawERC20(address _receiver, address _token, uint256 _amount);
+    event SetFee(uint64 fee);
+    event WithdrawFee(address receiver, uint256 amount);
 
     function initialize(IMessageService _messageService, ITokenBridge _tokenBridge, IUSDCBridge _usdcBridge) external initializer {
         __LineaGateway_init(_messageService, _tokenBridge, _usdcBridge);
     }
 
-    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
+    function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
-        require(msg.value > fee, "Value too low");
-        uint256 amount = msg.value - fee;
+        require(_amount > 0, "Invalid eth amount");
+        require(msg.value == _amount + fee, "Invalid msg value");
 
         uint32 _txNonce = txNonce;
-        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimETHCallback, (_txNonce, _zkLinkAddress, _subAccountId, amount));
+        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimETHCallback, (_txNonce, _zkLinkAddress, _subAccountId, _amount));
         // transfer no fee to Linea
-        messageService.sendMessage{value: amount}(remoteGateway, 0, callData);
+        messageService.sendMessage{value: _amount}(remoteGateway, 0, callData);
 
-        emit Deposit(_txNonce, ETH_ADDRESS, amount, _zkLinkAddress, _subAccountId, false);
+        emit Deposit(_txNonce, ETH_ADDRESS, _amount, _zkLinkAddress, _subAccountId, false);
         txNonce = _txNonce + 1;
     }
 
     function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable override nonReentrant whenNotPaused {
-        require(msg.value == fee, "Invalid msg value");
+        // ensure amount bridged is not zero
         require(_amount > 0, "Invalid token amount");
+        require(msg.value == fee, "Invalid msg value");
 
         // transfer token from sender to LineaL1Gateway
         uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
@@ -102,22 +100,16 @@ contract LineaL1Gateway is ZkLinkAcceptor, LineaGateway, ILineaL1Gateway {
         arbitrator.receiveMasterSyncHash(_blockNumber, _syncHash);
     }
 
-    function estimateConfirmBlockFee(uint32 /**blockNumber**/) external view returns (uint nativeFee) {
+    function estimateConfirmBlockFee(uint32 /**blockNumber**/) public view returns (uint nativeFee) {
         nativeFee = messageService.minimumFeeInWei();
     }
 
     function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
-        uint256 coinbaseFee = messageService.minimumFeeInWei();
+        uint256 coinbaseFee = estimateConfirmBlockFee(blockNumber);
         require(msg.value == coinbaseFee, "Invalid fee");
 
-        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimBlockConfirmation, (blockNumber));
+        bytes memory callData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
-    }
-
-    /// @notice Set arbitrator
-    function setArbitrator(IArbitrator _arbitrator) external onlyOwner {
-        arbitrator = _arbitrator;
-        emit SetArbitrator(address(_arbitrator));
     }
 
     /// @notice Set deposit fee

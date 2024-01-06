@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface ILineaGateway {
-    event SetRemoteGateway(address remoteGateWay);
-
     /// @notice Claim ETH message
     /// @param _value The value to be transferred to the gateway on local chain from remote chain
     /// @param _callData The `claimETHCallback` encoded call data
