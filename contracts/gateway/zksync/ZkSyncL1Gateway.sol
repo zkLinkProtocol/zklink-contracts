@@ -21,16 +21,16 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
     uint256 public constant REQUIRED_L2_GAS_PRICE_PER_PUBDATA = 800;
 
     /// @dev The gas limit of finalizeDeposit on L2ERC20Bridge
-    uint256 public finalizeDepositL2GasLimit = 1000000;
+    uint256 public finalizeDepositL2GasLimit;
 
     /// @dev The gas limit of claimETH on ZkSyncL2Gateway
-    uint256 public claimETHL2GasLimit = 2000000;
+    uint256 public claimETHL2GasLimit;
 
     /// @dev The gas limit of claimERC20 on ZkSyncL2Gateway
-    uint256 public claimERC20L2GasLimit = 2000000;
+    uint256 public claimERC20L2GasLimit;
 
     /// @dev The gas limit of claimBlockConfirmation on ZkSyncL2Gateway
-    uint256 public claimBlockConfirmationL2GasLimit = 500000;
+    uint256 public claimBlockConfirmationL2GasLimit;
 
     /// @notice ZkSync message service on local chain
     IZkSync public messageService;
@@ -51,6 +51,11 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
 
     function initialize(IZkSync _messageService, IL1Bridge _tokenBridge) external initializer {
         __BaseGateway_init();
+
+        finalizeDepositL2GasLimit = 1000000;
+        claimETHL2GasLimit = 2000000;
+        claimERC20L2GasLimit = 2000000;
+        claimBlockConfirmationL2GasLimit = 500000;
 
         messageService = _messageService;
         tokenBridge = _tokenBridge;

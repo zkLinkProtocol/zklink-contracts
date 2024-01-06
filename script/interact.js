@@ -195,19 +195,27 @@ task("updateLayerZeroBridge", "Update chain destination address for layerzero br
             return;
         }
 
+        const zkLinkProxyAddr = readDeployContract(logName.DEPLOY_ZKLINK_LOG_PREFIX, logName.DEPLOY_LOG_ZKLINK_PROXY);
         const bridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE);
         const governorAddress = readDeployLogField(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_GOVERNOR);
         const governor = await hardhat.ethers.getSigner(governorAddress);
 
+        console.log('zkLink', zkLinkProxyAddr);
         console.log('bridge', bridgeAddr);
         console.log('governor', governor.address);
 
         const balance = await hardhat.ethers.provider.getBalance(governor.address);
         console.log('governor balance', hardhat.ethers.formatEther(balance));
 
+        const peripheryFactory = await hardhat.ethers.getContractFactory('ZkLinkPeriphery');
+        const peripheryContract = peripheryFactory.attach(zkLinkProxyAddr);
+        console.log("set sync service for target net...");
+        const tx = await peripheryContract.connect(governor).setSyncService(targetConfig.zkLinkChainId, bridgeAddr);
+        await tx.wait();
+        console.log('set sync service tx', tx.hash);
+
         const bridgeFactory = await hardhat.ethers.getContractFactory('LayerZeroBridge');
         const bridgeContract = bridgeFactory.attach(bridgeAddr);
-
         const dstBridgeAddr = readDeployContract(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX, logName.DEPLOY_LOG_LZ_BRIDGE, targetNet);
         console.log("set destination...", dstBridgeAddr);
         const tx1 = await bridgeContract.connect(governor).setDestination(targetConfig.zkLinkChainId, targetLayerZeroConfig.chainId, dstBridgeAddr);
