@@ -1,6 +1,6 @@
 const fs = require("fs");
 const { getImplementationAddress } = require("@openzeppelin/upgrades-core");
-const { verifyContractCode, createOrGetDeployLog } = require("./utils");
+const { verifyContractCode, createOrGetDeployLog, ChainContractDeployer, getDeployTx} = require("./utils");
 const logName = require("./deploy_log_name");
 const {zkLinkConfig} = require("./zklink_config");
 
@@ -40,7 +40,9 @@ task("deployL1Gateway", "Deploy L1 Gateway")
       const l1GatewayLogName = logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + targetNetwork;
       const { deployLogPath, deployLog } = createOrGetDeployLog(l1GatewayLogName);
 
-      const [deployerWallet] = await hardhat.ethers.getSigners();
+      const contractDeployer = new ChainContractDeployer(hardhat);
+      await contractDeployer.init();
+      const deployerWallet = contractDeployer.deployerWallet;
       deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
       fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
@@ -48,10 +50,8 @@ task("deployL1Gateway", "Deploy L1 Gateway")
       let gatewayAddr;
       if (!(logName.DEPLOY_GATEWAY in deployLog) || force) {
           console.log('deploy l1 gateway...');
-          const contractFactory = await hardhat.ethers.getContractFactory(chainL1GatewayInfo.contractName);
-          const contract = await hardhat.upgrades.deployProxy(contractFactory, chainL1GatewayInfo.initializeParams, {kind: "uups"});
-          await contract.waitForDeployment();
-          const transaction = await contract.deploymentTransaction().getTransaction();
+          const contract = await contractDeployer.deployProxy(chainL1GatewayInfo.contractName, chainL1GatewayInfo.initializeParams);
+          const transaction = await getDeployTx(contract);
           gatewayAddr = await contract.getAddress();
           deployLog[logName.DEPLOY_GATEWAY] = gatewayAddr;
           deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash;

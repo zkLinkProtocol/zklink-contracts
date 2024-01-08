@@ -12,7 +12,5 @@ ZkLink*.json
 
 #Hardhat files
 cache
-cache-zk
 artifacts
-artifacts-zk
 .openzeppelin

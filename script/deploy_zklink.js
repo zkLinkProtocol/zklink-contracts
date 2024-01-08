@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { verifyContractCode, createOrGetDeployLog, ChainContractDeployer} = require('./utils');
+const { verifyContractCode, createOrGetDeployLog, ChainContractDeployer, getDeployTx} = require('./utils');
 const logName = require('./deploy_log_name');
 
 task("deployZkLink", "Deploy zklink contracts")
@@ -131,8 +131,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if (!(logName.DEPLOY_LOG_ZKLINK_PROXY in deployLog) || force) {
             console.log('deploy zklink proxy...');
             let proxy = await contractDeployer.deployContract('Proxy', [zkLinkTarget, zkLinkInitParams]);
-            const deploymentTransaction = await proxy.deploymentTransaction();
-            const transaction = await deploymentTransaction.getTransaction();
+            const transaction = await getDeployTx(proxy);
             zkLinkProxy = await proxy.getAddress();
             zkLinkDeployTxHash = transaction.hash;
             zkLinkDeployBlockNumber = transaction.blockNumber;

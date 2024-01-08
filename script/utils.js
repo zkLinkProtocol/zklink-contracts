@@ -28,6 +28,19 @@ async function verifyContractCode(hardhat, address, constructorArguments) {
     }
 }
 
+async function getDeployTx(contract) {
+    if (contract.deployTransaction !== undefined) {
+        // ethers v5
+        return await contract.deployTransaction.wait();
+    } else if (contract.deploymentTransaction !== undefined) {
+        // ethers v6
+        const deploymentTransaction = await contract.deploymentTransaction();
+        return await deploymentTransaction.getTransaction();
+    } else {
+        return undefined;
+    }
+}
+
 function createOrGetDeployLog(name) {
     const deployLogPath = getDeployLogPath(name, process.env.NET);
     console.log('deploy log path', deployLogPath);
@@ -119,10 +132,24 @@ class ChainContractDeployer {
         await contract.waitForDeployment();
         return contract;
     }
+
+    async deployProxy(contractName, deployArgs) {
+        let contract;
+        if (this.zksync) {
+            const artifact = await this.zkSyncDeployer.loadArtifact(contractName);
+            contract = await this.hardhat.zkUpgrades.deployProxy(this.deployerWallet, artifact, deployArgs, { initializer: "initialize" });
+        } else {
+            const factory = await this.hardhat.ethers.getContractFactory(contractName, this.deployerWallet);
+            contract = await this.hardhat.upgrades.deployProxy(factory, deployArgs, {kind: "uups"});
+        }
+        await contract.waitForDeployment();
+        return contract;
+    }
 }
 
 module.exports = {
     verifyContractCode,
+    getDeployTx,
     createOrGetDeployLog,
     getDeployLog,
     readDeployContract,
