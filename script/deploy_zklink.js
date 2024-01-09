@@ -42,6 +42,9 @@ task("deployZkLink", "Deploy zklink contracts")
         deployLog[logName.DEPLOY_LOG_VALIDATOR] = validator;
         fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
 
+        const proxyContractName = contractDeployer.getProxyContractName();
+        console.log('use proxy contract name: ', proxyContractName);
+
         // verifier
         let verifierTarget;
         if (!(logName.DEPLOY_LOG_VERIFIER_TARGET in deployLog) || force) {
@@ -70,7 +73,7 @@ task("deployZkLink", "Deploy zklink contracts")
         let verifierTargetInitializationParameters = "0x";
         if (!(logName.DEPLOY_LOG_VERIFIER_PROXY in deployLog) || force) {
             console.log('deploy verifier proxy...');
-            let proxy = await contractDeployer.deployContract('Proxy', [verifierTarget, verifierTargetInitializationParameters]);
+            let proxy = await contractDeployer.deployContract(proxyContractName, [verifierTarget, verifierTargetInitializationParameters]);
             verifierProxy = await proxy.getAddress();
             deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY] = verifierProxy;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
@@ -130,7 +133,7 @@ task("deployZkLink", "Deploy zklink contracts")
         console.log("zklink init params: ", zkLinkInitParams);
         if (!(logName.DEPLOY_LOG_ZKLINK_PROXY in deployLog) || force) {
             console.log('deploy zklink proxy...');
-            let proxy = await contractDeployer.deployContract('Proxy', [zkLinkTarget, zkLinkInitParams]);
+            let proxy = await contractDeployer.deployContract(proxyContractName, [zkLinkTarget, zkLinkInitParams]);
             const transaction = await getDeployTx(proxy);
             zkLinkProxy = await proxy.getAddress();
             zkLinkDeployTxHash = transaction.hash;
@@ -174,7 +177,7 @@ task("deployZkLink", "Deploy zklink contracts")
         // transfer mastership to gatekeeper
         if (!(logName.DEPLOY_LOG_VERIFIER_TRAMSFER_MASTERSHIP in deployLog) || force) {
             console.log('verifier transfer mastership to gatekeeper...');
-            const contractFactory = await hardhat.ethers.getContractFactory('Proxy');
+            const contractFactory = await hardhat.ethers.getContractFactory(proxyContractName);
             const contract = contractFactory.attach(verifierProxy);
             const tx = await contract.connect(deployerWallet).transferMastership(upgradeGatekeeper);
             await tx.wait();
@@ -185,7 +188,7 @@ task("deployZkLink", "Deploy zklink contracts")
 
         if (!(logName.DEPLOY_LOG_ZKLINK_TRAMSFER_MASTERSHIP in deployLog) || force) {
             console.log('zklink transfer mastership to gatekeeper...');
-            const contractFactory = await hardhat.ethers.getContractFactory('Proxy');
+            const contractFactory = await hardhat.ethers.getContractFactory(proxyContractName);
             const contract = contractFactory.attach(zkLinkProxy);
             const tx = await contract.connect(deployerWallet).transferMastership(upgradeGatekeeper);
             await tx.wait();

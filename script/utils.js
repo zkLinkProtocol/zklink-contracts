@@ -120,6 +120,15 @@ class ChainContractDeployer {
         console.log('deployer balance', this.hardhat.ethers.formatEther(balance));
     }
 
+    // To avoid proxy name conflict with '@openzeppelin/contracts/proxy/Proxy.sol:Proxy'
+    getProxyContractName() {
+        if (this.zksync) {
+            return "cache-zk/solpp-generated-contracts/zksync/Proxy.sol:Proxy";
+        } else {
+            return "cache/solpp-generated-contracts/zksync/Proxy.sol:Proxy";
+        }
+    }
+
     async deployContract(contractName, deployArgs) {
         let contract;
         if (this.zksync) {
