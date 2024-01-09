@@ -92,24 +92,23 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         emit ClaimedWithdrawERC20(receiver, targetToken, _amount);
     }
 
+    /// @dev It's the callback when claim slaver sync hash
     function claimSlaverSyncHash(bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveSlaverSyncHash(_syncHash);
     }
 
+    /// @dev It's the callback when claim master sync hash
     function claimMasterSyncHash(uint32 _blockNumber, bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveMasterSyncHash(_blockNumber, _syncHash);
     }
 
-    function estimateConfirmBlockFee(uint32 /**blockNumber**/) public view returns (uint nativeFee) {
-        nativeFee = messageService.minimumFeeInWei();
+    function estimateConfirmBlockFee(uint32 /**blockNumber**/) external pure returns (uint nativeFee) {
+        nativeFee = 0;
     }
 
     function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
-        uint256 coinbaseFee = estimateConfirmBlockFee(blockNumber);
-        require(msg.value == coinbaseFee, "Invalid fee");
-
         bytes memory callData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
-        messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), 0, callData);
     }
 
     /// @notice Set deposit fee

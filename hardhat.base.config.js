@@ -1,13 +1,13 @@
 require("@nomiclabs/hardhat-solpp");
 
 require("./script/deploy_zklink");
-require("./script/upgrade_zklink");
 require("./script/deploy_lz_bridge");
 require("./script/deploy_faucet");
 require("./script/deploy_account_mock");
 require("./script/interact");
 require("./script/deploy_l1_gateway");
 require("./script/deploy_l2_gateway");
+require("./script/deploy_arbitrator");
 require("./script/deloy_multicall");
 
 /**

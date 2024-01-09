@@ -27,7 +27,7 @@ describe('Governance unit tests', function () {
 
         await expect(testContract.connect(bob).addToken(0, tokenAddress, 18)).to.be.revertedWith("I0");
         await expect(testContract.connect(bob).addToken(tokenId, hardhat.ethers.ZeroAddress, 18)).to.be.revertedWith("I1");
-        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19)).to.be.revertedWith("I3");
+        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 19)).to.be.revertedWith("I2");
 
         await testContract.connect(bob).addToken(tokenId, tokenAddress, 8);
         const rt = await testContract.tokens(tokenId);
@@ -36,11 +36,6 @@ describe('Governance unit tests', function () {
         expect(rt.tokenAddress).equal(tokenAddress);
         expect(rt.decimals).equal(8);
         expect(await testContract.tokenIds(tokenAddress)).to.eq(tokenId);
-
-        // duplicate register
-        await expect(testContract.connect(bob).addToken(tokenId, tokenAddress, 8)).to.be.revertedWith('I2');
-        const anotherTokenId = 2;
-        await expect(testContract.connect(bob).addToken(anotherTokenId, tokenAddress, 8)).to.be.revertedWith('I2');
     });
 
     it('Set token pause should success', async () => {

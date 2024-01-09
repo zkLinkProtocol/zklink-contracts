@@ -145,6 +145,19 @@ class ChainContractDeployer {
         await contract.waitForDeployment();
         return contract;
     }
+
+    async upgradeProxy(contractName, contractAddr) {
+        let contract;
+        if (this.zksync) {
+            const artifact = await this.zkSyncDeployer.loadArtifact(contractName);
+            contract = await this.hardhat.zkUpgrades.upgradeProxy(this.deployerWallet, contractAddr, artifact);
+        } else {
+            const factory = await this.hardhat.ethers.getContractFactory(contractName, this.deployerWallet);
+            contract = await this.hardhat.upgrades.upgradeProxy(contractAddr, factory);
+        }
+        await contract.waitForDeployment();
+        return contract;
+    }
 }
 
 module.exports = {

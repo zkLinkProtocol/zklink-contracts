@@ -41,6 +41,7 @@ contract LineaL2Gateway is L2BaseGateway, LineaGateway, ILineaL2Gateway {
         emit ClaimedDeposit(_txNonce);
     }
 
+    /// @dev It's the callback when claim block confirmation
     function claimBlockConfirmation(uint32 _blockNumber) external override onlyMessageService onlyRemoteGateway{
         zkLink.receiveBlockConfirmation(_blockNumber);
     }
