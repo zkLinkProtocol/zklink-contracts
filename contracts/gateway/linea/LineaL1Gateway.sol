@@ -92,10 +92,12 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         emit ClaimedWithdrawERC20(receiver, targetToken, _amount);
     }
 
+    /// @dev It's the callback when claim slaver sync hash
     function claimSlaverSyncHash(bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveSlaverSyncHash(_syncHash);
     }
 
+    /// @dev It's the callback when claim master sync hash
     function claimMasterSyncHash(uint32 _blockNumber, bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveMasterSyncHash(_blockNumber, _syncHash);
     }

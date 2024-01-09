@@ -55,7 +55,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         finalizeDepositL2GasLimit = 2000000;
         claimETHL2GasLimit = 3000000;
         claimERC20L2GasLimit = 3000000;
-        claimBlockConfirmationL2GasLimit = 1000000;
+        claimBlockConfirmationL2GasLimit = 2000000;
 
         messageService = _messageService;
         tokenBridge = _tokenBridge;
