@@ -38,11 +38,18 @@ const DEPLOY_L1_GATEWAY_LOG_PREFIX = "deploy_l1_gateway";
 const DEPLOY_L2_GATEWAY_LOG_PREFIX = "deploy_l2_gateway";
 const DEPLOY_GATEWAY = "gateway";
 const DEPLOY_GATEWAY_TARGET = "gatewayTarget";
+const DEPLOY_GATEWAY_TARGET_VERIFIED = "gatewayTargetVerified";
 
 // consumed in deploy_multicall
-const DEPLOY_MULTICALL_LOG_PREFIX = "deploy_multicall"
-const DEPLOY_MULTICALL = "multicall"
-const DEPLOY_MULTICALL_VERIFIED = "multicallVerified"
+const DEPLOY_MULTICALL_LOG_PREFIX = "deploy_multicall";
+const DEPLOY_MULTICALL = "multicall";
+const DEPLOY_MULTICALL_VERIFIED = "multicallVerified";
+
+// consumed in deploy_arbitrator.js
+const DEPLOY_ARBITRATOR_LOG_PREFIX = "deploy_arbitrator";
+const DEPLOY_LOG_ARBITRATOR = "arbitrator";
+const DEPLOY_LOG_ARBITRATOR_TARGET = "arbitratorTarget";
+const DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED = "arbitratorTargetVerified";
 
 module.exports = {
   DEPLOY_ZKLINK_LOG_PREFIX,
@@ -78,7 +85,12 @@ module.exports = {
   DEPLOY_L2_GATEWAY_LOG_PREFIX,
   DEPLOY_GATEWAY,
   DEPLOY_GATEWAY_TARGET,
+  DEPLOY_GATEWAY_TARGET_VERIFIED,
   DEPLOY_MULTICALL_LOG_PREFIX,
   DEPLOY_MULTICALL,
-  DEPLOY_MULTICALL_VERIFIED
+  DEPLOY_MULTICALL_VERIFIED,
+  DEPLOY_ARBITRATOR_LOG_PREFIX,
+  DEPLOY_LOG_ARBITRATOR,
+  DEPLOY_LOG_ARBITRATOR_TARGET,
+  DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED
 };

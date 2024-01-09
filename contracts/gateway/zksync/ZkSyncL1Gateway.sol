@@ -52,10 +52,10 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
     function initialize(IZkSync _messageService, IL1Bridge _tokenBridge) external initializer {
         __BaseGateway_init();
 
-        finalizeDepositL2GasLimit = 1000000;
-        claimETHL2GasLimit = 2000000;
-        claimERC20L2GasLimit = 2000000;
-        claimBlockConfirmationL2GasLimit = 500000;
+        finalizeDepositL2GasLimit = 2000000;
+        claimETHL2GasLimit = 3000000;
+        claimERC20L2GasLimit = 3000000;
+        claimBlockConfirmationL2GasLimit = 1000000;
 
         messageService = _messageService;
         tokenBridge = _tokenBridge;

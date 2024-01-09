@@ -100,16 +100,13 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         arbitrator.receiveMasterSyncHash(_blockNumber, _syncHash);
     }
 
-    function estimateConfirmBlockFee(uint32 /**blockNumber**/) public view returns (uint nativeFee) {
-        nativeFee = messageService.minimumFeeInWei();
+    function estimateConfirmBlockFee(uint32 /**blockNumber**/) external pure returns (uint nativeFee) {
+        nativeFee = 0;
     }
 
     function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
-        uint256 coinbaseFee = estimateConfirmBlockFee(blockNumber);
-        require(msg.value == coinbaseFee, "Invalid fee");
-
         bytes memory callData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
-        messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
+        messageService.sendMessage{value: msg.value}(address(remoteGateway), 0, callData);
     }
 
     /// @notice Set deposit fee

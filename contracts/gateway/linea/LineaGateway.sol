@@ -53,9 +53,14 @@ abstract contract LineaGateway is BaseGateway, ILineaGateway {
         usdcBridge = _usdcBridge;
     }
 
+    function claimMessage(bytes calldata _callData, uint256 _nonce) external nonReentrant whenNotPaused {
+        // no fee and no value on remote chain
+        _claimMessage(0, 0, _callData, _nonce);
+    }
+
     function claimETH(uint256 _value, bytes calldata _callData, uint256 _nonce) external override nonReentrant whenNotPaused {
         // no fee on remote chain
-        messageService.claimMessage(remoteGateway, address(this), 0, _value, payable(msg.sender), _callData, _nonce);
+        _claimMessage(0, _value, _callData, _nonce);
     }
 
     function claimERC20(address _remoteBridge, address _bridge, bytes calldata _bridgeCallData, uint256 _bridgeNonce, bytes calldata _cbCallData, uint256 _cbNonce) external override nonReentrant whenNotPaused {
@@ -68,7 +73,12 @@ abstract contract LineaGateway is BaseGateway, ILineaGateway {
 
         // execute command
         // no value and no fee on remote chain
-        messageService.claimMessage(remoteGateway, address(this), 0, 0, payable(msg.sender), _cbCallData, _cbNonce);
+        _claimMessage(0, 0, _cbCallData, _cbNonce);
+    }
+
+    /// @dev Claim message from remote gateway
+    function _claimMessage(uint _fee, uint _value, bytes calldata _callData, uint256 _nonce) internal {
+        messageService.claimMessage(remoteGateway, address(this), _fee, _value, payable(msg.sender), _callData, _nonce);
     }
 
     /// @dev Bridge token to remote gateway

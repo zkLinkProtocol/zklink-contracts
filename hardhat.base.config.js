@@ -8,6 +8,7 @@ require("./script/deploy_account_mock");
 require("./script/interact");
 require("./script/deploy_l1_gateway");
 require("./script/deploy_l2_gateway");
+require("./script/deploy_arbitrator");
 require("./script/deloy_multicall");
 
 /**

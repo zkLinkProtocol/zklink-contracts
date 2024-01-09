@@ -77,9 +77,68 @@ task("deployL1Gateway", "Deploy L1 Gateway")
       console.log("l1 gateway target", gatewayTargetAddr);
 
       // verify contract
-      if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
+      if ((!(logName.DEPLOY_GATEWAY_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
           await verifyContractCode(hardhat, gatewayTargetAddr, []);
-          deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
+          deployLog[logName.DEPLOY_GATEWAY_TARGET_VERIFIED] = true;
           fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
       }
   });
+
+task("upgradeL1Gateway","Upgrade l1 gateway")
+    .addParam("skipVerify", "Skip verify", false, types.boolean, true)
+    .addParam("targetNetwork", "L2 network name", undefined, types.string, false)
+    .setAction(async (taskArgs,hardhat)=>{
+        let skipVerify = taskArgs.skipVerify;
+        let targetNetwork = taskArgs.targetNetwork;
+        console.log("skipVerify", skipVerify);
+        console.log("targetNetwork", targetNetwork);
+
+        const chainInfo = zkLinkConfig[process.env.NET];
+        if (chainInfo === undefined) {
+            console.log('current net not support');
+            return;
+        }
+        const l1GatewayInfo = chainInfo.l1Gateway;
+        if (l1GatewayInfo === undefined) {
+            console.log('l1 gateway config not exist');
+            return;
+        }
+        const chainL1GatewayInfo = l1GatewayInfo[targetNetwork];
+        if (chainL1GatewayInfo === undefined) {
+            console.log('l1 gateway info of l2 chain not exist');
+            return;
+        }
+
+        const l1GatewayLogName = logName.DEPLOY_L1_GATEWAY_LOG_PREFIX + "_" + targetNetwork;
+        const { deployLogPath, deployLog } = createOrGetDeployLog(l1GatewayLogName);
+        const contractAddr = deployLog[logName.DEPLOY_GATEWAY];
+        if (contractAddr === undefined) {
+            console.log('l1 gateway address not exist');
+            return;
+        }
+        console.log('l1 gateway', contractAddr);
+        const oldContractTargetAddr = deployLog[logName.DEPLOY_GATEWAY_TARGET];
+        if (oldContractTargetAddr === undefined) {
+            console.log('l1 gateway target address not exist');
+            return;
+        }
+        console.log('l1 gateway old target', oldContractTargetAddr);
+
+        const contractDeployer = new ChainContractDeployer(hardhat);
+        await contractDeployer.init();
+
+        console.log("upgrade l1 gateway...");
+        const contract = await contractDeployer.upgradeProxy(chainL1GatewayInfo.contractName, contractAddr);
+        const tx = await getDeployTx(contract);
+        console.log('upgrade tx', tx.hash);
+        const newContractTargetAddr = await getImplementationAddress(hardhat.ethers.provider, contractAddr);
+        deployLog[logName.DEPLOY_GATEWAY_TARGET] = newContractTargetAddr;
+        console.log("l1 gateway new target", newContractTargetAddr);
+        fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+
+        if (!skipVerify) {
+            await verifyContractCode(hardhat, newContractTargetAddr, []);
+            deployLog[logName.DEPLOY_GATEWAY_TARGET_VERIFIED] = true;
+            fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+        }
+    })

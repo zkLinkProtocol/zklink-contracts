@@ -183,13 +183,10 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(_tokenId > 0 && _tokenId <= MAX_AMOUNT_OF_REGISTERED_TOKENS, "I0");
         // token MUST be not zero address
         require(_tokenAddress != address(0), "I1");
-        // revert duplicate register
-        RegisteredToken memory rt = tokens[_tokenId];
-        require(!rt.registered, "I2");
-        require(tokenIds[_tokenAddress] == 0, "I2");
         // token decimals of layer one MUST not be larger than decimals defined in layer two
-        require(_decimals <= TOKEN_DECIMALS_OF_LAYER2, "I3");
+        require(_decimals <= TOKEN_DECIMALS_OF_LAYER2, "I2");
 
+        RegisteredToken memory rt = tokens[_tokenId];
         rt.registered = true;
         rt.tokenAddress = _tokenAddress;
         rt.decimals = _decimals;
