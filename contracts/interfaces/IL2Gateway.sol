@@ -45,8 +45,4 @@ interface IL2Gateway {
     /// @param blockNumber the block number
     /// @param syncHash the sync hash
     function sendMasterSyncHash(uint32 blockNumber, bytes32 syncHash) external payable;
-
-    /// @notice Claim block confirmation from message service
-    /// @param _blockNumber The confirmed block number
-    function claimBlockConfirmation(uint32 _blockNumber) external;
 }

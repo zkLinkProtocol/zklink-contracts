@@ -41,8 +41,7 @@ contract LineaL2Gateway is L2BaseGateway, LineaGateway, ILineaL2Gateway {
         emit ClaimedDeposit(_txNonce);
     }
 
-    /// @dev It's the callback when claim block confirmation
-    function claimBlockConfirmation(uint32 _blockNumber) external override onlyMessageService onlyRemoteGateway{
+    function claimBlockConfirmationCallback(uint32 _blockNumber) external override onlyMessageService onlyRemoteGateway {
         zkLink.receiveBlockConfirmation(_blockNumber);
     }
 
@@ -86,7 +85,7 @@ contract LineaL2Gateway is L2BaseGateway, LineaGateway, ILineaL2Gateway {
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == coinbaseFee, "Invalid fee");
 
-        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimSlaverSyncHash, (syncHash));
+        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimSlaverSyncHashCallback, (syncHash));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
     }
 
@@ -98,7 +97,7 @@ contract LineaL2Gateway is L2BaseGateway, LineaGateway, ILineaL2Gateway {
         uint256 coinbaseFee = messageService.minimumFeeInWei();
         require(msg.value == coinbaseFee, "Invalid fee");
 
-        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimMasterSyncHash, (blockNumber, syncHash));
+        bytes memory callData = abi.encodeCall(ILineaL1Gateway.claimMasterSyncHashCallback, (blockNumber, syncHash));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), coinbaseFee, callData);
     }
 }

@@ -5,20 +5,6 @@ import {ILineaGateway} from "./ILineaGateway.sol";
 import {IL1Gateway} from "../IL1Gateway.sol";
 
 interface ILineaL1Gateway is IL1Gateway, ILineaGateway {
-    /// @notice Deposit ETH to zkLink on Linea
-    /// @param _amount The amount to deposit
-    /// @param _zkLinkAddress The zkLink address deposited to
-    /// @param _subAccountId The sub account id
-    function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable;
-
-    /// @notice Deposit ERC20 to zkLink on Linea
-    /// @param _token The token on L1
-    /// @param _amount The amount to deposit
-    /// @param _zkLinkAddress The zkLink address deposited to
-    /// @param _subAccountId The sub account id
-    /// @param _mapping If receive a mapping token on zkLink
-    function depositERC20(address _token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external payable;
-
     /// @notice Claim ETH callback from message service
     /// @param _owner The address received eth on L1
     /// @param _amount The eth amount to withdraw
@@ -39,12 +25,12 @@ interface ILineaL1Gateway is IL1Gateway, ILineaGateway {
     /// @param _fastWithdrawFeeRate Fast withdraw fee rate taken by acceptor
     function claimERC20Callback(bool _isUSDC, address _nativeToken, address _owner, uint128 _amount, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, uint16 _fastWithdrawFeeRate) external;
 
-    /// @notice Claim sync hash from message service
+    /// @notice Claim sync hash callback from message service
     /// @param _syncHash The sync hash of slaver chain
-    function claimSlaverSyncHash(bytes32 _syncHash) external;
+    function claimSlaverSyncHashCallback(bytes32 _syncHash) external;
 
-    /// @notice Claim sync hash from message service
+    /// @notice Claim sync hash callback from message service
     /// @param _blockNumber The block number
     /// @param _syncHash The sync hash of master chain
-    function claimMasterSyncHash(uint32 _blockNumber, bytes32 _syncHash) external;
+    function claimMasterSyncHashCallback(uint32 _blockNumber, bytes32 _syncHash) external;
 }

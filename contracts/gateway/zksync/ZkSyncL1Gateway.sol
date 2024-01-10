@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IL2Gateway} from "../../interfaces/IL2Gateway.sol";
 import {IZkSyncL2Gateway} from "../../interfaces/zksync/IZkSyncL2Gateway.sol";
 import {IZkSyncL1Gateway} from "../../interfaces/zksync/IZkSyncL1Gateway.sol";
 import {IZkSync} from "../../interfaces/zksync/IZkSync.sol";
@@ -77,24 +76,15 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         claimBlockConfirmationL2GasLimit = _claimBlockConfirmationL2GasLimit;
     }
 
-    function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
-        require(_amount > 0, "Invalid eth amount");
-
         uint256 claimDepositFee = messageService.l2TransactionBaseCost(tx.gasprice, claimETHL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA);
-        uint256 requiredValue = claimDepositFee + _amount;
-        require(msg.value >= requiredValue, "Value too low");
-        uint256 leftMsgValue = msg.value - requiredValue;
+        uint256 _amount = msg.value - claimDepositFee;
+        require(_amount > 0, "Invalid eth amount");
 
         uint32 _txNonce = txNonce;
         bytes memory executeData = abi.encodeCall(IZkSyncL2Gateway.claimETH, (_txNonce, _zkLinkAddress, _subAccountId, _amount));
-        messageService.requestL2Transaction{value: requiredValue}(remoteGateway, _amount, executeData, claimETHL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
-
-        if (leftMsgValue > 0) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = msg.sender.call{value: leftMsgValue}("");
-            require(success, "Refund failed");
-        }
+        messageService.requestL2Transaction{value: msg.value}(remoteGateway, _amount, executeData, claimETHL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
 
         emit Deposit(_txNonce, ETH_ADDRESS, _amount, _zkLinkAddress, _subAccountId, false);
         txNonce = _txNonce + 1;
@@ -141,7 +131,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
     function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
         require(msg.value == estimateConfirmBlockFee(blockNumber), "Invalid fee");
 
-        bytes memory executeData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
+        bytes memory executeData = abi.encodeCall(IZkSyncL2Gateway.claimBlockConfirmation, (blockNumber));
         messageService.requestL2Transaction{value: msg.value}(remoteGateway, 0, executeData, claimBlockConfirmationL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
     }
 

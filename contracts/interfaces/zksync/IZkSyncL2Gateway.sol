@@ -19,4 +19,8 @@ interface IZkSyncL2Gateway is IL2Gateway {
     /// @param _subAccountId The sub account id
     /// @param _mapping If receive a mapping token on zkLink
     function claimERC20(uint32 _txNonce, address _l1Token, uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId, bool _mapping) external;
+
+    /// @notice Claim block confirmation from message service
+    /// @param _blockNumber The confirmed block number
+    function claimBlockConfirmation(uint32 _blockNumber) external;
 }

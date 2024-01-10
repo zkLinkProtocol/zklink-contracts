@@ -9,7 +9,6 @@ import {ILineaL1Gateway} from "../../interfaces/linea/ILineaL1Gateway.sol";
 import {IMessageService} from "../../interfaces/linea/IMessageService.sol";
 import {IUSDCBridge} from "../../interfaces/linea/IUSDCBridge.sol";
 import {ITokenBridge} from "../../interfaces/linea/ITokenBridge.sol";
-import {IL2Gateway} from "../../interfaces/IL2Gateway.sol";
 import {LineaGateway} from "./LineaGateway.sol";
 import {L1BaseGateway} from "../L1BaseGateway.sol";
 
@@ -32,10 +31,10 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         __LineaGateway_init(_messageService, _tokenBridge, _usdcBridge);
     }
 
-    function depositETH(uint256 _amount, bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
+    function depositETH(bytes32 _zkLinkAddress, uint8 _subAccountId) external payable override nonReentrant whenNotPaused {
         // ensure amount bridged is not zero
+        uint256 _amount = msg.value - fee;
         require(_amount > 0, "Invalid eth amount");
-        require(msg.value == _amount + fee, "Invalid msg value");
 
         uint32 _txNonce = txNonce;
         bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimETHCallback, (_txNonce, _zkLinkAddress, _subAccountId, _amount));
@@ -92,13 +91,11 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
         emit ClaimedWithdrawERC20(receiver, targetToken, _amount);
     }
 
-    /// @dev It's the callback when claim slaver sync hash
-    function claimSlaverSyncHash(bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
+    function claimSlaverSyncHashCallback(bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveSlaverSyncHash(_syncHash);
     }
 
-    /// @dev It's the callback when claim master sync hash
-    function claimMasterSyncHash(uint32 _blockNumber, bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
+    function claimMasterSyncHashCallback(uint32 _blockNumber, bytes32 _syncHash) external override onlyMessageService onlyRemoteGateway {
         arbitrator.receiveMasterSyncHash(_blockNumber, _syncHash);
     }
 
@@ -107,7 +104,7 @@ contract LineaL1Gateway is L1BaseGateway, LineaGateway, ILineaL1Gateway {
     }
 
     function confirmBlock(uint32 blockNumber) external payable override onlyArbitrator {
-        bytes memory callData = abi.encodeCall(IL2Gateway.claimBlockConfirmation, (blockNumber));
+        bytes memory callData = abi.encodeCall(ILineaL2Gateway.claimBlockConfirmationCallback, (blockNumber));
         messageService.sendMessage{value: msg.value}(address(remoteGateway), 0, callData);
     }
 

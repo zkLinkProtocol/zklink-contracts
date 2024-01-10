@@ -38,8 +38,4 @@ contract L2GatewayMock is IL2Gateway {
     function sendMasterSyncHash(uint32, bytes32) external payable {
         // do nothing
     }
-
-    function claimBlockConfirmation(uint32 _blockNumber) external {
-        // do nothing
-    }
 }
