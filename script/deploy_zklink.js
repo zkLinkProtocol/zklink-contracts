@@ -216,7 +216,7 @@ task("deployZkLink", "Deploy zklink contracts")
             const tx = await contract.connect(deployerWallet).addUpgradeable(zkLinkProxy);
             await tx.wait();
             console.log('tx hash: ', tx.hash);
-            deployLog[logName.DEPLOY_LOG_VERIFIER_ADD_UPGRADE] = true;
+            deployLog[logName.DEPLOY_LOG_ZKLINK_ADD_UPGRADE] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
         }
 
