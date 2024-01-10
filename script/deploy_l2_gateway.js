@@ -39,7 +39,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
         await contractDeployer.init();
         const deployerWallet = contractDeployer.deployerWallet;
         deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
 
         // deploy l2 gateway
         let gatewayAddr;
@@ -51,7 +51,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
             deployLog[logName.DEPLOY_GATEWAY] = gatewayAddr;
             deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash;
             deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = transaction.blockNumber;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             gatewayAddr = deployLog[logName.DEPLOY_GATEWAY];
         }
@@ -65,7 +65,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
                 gatewayAddr
             );
             deployLog[logName.DEPLOY_GATEWAY_TARGET] = gatewayTargetAddr;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             gatewayTargetAddr = deployLog[logName.DEPLOY_GATEWAY_TARGET];
         }
@@ -75,7 +75,7 @@ task("deployL2Gateway", "Deploy L2 Gateway")
         if ((!(logName.DEPLOY_GATEWAY_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
             await verifyContractCode(hardhat, gatewayTargetAddr, []);
             deployLog[logName.DEPLOY_GATEWAY_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
     });
 
@@ -121,11 +121,11 @@ task("upgradeL2Gateway","Upgrade L2 gateway")
         const newContractTargetAddr = await getImplementationAddress(hardhat.ethers.provider, contractAddr);
         deployLog[logName.DEPLOY_GATEWAY_TARGET] = newContractTargetAddr;
         console.log("l2 gateway new target", newContractTargetAddr);
-        fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+        fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2));
 
         if (!skipVerify) {
             await verifyContractCode(hardhat, newContractTargetAddr, []);
             deployLog[logName.DEPLOY_GATEWAY_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2));
         }
     })

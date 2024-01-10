@@ -22,7 +22,7 @@ task("deployArbitrator", "Deploy arbitrator")
       await contractDeployer.init();
       const deployerWallet = contractDeployer.deployerWallet;
       deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
-      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+      fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
 
       // deploy arbitrator
       let arbitratorAddr;
@@ -34,7 +34,7 @@ task("deployArbitrator", "Deploy arbitrator")
           deployLog[logName.DEPLOY_LOG_ARBITRATOR] = arbitratorAddr;
           deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = transaction.hash;
           deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = transaction.blockNumber;
-          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
       } else {
           arbitratorAddr = deployLog[logName.DEPLOY_LOG_ARBITRATOR];
       }
@@ -48,7 +48,7 @@ task("deployArbitrator", "Deploy arbitrator")
               arbitratorAddr
           );
           deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET] = arbitratorTargetAddr;
-          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
       } else {
           arbitratorTargetAddr = deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET];
       }
@@ -58,7 +58,7 @@ task("deployArbitrator", "Deploy arbitrator")
       if ((!(logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
           await verifyContractCode(hardhat, arbitratorTargetAddr, []);
           deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED] = true;
-          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
       }
   });
 
@@ -141,11 +141,11 @@ task("upgradeArbitrator","Upgrade arbitrator")
         const newContractTargetAddr = await getImplementationAddress(hardhat.ethers.provider, contractAddr);
         deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET] = newContractTargetAddr;
         console.log("arbitrator new target", newContractTargetAddr);
-        fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+        fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2));
 
         if (!skipVerify) {
             await verifyContractCode(hardhat, newContractTargetAddr, []);
             deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath,JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2));
         }
     })

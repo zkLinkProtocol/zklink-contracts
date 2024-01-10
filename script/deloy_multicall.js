@@ -16,13 +16,13 @@ task("deployMulticall","Deploy multicall contract")
   if (!deployLog[logName.DEPLOY_MULTICALL] || force) {
     const multicall = await deployer.deployContract("MultiCall",[])
     deployLog[logName.DEPLOY_MULTICALL] = await multicall.getAddress()
-    fs.writeFileSync(deployLogPath,JSON.stringify(deployLog))
+    fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2))
     console.log("deployLog:",deployLog)
   }
 
   if (!skipVerify) {
     await verifyContractCode(hardhat,deployLog[logName.DEPLOY_MULTICALL],[])
     deployLog[logName.DEPLOY_MULTICALL_VERIFIED] = true
-    fs.writeFileSync(deployLogPath,JSON.stringify(deployLog))
+    fs.writeFileSync(deployLogPath,JSON.stringify(deployLog, null, 2))
   }
 })

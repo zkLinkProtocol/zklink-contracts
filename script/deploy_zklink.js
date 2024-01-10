@@ -40,7 +40,7 @@ task("deployZkLink", "Deploy zklink contracts")
         deployLog[logName.DEPLOY_LOG_DEPLOYER] = deployerWallet.address;
         deployLog[logName.DEPLOY_LOG_GOVERNOR] = deployerWallet.address;
         deployLog[logName.DEPLOY_LOG_VALIDATOR] = validator;
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
 
         const proxyContractName = contractDeployer.getProxyContractName();
         console.log('use proxy contract name: ', proxyContractName);
@@ -57,7 +57,7 @@ task("deployZkLink", "Deploy zklink contracts")
             }
             verifierTarget = await verifier.getAddress();
             deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET] = verifierTarget;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             verifierTarget = deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET];
         }
@@ -65,7 +65,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, verifierTarget, []);
             deployLog[logName.DEPLOY_LOG_VERIFIER_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // verifier proxy
@@ -76,7 +76,7 @@ task("deployZkLink", "Deploy zklink contracts")
             let proxy = await contractDeployer.deployContract(proxyContractName, [verifierTarget, verifierTargetInitializationParameters]);
             verifierProxy = await proxy.getAddress();
             deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY] = verifierProxy;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             verifierProxy = deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY];
         }
@@ -84,7 +84,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, verifierProxy, [verifierTarget, verifierTargetInitializationParameters]);
             deployLog[logName.DEPLOY_LOG_VERIFIER_PROXY_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // periphery
@@ -94,7 +94,7 @@ task("deployZkLink", "Deploy zklink contracts")
             let periphery = await contractDeployer.deployContract('ZkLinkPeriphery', []);
             peripheryTarget = await periphery.getAddress();
             deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET] = peripheryTarget;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             peripheryTarget = deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET];
         }
@@ -102,7 +102,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, peripheryTarget, []);
             deployLog[logName.DEPLOY_LOG_PERIPHERY_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // zkLink
@@ -112,7 +112,7 @@ task("deployZkLink", "Deploy zklink contracts")
             let zkLink = await contractDeployer.deployContract('ZkLink', [peripheryTarget]);
             zkLinkTarget = await zkLink.getAddress();
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET] = zkLinkTarget;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             zkLinkTarget = deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET];
         }
@@ -120,7 +120,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, zkLinkTarget, [peripheryTarget]);
             deployLog[logName.DEPLOY_LOG_ZKLINK_TARGET_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // zkLink proxy
@@ -141,7 +141,7 @@ task("deployZkLink", "Deploy zklink contracts")
             deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY] = zkLinkProxy;
             deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH] = zkLinkDeployTxHash;
             deployLog[logName.DEPLOY_LOG_DEPLOY_BLOCK_NUMBER] = zkLinkDeployBlockNumber;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             zkLinkProxy = deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY];
             zkLinkDeployTxHash = deployLog[logName.DEPLOY_LOG_DEPLOY_TX_HASH];
@@ -153,7 +153,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, zkLinkProxy, [zkLinkTarget, zkLinkInitParams]);
             deployLog[logName.DEPLOY_LOG_ZKLINK_PROXY_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // upgradeGatekeeper
@@ -163,7 +163,7 @@ task("deployZkLink", "Deploy zklink contracts")
             let contract = await contractDeployer.deployContract('UpgradeGatekeeper', [zkLinkProxy]);
             upgradeGatekeeper = await contract.getAddress();
             deployLog[logName.DEPLOY_LOG_GATEKEEPER] = upgradeGatekeeper;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             upgradeGatekeeper = deployLog[logName.DEPLOY_LOG_GATEKEEPER];
         }
@@ -171,7 +171,7 @@ task("deployZkLink", "Deploy zklink contracts")
         if ((!(logName.DEPLOY_LOG_GATEKEEPER_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, upgradeGatekeeper, [zkLinkProxy]);
             deployLog[logName.DEPLOY_LOG_GATEKEEPER_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // transfer mastership to gatekeeper
@@ -183,7 +183,7 @@ task("deployZkLink", "Deploy zklink contracts")
             await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_VERIFIER_TRAMSFER_MASTERSHIP] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         if (!(logName.DEPLOY_LOG_ZKLINK_TRAMSFER_MASTERSHIP in deployLog) || force) {
@@ -194,7 +194,7 @@ task("deployZkLink", "Deploy zklink contracts")
             await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_ZKLINK_TRAMSFER_MASTERSHIP] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // addUpgradeable
@@ -206,7 +206,7 @@ task("deployZkLink", "Deploy zklink contracts")
             await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_VERIFIER_ADD_UPGRADE] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         if (!(logName.DEPLOY_LOG_ZKLINK_ADD_UPGRADE in deployLog) || force) {
@@ -217,7 +217,7 @@ task("deployZkLink", "Deploy zklink contracts")
             await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_ZKLINK_ADD_UPGRADE] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // set validator
@@ -229,7 +229,7 @@ task("deployZkLink", "Deploy zklink contracts")
             await tx.wait();
             console.log('tx hash: ', tx.hash);
             deployLog[logName.DEPLOY_LOG_ZKLINK_SET_VALIDATOR] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 });
 
@@ -327,7 +327,7 @@ task("upgradeZkLink", "Upgrade zkLink")
                 }
             }
             console.log('write new targets to log');
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
         // check if upgrade at testnet

@@ -37,7 +37,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         const {deployLogPath,deployLog} = createOrGetDeployLog(logName.DEPLOY_LZ_BRIDGE_LOG_PREFIX);
 
         deployLog[logName.DEPLOY_LOG_GOVERNOR] = contractDeployer.deployerWallet.address;
-        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+        fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
 
         // deploy lz bridge
         let args = [zklink, lzInfo.address];
@@ -47,7 +47,7 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
             let lzBridgeContract = await contractDeployer.deployContract('LayerZeroBridge', args);
             lzBridge = await lzBridgeContract.getAddress();
             deployLog[logName.DEPLOY_LOG_LZ_BRIDGE] = lzBridge;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         } else {
             lzBridge = deployLog[logName.DEPLOY_LOG_LZ_BRIDGE];
         }
@@ -55,6 +55,6 @@ task("deployLZBridge", "Deploy LayerZeroBridge")
         if ((!(logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, lzBridge, args);
             deployLog[logName.DEPLOY_LOG_LZ_BRIDGE_VERIFIED] = true;
-            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog));
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 });
