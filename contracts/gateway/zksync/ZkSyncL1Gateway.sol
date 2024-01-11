@@ -48,6 +48,10 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
     event ClaimedWithdrawETH(address _receiver, uint256 _amount);
     event ClaimedWithdrawERC20(address _receiver, address _token, uint256 _amount);
 
+    /// @dev Receive eth from zkSync contract
+    receive() external payable {
+    }
+
     function initialize(IZkSync _messageService, IL1Bridge _tokenBridge) external initializer {
         __BaseGateway_init();
 
