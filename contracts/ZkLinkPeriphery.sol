@@ -238,21 +238,34 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         emit SetGateway(address(_gateway));
     }
 
+    /// @notice Set oracle verifier address
+    /// @param _oracleVerifier oracle verifier address
+    function setOracleVerifier(IOracleVerifier _oracleVerifier) external onlyGovernor {
+        oracleVerifier = _oracleVerifier;
+        emit SetOracleVerifier(address(_oracleVerifier));
+    }
+
     // =======================Block interface======================
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
     struct ProofInput {
-        uint256[] recursiveInput;
+        uint256[] aggregatedInput;
         uint256[] proof;
-        uint256[] commitments;
-        uint8[] vkIndexes;
-        uint256[16] subproofsLimbs;
+        uint256[] blockInputs;
+        uint256[16] subProofsLimbs;
+        bytes oracleContent;
+    }
+
+    /// @notice Estimate prove blocks fee
+    /// @param oracleContent the oracle content
+    function estimateProveBlocksFee(bytes memory oracleContent) external view returns (uint256 nativeFee) {
+        nativeFee = oracleVerifier.estimateVerifyFee(oracleContent);
     }
 
     /// @notice Blocks commitment verification.
     /// @dev Only verifies block commitments without any other processing
-    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external payable nonReentrant {
         // ===Checks===
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
@@ -261,23 +274,31 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
             // commitment of proof produced by zk has only 253 significant bits
             // 'commitment & INPUT_MASK' is used to set the highest 3 bits to 0 and leave the rest unchanged
-            require(_proof.commitments[i] <= MAX_PROOF_COMMITMENT
-                && _proof.commitments[i] == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+            require(_proof.blockInputs[i] <= MAX_PROOF_COMMITMENT
+                && _proof.blockInputs[i] == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+        }
+
+        // verify oracle content
+        bytes32 _oracleCommitment = EMPTY_STRING_KECCAK;
+        if (address(oracleVerifier) != address(0)) {
+            uint256 nativeFee = oracleVerifier.estimateVerifyFee(_proof.oracleContent);
+            require(msg.value == nativeFee, "x2");
+            _oracleCommitment = oracleVerifier.verify{value: nativeFee}(_proof.oracleContent);
         }
 
         // ===Effects===
-        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
+        require(currentTotalBlocksProven <= totalBlocksCommitted, "x3");
         totalBlocksProven = currentTotalBlocksProven;
 
         // ===Interactions===
         bool success = verifier.verifyAggregatedBlockProof(
-            _proof.recursiveInput,
+            _proof.aggregatedInput,
             _proof.proof,
-            _proof.vkIndexes,
-            _proof.commitments,
-            _proof.subproofsLimbs
+            _proof.blockInputs,
+            _proof.subProofsLimbs,
+            _oracleCommitment
         );
-        require(success, "x3");
+        require(success, "x4");
 
         emit BlockProven(currentTotalBlocksProven);
 
