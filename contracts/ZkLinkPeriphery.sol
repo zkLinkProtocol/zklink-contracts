@@ -250,6 +250,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
     struct ProofInput {
+        uint256 totalAggNum;
         uint256[] aggregatedInput;
         uint256[] proof;
         uint256[] blockInputs;
@@ -279,12 +280,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         }
 
         // verify oracle content
-        bytes32 _oracleCommitment = EMPTY_STRING_KECCAK;
-        if (address(oracleVerifier) != address(0)) {
-            uint256 nativeFee = oracleVerifier.estimateVerifyFee(_proof.oracleContent);
-            require(msg.value == nativeFee, "x2");
-            _oracleCommitment = oracleVerifier.verify{value: nativeFee}(_proof.oracleContent);
-        }
+        uint256 nativeFee = oracleVerifier.estimateVerifyFee(_proof.oracleContent);
+        require(msg.value == nativeFee, "x2");
+        bytes32 _oracleCommitment = oracleVerifier.verify{value: nativeFee}(_proof.oracleContent);
 
         // ===Effects===
         require(currentTotalBlocksProven <= totalBlocksCommitted, "x3");
@@ -292,6 +290,7 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
         // ===Interactions===
         bool success = verifier.verifyAggregatedBlockProof(
+            _proof.totalAggNum,
             _proof.aggregatedInput,
             _proof.proof,
             _proof.blockInputs,

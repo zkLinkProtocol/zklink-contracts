@@ -22,7 +22,10 @@ contract PythVerifier is IOracleVerifier {
 
     function verify(bytes memory oracleContent) external payable returns (bytes32 oracleCommitment) {
         (uint256 usedPythNum, uint256 guardianSetIndex, bytes32 guardianSetHash, uint256 earliestPublishTime) = abi.decode(oracleContent, (uint256, uint256, bytes32, uint256));
-
+        oracleCommitment = keccak256(abi.encodePacked(usedPythNum, guardianSetIndex, guardianSetHash, earliestPublishTime));
+        if (usedPythNum == 0) {
+            return oracleCommitment;
+        }
         // verify guardian set
         IWormhole wormhole = pyth.wormhole();
         IWormhole.GuardianSet memory guardianSet = wormhole.getGuardianSet(uint32(guardianSetIndex));
@@ -40,7 +43,5 @@ contract PythVerifier is IOracleVerifier {
         uint256 requiredFee = pyth.singleUpdateFeeInWei() * usedPythNum;
         require(msg.value == requiredFee, "Invalid fee");
         pyth.updatePriceFeeds{value: requiredFee}(new bytes[](0));
-
-        oracleCommitment = keccak256(abi.encodePacked(usedPythNum, guardianSetIndex, guardianSetHash, earliestPublishTime));
     }
 }

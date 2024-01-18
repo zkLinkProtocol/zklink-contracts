@@ -15,7 +15,7 @@ contract VerifierMock is IVerifier {
         verifyResult = r;
     }
 
-    function verifyAggregatedBlockProof(uint256[] memory, uint256[] memory, uint256[] memory, uint256[16] memory, bytes32) external override view returns (bool) {
+    function verifyAggregatedBlockProof(uint256, uint256[] memory, uint256[] memory, uint256[] memory, uint256[16] memory, bytes32) external override view returns (bool) {
         return verifyResult;
     }
 
