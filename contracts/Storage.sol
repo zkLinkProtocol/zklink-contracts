@@ -7,6 +7,7 @@ import "./zksync/Config.sol";
 import "./interfaces/IVerifier.sol";
 import "./interfaces/ISyncService.sol";
 import "./interfaces/IL2Gateway.sol";
+import "./interfaces/IOracleVerifier.sol";
 import "./zksync/SafeCast.sol";
 import "./ZkLinkAcceptor.sol";
 
@@ -120,6 +121,9 @@ contract Storage is ZkLinkAcceptor, Config {
     /// chainId => sync service
     mapping(uint8 => ISyncService) public chainSyncServiceMap;
     mapping(address => bool) public syncServiceMap;
+
+    /// @dev Oracle verifier
+    IOracleVerifier public oracleVerifier;
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice block stored data

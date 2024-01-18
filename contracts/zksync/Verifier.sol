@@ -13,22 +13,21 @@ contract Verifier is KeysWithPlonkVerifier, KeysWithPlonkVerifierOld {
     // solhint-disable-next-line no-empty-blocks
     function initialize(bytes calldata) external {}
 
-    function verifyAggregatedBlockProof(uint256[] memory _recursiveInput, uint256[] memory _proof, uint8[] memory _vkIndexes, uint256[] memory _individualVksInputs, uint256[16] memory _subProofsLimbs) external virtual view returns (bool) {
-        for (uint256 i = 0; i < _individualVksInputs.length; ++i) {
-            _individualVksInputs[i] = _individualVksInputs[i] & INPUT_MASK;
+    function verifyAggregatedBlockProof(uint256 _totalAggNum, uint256[] memory _aggregatedInput, uint256[] memory _proof, uint256[] memory _blockInputs, uint256[16] memory _subProofsLimbs, bytes32 _oracleCommitment) external virtual view returns (bool) {
+        for (uint256 i = 0; i < _blockInputs.length; ++i) {
+            _blockInputs[i] = _blockInputs[i] & INPUT_MASK;
         }
-        VerificationKey memory vk = getVkAggregated(uint32(_vkIndexes.length));
+        VerificationKey memory vk = getVkAggregated(uint32(_totalAggNum));
 
         return
         verify_serialized_proof_with_recursion(
-            _recursiveInput,
+            _aggregatedInput,
             _proof,
             VK_TREE_ROOT,
-            VK_MAX_INDEX,
-            _vkIndexes,
-            _individualVksInputs,
+            _blockInputs,
             _subProofsLimbs,
-            vk
+            vk,
+            _oracleCommitment
         );
     }
 

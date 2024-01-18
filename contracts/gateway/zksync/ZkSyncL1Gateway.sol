@@ -139,7 +139,7 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         messageService.requestL2Transaction{value: msg.value}(remoteGateway, 0, executeData, claimBlockConfirmationL2GasLimit, REQUIRED_L2_GAS_PRICE_PER_PUBDATA, new bytes[](0), tx.origin);
     }
 
-    function finalizeMessage(uint256 _l2BatchNumber, uint256 _l2MessageIndex, uint16 _l2TxNumberInBatch, bytes memory _message, bytes32[] calldata _merkleProof) external override {
+    function finalizeMessage(uint256 _l2BatchNumber, uint256 _l2MessageIndex, uint16 _l2TxNumberInBatch, bytes memory _message, bytes32[] calldata _merkleProof) external override nonReentrant {
         require(!isMessageFinalized[_l2BatchNumber][_l2MessageIndex], "Message was finalized");
 
         IZkSync.L2Message memory l2ToL1Message = IZkSync.L2Message({
@@ -154,6 +154,8 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         (uint256 offset, uint32 functionSignature) = Bytes.readUInt32(_message, 0);
         require(bytes4(functionSignature) == this.finalizeMessage.selector, "Invalid function selector");
 
+        isMessageFinalized[_l2BatchNumber][_l2MessageIndex] = true;
+
         uint8 messageType;
         (offset, messageType) = Bytes.readUint8(_message, offset);
         if (messageType == MESSAGE_WITHDRAW_ETH) {
@@ -167,8 +169,6 @@ contract ZkSyncL1Gateway is ZkSyncMessageConfig, L1BaseGateway, BaseGateway, IZk
         } else {
             revert("Invalid message type");
         }
-
-        isMessageFinalized[_l2BatchNumber][_l2MessageIndex] = true;
     }
 
     function claimETH(bytes memory _message, uint256 offset) internal {

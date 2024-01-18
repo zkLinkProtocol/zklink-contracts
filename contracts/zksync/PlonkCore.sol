@@ -333,6 +333,8 @@ contract Plonk4VerifierWithAccessToDNext {
     uint256 constant RECURSIVE_CIRCUIT_INPUT_COMMITMENT_MASK =
     0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 constant LIMB_WIDTH = 68;
+    /// @dev Shift to apply to verify public input before verifying.
+    uint256 constant PUBLIC_INPUT_SHIFT = 32;
 
     struct VerificationKey {
         uint256 domain_size;
@@ -976,17 +978,15 @@ contract Plonk4VerifierWithAccessToDNext {
         Proof memory proof,
         VerificationKey memory vk,
         uint256 recursive_vks_root,
-        uint8 max_valid_index,
-        uint8[] memory recursive_vks_indexes,
-        uint256[] memory individual_vks_inputs,
-        uint256[16] memory subproofs_limbs
+        uint256[] memory _blockInputs,
+        uint256[16] memory _subProofsLimbs,
+        bytes32 _oracleCommitment
     ) internal view returns (bool) {
         (uint256 recursive_input, PairingsBn254.G1Point[2] memory aggregated_g1s) = reconstruct_recursive_public_input(
             recursive_vks_root,
-            max_valid_index,
-            recursive_vks_indexes,
-            individual_vks_inputs,
-            subproofs_limbs
+            _blockInputs,
+            _subProofsLimbs,
+            _oracleCommitment
         );
 
         assert(recursive_input == proof.input_values[0]);
@@ -1030,51 +1030,43 @@ contract Plonk4VerifierWithAccessToDNext {
 
     function reconstruct_recursive_public_input(
         uint256 recursive_vks_root,
-        uint8 max_valid_index,
-        uint8[] memory recursive_vks_indexes,
-        uint256[] memory individual_vks_inputs,
-        uint256[16] memory subproofs_aggregated
+        uint256[] memory _blockInputs,
+        uint256[16] memory _subProofsLimbs,
+        bytes32 _oracleCommitment
     ) internal pure returns (uint256 recursive_input, PairingsBn254.G1Point[2] memory reconstructed_g1s) {
-        assert(recursive_vks_indexes.length == individual_vks_inputs.length);
         bytes memory concatenated = abi.encodePacked(recursive_vks_root);
-        uint8 index;
-        for (uint256 i = 0; i < recursive_vks_indexes.length; i++) {
-            index = recursive_vks_indexes[i];
-            assert(index <= max_valid_index);
-            concatenated = abi.encodePacked(concatenated, index);
-        }
         uint256 input;
-        for (uint256 i = 0; i < recursive_vks_indexes.length; i++) {
-            input = individual_vks_inputs[i];
+        for (uint256 i = 0; i < _blockInputs.length; i++) {
+            input = _blockInputs[i];
             assert(input < r_mod);
             concatenated = abi.encodePacked(concatenated, input);
         }
+        concatenated = abi.encodePacked(concatenated, _oracleCommitment);
+        concatenated = abi.encodePacked(concatenated, _subProofsLimbs);
 
-        concatenated = abi.encodePacked(concatenated, subproofs_aggregated);
-
-        bytes32 commitment = sha256(concatenated);
-        recursive_input = uint256(commitment) & RECURSIVE_CIRCUIT_INPUT_COMMITMENT_MASK;
+        bytes32 commitment = keccak256(concatenated);
+        recursive_input = uint256(commitment) >> PUBLIC_INPUT_SHIFT;
 
         reconstructed_g1s[0] = PairingsBn254.new_g1_checked(
-            subproofs_aggregated[0] +
-            (subproofs_aggregated[1] << LIMB_WIDTH) +
-            (subproofs_aggregated[2] << (2 * LIMB_WIDTH)) +
-            (subproofs_aggregated[3] << (3 * LIMB_WIDTH)),
-            subproofs_aggregated[4] +
-            (subproofs_aggregated[5] << LIMB_WIDTH) +
-            (subproofs_aggregated[6] << (2 * LIMB_WIDTH)) +
-            (subproofs_aggregated[7] << (3 * LIMB_WIDTH))
+            _subProofsLimbs[0] +
+            (_subProofsLimbs[1] << LIMB_WIDTH) +
+            (_subProofsLimbs[2] << (2 * LIMB_WIDTH)) +
+            (_subProofsLimbs[3] << (3 * LIMB_WIDTH)),
+            _subProofsLimbs[4] +
+            (_subProofsLimbs[5] << LIMB_WIDTH) +
+            (_subProofsLimbs[6] << (2 * LIMB_WIDTH)) +
+            (_subProofsLimbs[7] << (3 * LIMB_WIDTH))
         );
 
         reconstructed_g1s[1] = PairingsBn254.new_g1_checked(
-            subproofs_aggregated[8] +
-            (subproofs_aggregated[9] << LIMB_WIDTH) +
-            (subproofs_aggregated[10] << (2 * LIMB_WIDTH)) +
-            (subproofs_aggregated[11] << (3 * LIMB_WIDTH)),
-            subproofs_aggregated[12] +
-            (subproofs_aggregated[13] << LIMB_WIDTH) +
-            (subproofs_aggregated[14] << (2 * LIMB_WIDTH)) +
-            (subproofs_aggregated[15] << (3 * LIMB_WIDTH))
+            _subProofsLimbs[8] +
+            (_subProofsLimbs[9] << LIMB_WIDTH) +
+            (_subProofsLimbs[10] << (2 * LIMB_WIDTH)) +
+            (_subProofsLimbs[11] << (3 * LIMB_WIDTH)),
+            _subProofsLimbs[12] +
+            (_subProofsLimbs[13] << LIMB_WIDTH) +
+            (_subProofsLimbs[14] << (2 * LIMB_WIDTH)) +
+            (_subProofsLimbs[15] << (3 * LIMB_WIDTH))
         );
 
         return (recursive_input, reconstructed_g1s);
@@ -1174,27 +1166,25 @@ contract VerifierWithDeserialize is Plonk4VerifierWithAccessToDNext {
     }
 
     function verify_serialized_proof_with_recursion(
-        uint256[] memory public_inputs,
-        uint256[] memory serialized_proof,
+        uint256[] memory _aggregatedInput,
+        uint256[] memory _proof,
         uint256 recursive_vks_root,
-        uint8 max_valid_index,
-        uint8[] memory recursive_vks_indexes,
-        uint256[] memory individual_vks_inputs,
-        uint256[16] memory subproofs_limbs,
-        VerificationKey memory vk
+        uint256[] memory _blockInputs,
+        uint256[16] memory _subProofsLimbs,
+        VerificationKey memory vk,
+        bytes32 _oracleCommitment
     ) public view returns (bool) {
-        require(vk.num_inputs == public_inputs.length);
+        require(vk.num_inputs == _aggregatedInput.length);
 
-        Proof memory proof = deserialize_proof(public_inputs, serialized_proof);
+        Proof memory proof = deserialize_proof(_aggregatedInput, _proof);
 
         bool valid = verify_recursive(
             proof,
             vk,
             recursive_vks_root,
-            max_valid_index,
-            recursive_vks_indexes,
-            individual_vks_inputs,
-            subproofs_limbs
+            _blockInputs,
+            _subProofsLimbs,
+            _oracleCommitment
         );
 
         return valid;

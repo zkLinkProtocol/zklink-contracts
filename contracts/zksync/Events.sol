@@ -72,6 +72,9 @@ interface Events {
     /// @notice Gateway address changed
     event SetGateway(address indexed newGateway);
 
+    /// @notice Oracle verifier address changed
+    event SetOracleVerifier(address indexed newOracleVerifier);
+
     /// @notice Event emitted when send sync hash to master chain
     event SendSlaverSyncHash(bytes32 syncHash);
 
