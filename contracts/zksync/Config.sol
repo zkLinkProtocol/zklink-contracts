@@ -31,7 +31,7 @@ contract Config {
     /// @dev Operation chunks
     uint256 internal constant DEPOSIT_BYTES = 3 * CHUNK_BYTES;
     uint256 internal constant FULL_EXIT_BYTES = 3 * CHUNK_BYTES;
-    uint256 internal constant WITHDRAW_BYTES = 3 * CHUNK_BYTES;
+    uint256 internal constant WITHDRAW_BYTES = 5 * CHUNK_BYTES;
     uint256 internal constant FORCED_EXIT_BYTES = 3 * CHUNK_BYTES;
     uint256 internal constant CHANGE_PUBKEY_BYTES = 3 * CHUNK_BYTES;
 

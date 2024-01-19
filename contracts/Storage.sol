@@ -125,6 +125,11 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @dev Oracle verifier
     IOracleVerifier public oracleVerifier;
 
+    /// @dev Store withdraw data hash that need to be called
+    /// @dev The key is the withdraw data hash
+    /// @dev The value is a flag to indicating whether withdraw exists
+    mapping(bytes32 => bool) public pendingWithdrawWithCalls;
+
     // #if CHAIN_ID == MASTER_CHAIN_ID
     /// @notice block stored data
     /// @dev `blockNumber`,`timestamp`,`stateHash`,`commitment` are the same on all chains
@@ -231,6 +236,12 @@ contract Storage is ZkLinkAcceptor, Config {
     function recoveryDecimals(uint128 _amount, uint8 _decimals) internal pure returns (uint128) {
         // overflow is impossible,  `_decimals` has been checked when register token
         return _amount / SafeCast.toUint128(10**(TOKEN_DECIMALS_OF_LAYER2 - _decimals));
+    }
+
+    /// @dev Return withdraw hash with call data
+    /// @dev (_accountIdOfNonce, _subAccountIdOfNonce, _nonce) ensures the uniqueness of withdraw hash
+    function getWithdrawWithDataHash(address _owner, address _tokenAddress, uint128 _amount, bytes32 _dataHash, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_owner, _tokenAddress, _amount, _dataHash, _accountIdOfNonce, _subAccountIdOfNonce, _nonce));
     }
 
     /// @notice Performs a delegatecall to the contract implementation
