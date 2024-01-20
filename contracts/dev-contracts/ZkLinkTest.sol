@@ -65,7 +65,7 @@ contract ZkLinkTest is ZkLink {
     // #endif
 
     function testExecuteWithdraw(Operations.Withdraw memory op) external {
-        _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.fastWithdrawFeeRate, op.withdrawToL1);
+        _executeWithdraw(op.accountId, op.subAccountId, op.nonce, op.owner, op.tokenId, op.amount, op.dataHash, op.fastWithdrawFeeRate, op.withdrawToL1);
     }
 
     function testVerifyChangePubkey(bytes memory _ethWitness, Operations.ChangePubKey memory _changePk) external pure returns (bool) {
