@@ -159,9 +159,9 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         // ===Effects===
         pendingWithdrawWithCalls[withdrawWithDataHash] = false;
 
-        // decode data
-        (address targetContract, bytes memory callData) = abi.decode(_data, (address, bytes));
         if (_callTarget) {
+            // decode data
+            (address targetContract, bytes memory callData) = abi.decode(_data, (address, bytes));
             _withdrawTo(payable(targetContract), _tokenAddress, _amount, callData);
         } else {
             _withdrawTo(_owner, _tokenAddress, _amount, new bytes(0));
