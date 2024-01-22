@@ -18,18 +18,17 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @dev Used to safely call `delegatecall`, immutable state variables don't occupy storage slot
     address internal immutable self = address(this);
 
-    // verifier(20 bytes) + totalBlocksExecuted(4 bytes) + firstPriorityRequestId(8 bytes) stored in the same slot
-
     /// @notice Verifier contract. Used to verify block proof and exit proof
     IVerifier public verifier;
 
     /// @notice Total number of executed blocks i.e. blocks[totalBlocksExecuted] points at the latest executed block (block 0 is genesis)
     uint32 public totalBlocksExecuted;
 
+    /// @notice Total number of executed batches
+    uint32 public totalBatchesExecuted;
+
     /// @notice First open priority request id
     uint64 public firstPriorityRequestId;
-
-    // networkGovernor(20 bytes) + totalBlocksCommitted(4 bytes) + totalOpenPriorityRequests(8 bytes) stored in the same slot
 
     /// @notice The the owner of whole system
     address public networkGovernor;
@@ -37,10 +36,11 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice Total number of committed blocks i.e. blocks[totalBlocksCommitted] points at the latest committed block
     uint32 public totalBlocksCommitted;
 
+    /// @notice Total number of committed batches
+    uint32 public totalBatchesCommitted;
+
     /// @notice Total number of requests
     uint64 public totalOpenPriorityRequests;
-
-    // gateway(20 bytes) + totalBlocksProven(4 bytes) + totalCommittedPriorityRequests(8 bytes) stored in the same slot
 
     /// @notice The gateway is used for communicating with L1
     /// @dev The gateway will not be set if local chain is a L1
@@ -49,11 +49,12 @@ contract Storage is ZkLinkAcceptor, Config {
     /// @notice Total blocks proven.
     uint32 public totalBlocksProven;
 
+    /// @notice Total proven batches
+    uint32 public totalBatchesProven;
+
     /// @notice Total number of committed requests.
     /// @dev Used in checks: if the request matches the operation on Rollup contract and if provided number of requests is not too big
     uint64 public totalCommittedPriorityRequests;
-
-    // totalBlocksSynchronized(4 bytes) + exodusMode(1 bytes) stored in the same slot
 
     /// @dev Latest synchronized block height
     uint32 public totalBlocksSynchronized;
