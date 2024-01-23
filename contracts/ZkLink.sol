@@ -170,7 +170,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // ===Checks===
         // accountId and subAccountId MUST be valid
         require(_accountId <= MAX_ACCOUNT_ID && _accountId != GLOBAL_ASSET_ACCOUNT_ID, "a0");
-        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "a1");
+        require(_subAccountId == 0, "a1");
         // token MUST be registered to ZkLink
         RegisteredToken storage rt = tokens[_tokenId];
         require(rt.registered, "a2");
@@ -646,7 +646,7 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         // disable deposit to zero address or global asset account
         require(_zkLinkAddress != bytes32(0) && _zkLinkAddress != GLOBAL_ASSET_ACCOUNT_ADDRESS, "e1");
         // subAccountId MUST be valid
-        require(_subAccountId <= MAX_SUB_ACCOUNT_ID, "e2");
+        require(_subAccountId == 0, "e2");
         // token MUST be registered to ZkLink and deposit MUST be enabled
         uint16 tokenId = tokenIds[_tokenAddress];
         // 0 is a invalid token and MUST NOT register to zkLink contract
