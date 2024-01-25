@@ -120,39 +120,69 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     /// @notice  Withdraws tokens from zkLink contract to the owner
     /// @param _owner Address of the tokens owner
     /// @param _tokenId Token id
-    /// @param _amount Amount to withdraw to request.
-    /// @return The actual withdrawn amount
-    /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
-    /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant returns (uint128) {
+    /// @param _amount The actual withdrawn amount
+    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external nonReentrant {
         // ===Checks===
         // token MUST be registered to ZkLink
         RegisteredToken storage rt = tokens[_tokenId];
         require(rt.registered, "b0");
 
+        // ===Effects===
         // Set the available amount to withdraw
         // balance need to be recovery decimals
-        bytes32 owner = extendAddress(_owner);
-        uint128 balance = pendingBalances[owner][_tokenId];
-        uint128 withdrawBalance = recoveryDecimals(balance, rt.decimals);
-        uint128 amount = Utils.minU128(withdrawBalance, _amount);
-        require(amount > 0, "b1");
+        bytes32 l2Owner = extendAddress(_owner);
+        uint128 l2Balance = pendingBalances[l2Owner][_tokenId];
+        uint128 l2Amount = improveDecimals(_amount, rt.decimals);
+        pendingBalances[l2Owner][_tokenId] = l2Balance - l2Amount;
 
         // ===Interactions===
-        address tokenAddress = rt.tokenAddress;
-        if (tokenAddress == ETH_ADDRESS) {
-            // solhint-disable-next-line  avoid-low-level-calls
-            (bool success, ) = _owner.call{value: amount}("");
-            require(success, "b2");
+        _withdrawTo(_owner, rt.tokenAddress, _amount, new bytes(0));
+        emit Withdrawal(_tokenId, _amount);
+    }
+
+    /// @notice  Withdraws tokens from zkLink contract to the target contract
+    /// @param _owner Address of the tokens owner
+    /// @param _tokenAddress Token address
+    /// @param _amount The actual withdrawn amount
+    /// @param _data The target contract address and call data
+    /// @param _accountIdOfNonce Account that supply nonce
+    /// @param _subAccountIdOfNonce SubAccount that supply nonce
+    /// @param _nonce SubAccount nonce
+    /// @param _callTarget True when call target or withdraw pending balance to owner
+    function withdrawPendingBalanceWithCall(address payable _owner, address _tokenAddress, uint128 _amount, bytes memory _data, uint32 _accountIdOfNonce, uint8 _subAccountIdOfNonce, uint32 _nonce, bool _callTarget) external nonReentrant {
+        // ===Checks===
+        // pending withdraw record MUST be exist
+        bytes32 dataHash = keccak256(_data);
+        bytes32 withdrawWithDataHash = getWithdrawWithDataHash(_owner, _tokenAddress, _amount, dataHash, _accountIdOfNonce, _subAccountIdOfNonce, _nonce);
+        require(pendingWithdrawWithCalls[withdrawWithDataHash], "z0");
+
+        // ===Effects===
+        pendingWithdrawWithCalls[withdrawWithDataHash] = false;
+
+        if (_callTarget) {
+            // decode data
+            (address targetContract, bytes memory callData) = abi.decode(_data, (address, bytes));
+            _withdrawTo(payable(targetContract), _tokenAddress, _amount, callData);
         } else {
-            IERC20(tokenAddress).safeTransfer(_owner, amount);
+            _withdrawTo(_owner, _tokenAddress, _amount, new bytes(0));
         }
+        emit WithdrawalCall(withdrawWithDataHash);
+    }
 
-        // improve withdrawn amount decimals
-        pendingBalances[owner][_tokenId] = balance - improveDecimals(amount, rt.decimals);
-        emit Withdrawal(_tokenId, amount);
-
-        return amount;
+    function _withdrawTo(address payable _to,  address _tokenAddress, uint128 _amount, bytes memory _callData) internal {
+        // ===Interactions===
+        if (_tokenAddress == ETH_ADDRESS) {
+            // solhint-disable-next-line  avoid-low-level-calls
+            (bool success, ) = _to.call{value: _amount}(_callData);
+            require(success, "b1");
+        } else {
+            IERC20(_tokenAddress).safeTransfer(_to, _amount);
+            if (_callData.length > 0) {
+                // solhint-disable-next-line  avoid-low-level-calls
+                (bool success, ) = _to.call(_callData);
+                require(success, "b2");
+            }
+        }
     }
 
     /// @notice Returns amount of tokens that can be withdrawn by `address` from zkLink contract
