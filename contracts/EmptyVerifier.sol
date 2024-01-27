@@ -12,11 +12,15 @@ contract EmptyVerifier is IVerifier {
         // no initialize need to do when delegatecall by Proxy
     }
 
-    function verifyAggregatedBlockProof(uint256[] memory, uint256[] memory, uint8[] memory, uint256[] memory, uint256[16] memory) external override pure returns (bool) {
+    function estimateVerifyFee(ProofInput memory) external pure returns (uint256 nativeFee) {
+        return 0;
+    }
+
+    function verify(ProofInput memory) external payable returns (bool) {
         return false;
     }
 
-    function verifyExitProof(bytes32, uint8, uint32, uint8, bytes32, uint16, uint16, uint128, uint256[] calldata) external override pure returns (bool) {
+    function verifyExitProof(bytes32, uint8, uint32, uint8, bytes32, uint16, uint16, uint128, uint256[] calldata) external pure returns (bool) {
         return false;
     }
 }

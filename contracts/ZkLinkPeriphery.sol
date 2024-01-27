@@ -271,18 +271,14 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
     // =======================Block interface======================
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
-    /// @notice Recursive proof input data (individual commitments are constructed onchain)
-    struct ProofInput {
-        uint256[] recursiveInput;
-        uint256[] proof;
-        uint256[] commitments;
-        uint8[] vkIndexes;
-        uint256[16] subproofsLimbs;
+    /// @notice Estimate prove blocks fee
+    function estimateProveBlocksFee(IVerifier.ProofInput memory _proof) external view returns (uint256 nativeFee) {
+        nativeFee = verifier.estimateVerifyFee(_proof);
     }
 
     /// @notice Blocks commitment verification.
     /// @dev Only verifies block commitments without any other processing
-    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, ProofInput memory _proof) external nonReentrant {
+    function proveBlocks(StoredBlockInfo[] memory _committedBlocks, IVerifier.ProofInput memory _proof) external payable nonReentrant onlyValidator {
         // ===Checks===
         uint32 currentTotalBlocksProven = totalBlocksProven;
         for (uint256 i = 0; i < _committedBlocks.length; ++i) {
@@ -291,29 +287,32 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
 
             // commitment of proof produced by zk has only 253 significant bits
             // 'commitment & INPUT_MASK' is used to set the highest 3 bits to 0 and leave the rest unchanged
-            require(_proof.commitments[i] <= MAX_PROOF_COMMITMENT
-                && _proof.commitments[i] == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
+            require(_proof.blockInputs[i] <= MAX_PROOF_COMMITMENT
+                && _proof.blockInputs[i] == uint256(_committedBlocks[i].commitment) & INPUT_MASK, "x1");
         }
+        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
+
+        // verify recursive proof
+        uint256 verifyFee = verifier.estimateVerifyFee(_proof);
+        require(msg.value >= verifyFee, "x3");
+        uint256 leftMsgValue = msg.value - verifyFee;
+
+        bool success = verifier.verify{value: verifyFee}(_proof);
+        require(success, "x4");
 
         // ===Effects===
-        require(currentTotalBlocksProven <= totalBlocksCommitted, "x2");
         totalBlocksProven = currentTotalBlocksProven;
-
-        // ===Interactions===
-        bool success = verifier.verifyAggregatedBlockProof(
-            _proof.recursiveInput,
-            _proof.proof,
-            _proof.vkIndexes,
-            _proof.commitments,
-            _proof.subproofsLimbs
-        );
-        require(success, "x3");
-
-        emit BlockProven(currentTotalBlocksProven);
-
         // #if SYNC_TYPE == 0
         totalBlocksSynchronized = currentTotalBlocksProven;
         // #endif
+        emit BlockProven(currentTotalBlocksProven);
+
+        // ===Interactions===
+        if (leftMsgValue > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (success, ) = msg.sender.call{value: leftMsgValue}("");
+            require(success, "x5");
+        }
     }
 
     /// @notice Reverts unExecuted blocks

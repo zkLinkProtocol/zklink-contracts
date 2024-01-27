@@ -15,27 +15,15 @@ contract VerifierMock is IVerifier {
         verifyResult = r;
     }
 
-    function verifyAggregatedBlockProof(
-        uint256[] memory,
-        uint256[] memory,
-        uint8[] memory,
-        uint256[] memory,
-        uint256[16] memory
-    ) external override view returns (bool) {
+    function estimateVerifyFee(ProofInput memory) external pure returns (uint256 nativeFee) {
+        return 0;
+    }
+
+    function verify(ProofInput memory) external payable returns (bool) {
         return verifyResult;
     }
 
-    function verifyExitProof(
-        bytes32,
-        uint8,
-        uint32,
-        uint8,
-        bytes32,
-        uint16,
-        uint16,
-        uint128,
-        uint256[] calldata
-    ) external override view returns (bool) {
+    function verifyExitProof(bytes32, uint8, uint32, uint8, bytes32, uint16, uint16, uint128, uint256[] calldata) external view returns (bool) {
         return verifyResult;
     }
 }

@@ -36,6 +36,18 @@ const hardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      "cache/solpp-generated-contracts/zksync/Verifier.sol": {
+        version: "0.8.18",
+        settings: {
+          viaIR: false,
+          optimizer: {
+            enabled: true,
+            runs: 9999999,
+          },
+        }
+      }
+    }
   },
   networks: {
     hardhat: {
