@@ -34,8 +34,7 @@ async function getDeployTx(contract) {
         return await contract.deployTransaction.wait();
     } else if (contract.deploymentTransaction !== undefined) {
         // ethers v6
-        const deploymentTransaction = await contract.deploymentTransaction();
-        return await deploymentTransaction.getTransaction();
+        return contract.deploymentTransaction().wait();
     } else {
         return undefined;
     }

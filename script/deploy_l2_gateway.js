@@ -71,8 +71,15 @@ task("deployL2Gateway", "Deploy L2 Gateway")
         }
         console.log("l2 gateway target", gatewayTargetAddr);
 
+        // verify proxy contract
+        if ((!(logName.DEPLOY_GATEWAY_VERIFIED in deployLog) || force) && !skipVerify) {
+            await verifyContractCode(hardhat, gatewayAddr, []);
+            deployLog[logName.DEPLOY_GATEWAY_VERIFIED] = true;
+            fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
+        }
+
         // verify contract
-        if ((!(logName.DEPLOY_GATEWAY_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
+        if ((!(logName.DEPLOY_GATEWAY_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
             await verifyContractCode(hardhat, gatewayTargetAddr, []);
             deployLog[logName.DEPLOY_GATEWAY_TARGET_VERIFIED] = true;
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));

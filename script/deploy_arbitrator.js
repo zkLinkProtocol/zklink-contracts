@@ -54,8 +54,15 @@ task("deployArbitrator", "Deploy arbitrator")
       }
       console.log("arbitrator gateway target", arbitratorTargetAddr);
 
+      // verify proxy contract
+      if ((!(logName.DEPLOY_LOG_ARBITRATOR_VERIFIED in deployLog) || force) && !skipVerify) {
+          await verifyContractCode(hardhat, arbitratorAddr, []);
+          deployLog[logName.DEPLOY_LOG_ARBITRATOR_VERIFIED] = true;
+          fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
+      }
+
       // verify contract
-      if ((!(logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED in deployLog) || force) && !taskArgs.skipVerify) {
+      if ((!(logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED in deployLog) || force) && !skipVerify) {
           await verifyContractCode(hardhat, arbitratorTargetAddr, []);
           deployLog[logName.DEPLOY_LOG_ARBITRATOR_TARGET_VERIFIED] = true;
           fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
