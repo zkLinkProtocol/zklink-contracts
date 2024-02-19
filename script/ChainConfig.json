@@ -158,6 +158,14 @@
     "mainnet": true,
     "zkLinkChainId": 18
   },
+  "METIS": {
+    "mainnet": true,
+    "zkLinkChainId": 19,
+    "layerZero": {
+      "chainId": 151,
+      "address": "0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4"
+    }
+  },
   "POLYGONTEST": {
     "mainnet": false,
     "zkLinkChainId": 1,
@@ -324,5 +332,9 @@
   "LIGHTLINKTEST": {
     "mainnet": false,
     "zkLinkChainId": 18
+  },
+  "METISTEST": {
+    "mainnet": false,
+    "zkLinkChainId": 19
   }
 }
