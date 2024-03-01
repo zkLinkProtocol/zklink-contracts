@@ -161,46 +161,6 @@ contract ZkLink is ReentrancyGuard, Storage, Events, UpgradeableMaster {
         deposit(address(_token), _amount, _zkLinkAddress, _subAccountId, _mapping);
     }
 
-    /// @notice Register full exit request - pack pubdata, add priority request
-    /// @param _accountId Numerical id of the account
-    /// @param _subAccountId The exit sub account
-    /// @param _tokenId Token id
-    /// @param _mapping If true and token has a mapping token, user's mapping token balance will be decreased at L2
-    function requestFullExit(uint32 _accountId, uint8 _subAccountId, uint16 _tokenId, bool _mapping) external active nonReentrant {
-        // ===Checks===
-        // accountId and subAccountId MUST be valid
-        require(_accountId <= MAX_ACCOUNT_ID && _accountId != GLOBAL_ASSET_ACCOUNT_ID, "a0");
-        require(_subAccountId == 0, "a1");
-        // token MUST be registered to ZkLink
-        RegisteredToken storage rt = tokens[_tokenId];
-        require(rt.registered, "a2");
-        // when full exit stable tokens (e.g. USDC, BUSD) with mapping, USD will be deducted from account
-        // and stable token will be transfer from zkLink contract to account address
-        // all other tokens don't support mapping
-        uint16 srcTokenId;
-        if (_mapping) {
-            require(_tokenId >= MIN_USD_STABLE_TOKEN_ID && _tokenId <= MAX_USD_STABLE_TOKEN_ID, "a3");
-            srcTokenId = USD_TOKEN_ID;
-        } else {
-            srcTokenId = _tokenId;
-        }
-
-        // ===Effects===
-        // Priority Queue request
-        Operations.FullExit memory op =
-            Operations.FullExit({
-                chainId: CHAIN_ID,
-                accountId: _accountId,
-                subAccountId: _subAccountId,
-                owner: msg.sender, // Only the owner of account can fullExit for them self
-                tokenId: _tokenId,
-                srcTokenId: srcTokenId,
-                amount: 0 // unknown at this point
-            });
-        bytes memory pubData = Operations.writeFullExitPubdataForPriorityQueue(op);
-        addPriorityRequest(Operations.OpType.FullExit, pubData, Operations.FULL_EXIT_CHECK_BYTES);
-    }
-
     // =================Validator interface=================
 
     // #if CHAIN_ID == MASTER_CHAIN_ID
