@@ -84,7 +84,7 @@ OPTIONS:
 deployZkLink: Deploy zklink contracts
 ```
 
-`--block-number`,`--genesis-root`,`--timestamp` are used to produce genesie block. When deploying for the first time `--block-number` and `--timestamp` can be left unset. When deploying for appending a new chain all these options need to be set with the latest exectuted block properties.
+`--block-number`,`--genesis-root`,`--timestamp` are used to produce genesie block. When deploying for the first time `--block-number` and `--timestamp` can be left unset. When deploying for appending a new chain all these options need to be set with the latest executed block properties.
 
 You could left `--validator`  be unset when deploy to devnet or testnet, but **DOT NOT**  use deployer address as network validator on the mainnet.
 
