@@ -330,14 +330,15 @@ task("upgradeZkLink", "Upgrade zkLink")
             fs.writeFileSync(deployLogPath, JSON.stringify(deployLog, null, 2));
         }
 
-        // check if upgrade at testnet
+        const gatekeeperMaster = await gatekeeper.getMaster();
+        if (gatekeeperMaster.toLowerCase() !== deployerWallet.address.toLowerCase()) {
+            console.log('the deployer is not the master of gatekeeper');
+            return;
+        }
         const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
         let zkLinkProxy = await zkLinkFactory.attach(zkLinkProxyAddr);
         const noticePeriod = await zkLinkProxy.connect(deployerWallet).getNoticePeriod();
-        if (noticePeriod > 0n) {
-            console.log('Notice period is not zero, can not exec this task');
-            return;
-        }
+        console.log('notice period is: ', noticePeriod);
 
         const upgradeTargets = [hardhat.ethers.ZeroAddress, hardhat.ethers.ZeroAddress];
         if (upgradeVerifier) {
@@ -354,6 +355,18 @@ task("upgradeZkLink", "Upgrade zkLink")
             console.info(`upgrade start tx: ${startUpgradeTx.hash}`);
             upgradeStatus = await gatekeeper.connect(deployerWallet).upgradeStatus();
             console.log('upgrade status after start: ', upgradeStatus);
+        }
+
+        const noticePeriodFinishTimestamp = await gatekeeper.connect(deployerWallet).noticePeriodFinishTimestamp();
+        console.log('noticePeriodFinishTimestamp: ', noticePeriodFinishTimestamp);
+        while (true) {
+            console.log('check noticePeriodFinishTimestamp...');
+            const currentBlock = await deployerWallet.provider.getBlock('latest');
+            console.log('current block ts: ', currentBlock.timestamp);
+            if (currentBlock.timestamp >= noticePeriodFinishTimestamp) {
+                break;
+            }
+            await new Promise(r => setTimeout(r, 60000));
         }
 
         if (upgradeStatus === 1n) {
