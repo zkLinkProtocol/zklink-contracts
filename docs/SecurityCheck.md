@@ -16,7 +16,7 @@ T2 - Use fixed compiler version to compile contract (SWC-103)
 
 T3 - Check for correct inheritance, keep it simple and linear (SWC-125)
 
-T4 - Constructor should not be exsited in proxyed contract
+T4 - Constructor should not be existed in proxyed contract
 
 T5 - Right-To-Left-Override control character not used (SWC-130)
 
@@ -126,7 +126,7 @@ L9 - Don't use msg.value repeatedly at delegatecall
 
 ### Token
 
-A1 - Recipent-Withdraw pattern followed?
+A1 - Recipient-Withdraw pattern followed?
 
 A2 - Use call to send eth to a contract address and check the result (SWC-134)
 
@@ -136,7 +136,7 @@ A4 - Does msg.sender has the authority to move token of other addresses?
 
 A5 - Use the balance difference as the amount when non-standard token deposit in or withdraw out of contract
 
-A6 - Is there a possiblity that tokens can not be retrieved?
+A6 - Is there a possibility that tokens can not be retrieved?
 
 A7 - Is code is still correct if the token contract is upgradable?
 
@@ -150,7 +150,7 @@ O2 - Use TWP of onchain oracle
 
 O3 - The price of LP is correct?
 
-O4 - Is there a possiblity that lend a large amout of low-value token and manipulate its price to borrow a high-value token?
+O4 - Is there a possibility that lend a large amount of low-value token and manipulate its price to borrow a high-value token?
 
 ## Reference
 

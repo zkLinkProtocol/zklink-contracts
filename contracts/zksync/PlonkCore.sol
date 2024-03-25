@@ -721,7 +721,7 @@ contract Plonk4VerifierWithAccessToDNext {
         tmp_g1.point_sub_assign(vk.copy_permutation_commitments[STATE_WIDTH - 1].point_mul(last_permutation_part_at_z));
 
         res.point_add_assign(tmp_g1);
-        // multiply them by v immedately as linearization has a factor of v^1
+        // multiply them by v immediately as linearization has a factor of v^1
         res.point_mul_assign(state.v);
         // res now contains contribution from the gates linearization and
         // copy permutation part
