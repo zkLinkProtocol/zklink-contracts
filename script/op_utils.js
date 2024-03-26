@@ -13,7 +13,7 @@ const CHUNK_BYTES = 23;
 const OP_NOOP_CHUNKS = 1;
 const OP_DEPOSIT_CHUNKS = 3;
 const OP_TRANSFER_TO_NEW_CHUNKS = 3;
-const OP_WITHDRAW_CHUNKS = 3;
+const OP_WITHDRAW_CHUNKS = 5;
 const OP_TRANSFER_CHUNKS = 2;
 const OP_FULL_EXIT_CHUNKS = 3;
 const OP_CHANGE_PUBKEY_CHUNKS = 3;
@@ -21,7 +21,7 @@ const OP_FORCE_EXIT_CHUNKS = 3;
 const OP_ORDER_MATCHING_CHUNKS = 4;
 const OP_DEPOSIT_SIZE = 59;
 const OP_TRANSFER_TO_NEW_SIZE = 52;
-const OP_WITHDRAW_SIZE = 68;
+const OP_WITHDRAW_SIZE = 100;
 const OP_TRANSFER_SIZE = 20;
 const OP_FULL_EXIT_SIZE = 59;
 const OP_CHANGE_PUBKEY_SIZE = 67;
@@ -44,9 +44,9 @@ function writeDepositPubdata({ chainId, subAccountId, tokenId, targetTokenId, am
         [OP_DEPOSIT,chainId,subAccountId,tokenId,targetTokenId,amount,owner,0]);
 }
 
-function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, withdrawToL1 }) {
-    const pubdata = solidityPacked(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8"],
-        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate,withdrawToL1]);
+function getWithdrawPubdata({ chainId, accountId, subAccountId, tokenId, srcTokenId, amount, fee, owner, nonce, fastWithdrawFeeRate, withdrawToL1, dataHash }) {
+    const pubdata = solidityPacked(["uint8","uint8","uint32","uint8","uint16","uint16","uint128","uint16","bytes32","uint32","uint16","uint8","bytes32"],
+        [OP_WITHDRAW,chainId,accountId,subAccountId,tokenId,srcTokenId,amount,fee,owner,nonce,fastWithdrawFeeRate,withdrawToL1,dataHash]);
     const pubdataArray = getBytes(pubdata);
     console.assert(pubdataArray.length === OP_WITHDRAW_SIZE, "wrong withdraw pubdata");
     return pubdata;

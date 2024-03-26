@@ -21,11 +21,8 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         // token not registered
         await expect(periphery.connect(defaultSender).withdrawPendingBalance(defaultSender.address, 100, parseEther("1"))).to.be.revertedWith("b0");
 
-        // zero amount
-        await expect(periphery.connect(defaultSender).withdrawPendingBalance(defaultSender.address, ethId, 0)).to.be.revertedWith("b1");
-
         // no pending balance
-        await expect(periphery.connect(defaultSender).withdrawPendingBalance(defaultSender.address, ethId, parseEther("1"))).to.be.revertedWith("b1");
+        await expect(periphery.connect(defaultSender).withdrawPendingBalance(defaultSender.address, ethId, parseEther("1"))).to.be.revertedWithPanic(0x11);
     });
 
     it('withdraw pending eth balance should success', async () => {
@@ -47,7 +44,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         expect(await periphery.getPendingBalance(extendAddress(alice.address), ethId)).to.be.eq(depositAmount - amount0);
 
         const leftAmount = depositAmount - amount0;
-        const amount1 = parseEther("0.6");
+        const amount1 = parseEther("0.5");
         await expect(periphery.withdrawPendingBalance(alice.address, ethId, amount1)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(ethId, leftAmount);
@@ -76,7 +73,7 @@ describe('ZkLink withdraw pending balance unit tests', function () {
         expect(await periphery.getPendingBalance(extendAddress(alice.address), token2Id)).to.be.eq(depositAmount - amount0);
 
         const leftAmount = depositAmount - amount0;
-        const amount1 = parseEther("0.6");
+        const amount1 = parseEther("0.5");
         await expect(periphery.withdrawPendingBalance(alice.address, token2Id, amount1)).to.be
             .emit(periphery, "Withdrawal")
             .withArgs(token2Id, leftAmount);

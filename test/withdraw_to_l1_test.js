@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy, ETH_ADDRESS} = require('./utils');
+const { deploy, ETH_ADDRESS, ZERO_BYTES32} = require('./utils');
 const { calWithdrawHash } = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers");
 const {ethers} = require("hardhat");
@@ -63,7 +63,8 @@ describe('Withdraw to L1 unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "withdrawToL1":1
+            "withdrawToL1":1,
+            "dataHash":ZERO_BYTES32
         }
         const withdrawHash = calWithdrawHash(owner,token,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
         await expect(await zkLink.testExecuteWithdraw(op))
@@ -117,7 +118,8 @@ describe('Withdraw to L1 unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "withdrawToL1":1
+            "withdrawToL1":1,
+            "dataHash":ZERO_BYTES32
         }
         const withdrawHash = calWithdrawHash(owner,token.target,l1Amount,fastWithdrawFeeRate,accountId,subAccountId,nonce);
         await expect(await zkLink.testExecuteWithdraw(op))

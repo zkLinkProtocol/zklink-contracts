@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const { deploy, MAX_ACCEPT_FEE_RATE} = require('./utils');
+const { deploy, MAX_ACCEPT_FEE_RATE, ZERO_BYTES32} = require('./utils');
 const { calWithdrawHash, extendAddress} = require('../script/op_utils');
 const {parseEther, parseUnits} = require("ethers");
 const {BigNumber} = require("ethers");
@@ -31,7 +31,6 @@ describe('Fast withdraw unit tests', function () {
         const nonce = 0;
         const fastWithdrawFeeRate = 50;
         const withdrawToL1 = 0;
-
         const op = {
             "chainId": chainId,
             "accountId":accountId,
@@ -42,7 +41,8 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "withdrawToL1":withdrawToL1
+            "withdrawToL1":withdrawToL1,
+            "dataHash":ZERO_BYTES32
         }
 
         await token2.mintTo(zkLink.target, amount);
@@ -87,7 +87,8 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "withdrawToL1":withdrawToL1
+            "withdrawToL1":withdrawToL1,
+            "dataHash":ZERO_BYTES32
         }
 
         await zkLink.testExecuteWithdraw(op);
@@ -125,7 +126,8 @@ describe('Fast withdraw unit tests', function () {
             "owner":owner,
             "nonce":nonce,
             "fastWithdrawFeeRate":fastWithdrawFeeRate,
-            "withdrawToL1":withdrawToL1
+            "withdrawToL1":withdrawToL1,
+            "dataHash":ZERO_BYTES32
         }
 
         await token2.mintTo(zkLink.target, amount);

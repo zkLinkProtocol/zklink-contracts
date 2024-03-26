@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { deploy,
     CHAIN_ID,
-    EMPTY_STRING_KECCAK, IS_MASTER_CHAIN, createSlaverChainSyncHash
+    EMPTY_STRING_KECCAK, IS_MASTER_CHAIN, createSlaverChainSyncHash, ZERO_BYTES32
 } = require('./utils');
 const {
     paddingChunk,
@@ -84,7 +84,7 @@ describe('Compressed block commit unit tests', function () {
         publicDataOffset += getBytes(opPadding).length;
 
         // withdraw of current chain
-        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0});
+        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0,dataHash:ZERO_BYTES32});
         opPadding = paddingChunk(op, OP_WITHDRAW_CHUNKS);
         pubdatas.push(opPadding);
         onchainOperationPubdataHash = hexlify(keccak256(concat([getBytes(onchainOperationPubdataHash), opPadding])));

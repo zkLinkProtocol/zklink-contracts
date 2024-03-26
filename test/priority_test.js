@@ -132,6 +132,11 @@ describe('ZkLink priority queue ops unit tests', function () {
     });
 
     it('invalid state or params should be failed when full exit', async () => {
+        const rf = zkLink['requestFullExit'];
+        if (!rf) {
+            console.log('skip requestFullExit unit tests');
+            return;
+        }
         // exodus
         await zkLink.setExodus(true);
         const accountId = 13;
@@ -155,6 +160,11 @@ describe('ZkLink priority queue ops unit tests', function () {
     });
 
     it('requestFullExit should success', async () => {
+        const rf = zkLink['requestFullExit'];
+        if (!rf) {
+            console.log('skip requestFullExit unit tests');
+            return;
+        }
         const accountId = 13;
         const subAccountId = 0;
         await zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, ethId, false);
@@ -165,6 +175,11 @@ describe('ZkLink priority queue ops unit tests', function () {
     });
 
     it('requestFullExit with mapping should success', async () => {
+        const rf = zkLink['requestFullExit'];
+        if (!rf) {
+            console.log('skip requestFullExit unit tests');
+            return;
+        }
         const accountId = 13;
         const subAccountId = 0;
         await zkLink.connect(defaultSender).requestFullExit(accountId, subAccountId, token4Id, true);

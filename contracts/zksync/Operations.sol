@@ -166,13 +166,13 @@ library Operations {
         uint16 tokenId; // the token that to withdraw
         //uint16 srcTokenId; -- the token that decreased in L2, present in pubdata, ignored at serialization
         uint128 amount; // the token amount to withdraw
-        bytes32 dataHash; // the call data for withdraw
         //uint16 fee; -- present in pubdata, ignored at serialization
         //bytes12 addressPrefixZero; -- address bytes length in L2 is 32
         address owner; // the address to receive token
         uint32 nonce; // the sub account nonce
         uint16 fastWithdrawFeeRate; // fast withdraw fee rate taken by acceptor
         uint8 withdrawToL1; // when this flag is 1, it means withdraw token to L1
+        bytes32 dataHash; // the call data for withdraw
     } // 100 bytes
 
     function readWithdrawPubdata(bytes memory _data) internal pure returns (Withdraw memory parsed) {
@@ -184,13 +184,13 @@ library Operations {
         (offset, parsed.tokenId) = Bytes.readUInt16(_data, offset);
         offset += TOKEN_BYTES;
         (offset, parsed.amount) = Bytes.readUInt128(_data, offset);
-        (offset, parsed.dataHash) = Bytes.readBytes32(_data, offset);
         offset += FEE_BYTES;
         offset += ADDRESS_PREFIX_ZERO_BYTES;
         (offset, parsed.owner) = Bytes.readAddress(_data, offset);
         (offset, parsed.nonce) = Bytes.readUInt32(_data, offset);
         (offset, parsed.fastWithdrawFeeRate) = Bytes.readUInt16(_data, offset);
         (offset, parsed.withdrawToL1) = Bytes.readUint8(_data, offset);
+        (offset, parsed.dataHash) = Bytes.readBytes32(_data, offset);
     }
 
     struct ForcedExit {

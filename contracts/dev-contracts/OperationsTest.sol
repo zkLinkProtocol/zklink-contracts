@@ -39,6 +39,7 @@ contract OperationsTest {
         require(_example.nonce == parsed.nonce, "nonce");
         require(_example.fastWithdrawFeeRate == parsed.fastWithdrawFeeRate, "fr");
         require(_example.withdrawToL1 == parsed.withdrawToL1, "l1");
+        require(_example.dataHash == parsed.dataHash, "dh");
     }
 
     function testFullExitPubdata(Operations.FullExit calldata _example, bytes calldata _pubdata) external pure {

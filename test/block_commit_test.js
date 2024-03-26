@@ -164,7 +164,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // withdraw of current chain
-        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0});
+        op = getWithdrawPubdata({chainId:CHAIN_ID,accountId:5,subAccountId:0,tokenId:token2Id,srcTokenId:token2Id,amount:900,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0,dataHash:ZERO_BYTES32});
         opPadding = paddingChunk(op, OP_WITHDRAW_CHUNKS);
         pubdatas.push(opPadding);
         pubdatasOfChain1.push(opPadding);
@@ -202,7 +202,7 @@ describe('Block commit unit tests', function () {
         offsetsCommitment.push(createOffsetCommitment(opPadding, true));
 
         // withdraw of chain4
-        op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,srcTokenId:token2Id,amount:1000,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0});
+        op = getWithdrawPubdata({chainId:4,accountId:15,subAccountId:5,tokenId:token2Id,srcTokenId:token2Id,amount:1000,fee:ethId,owner:extendAddress(bob.address),nonce:14,fastWithdrawFeeRate:50,withdrawToL1:0,dataHash:ZERO_BYTES32});
         opPadding = paddingChunk(op, OP_WITHDRAW_CHUNKS);
         pubdatas.push(opPadding);
         onchainOpPubdataHash4 = hexlify(keccak256(concat([getBytes(onchainOpPubdataHash4), opPadding])));
