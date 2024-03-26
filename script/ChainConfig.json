@@ -190,31 +190,6 @@
       "address": "0x6Fcb97553D41516Cb228ac03FdC8B9a0a9df04A1"
     }
   },
-  "GOERLI": {
-    "mainnet": false,
-    "zkLinkChainId": 4,
-    "layerZero": {
-      "chainId": 10121,
-      "address": "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23"
-    },
-    "l1Gateway": {
-      "LINEATEST": {
-        "contractName": "LineaL1Gateway",
-        "initializeParams": [
-          "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
-          "0x2D8b29213cCE9DeF01A01718078950C429F9A806",
-          "0x32d123756d32d3ed6580935f8edf416e57b940f4"
-        ]
-      },
-      "ZKSYNCTEST": {
-        "contractName": "ZkSyncL1Gateway",
-        "initializeParams": [
-          "0x1908e2BF4a88F91E4eF0DC72f02b8Ea36BEa2319",
-          "0x927DdFcc55164a59E0F33918D13a2D559bC10ce7"
-        ]
-      }
-    }
-  },
   "SEPOLIA": {
     "mainnet": false,
     "zkLinkChainId": 4,
@@ -225,17 +200,7 @@
   },
   "ZKSYNCTEST": {
     "mainnet": false,
-    "zkLinkChainId": 5,
-    "layerZero": {
-      "chainId": 10165,
-      "address": "0x093D2CF57f764f09C3c2Ac58a42A2601B8C79281"
-    },
-    "l2Gateway": {
-      "contractName": "ZkSyncL2Gateway",
-      "initializeParams": [
-        "0x00ff932A6d70E2B8f1Eb4919e1e09C1923E7e57b"
-      ]
-    }
+    "zkLinkChainId": 5
   },
   "SCROLLTEST": {
     "mainnet": false,
@@ -247,26 +212,14 @@
   },
   "LINEATEST": {
     "mainnet": false,
-    "zkLinkChainId": 7,
-    "layerZero": {
-      "chainId": 10157,
-      "address": "0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab"
-    },
-    "l2Gateway": {
-      "contractName": "LineaL2Gateway",
-      "initializeParams": [
-        "0xC499a572640B64eA1C8c194c43Bc3E19940719dC",
-        "0x7D9009F96dc1fF94401af63703De43b7cCf98D5D",
-        "0xdfa112375c9be9d124932b1d104b73f888655329"
-      ]
-    }
+    "zkLinkChainId": 7
   },
   "ZKPOLYGONTEST": {
     "mainnet": false,
     "zkLinkChainId": 8,
     "layerZero": {
-      "chainId": 10158,
-      "address": "0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab"
+      "chainId": 10247,
+      "address": "0x2cA20802fd1Fd9649bA8Aa7E50F0C82b479f35fe"
     }
   },
   "ARBITRUMTEST": {
@@ -289,25 +242,21 @@
     "mainnet": false,
     "zkLinkChainId": 11,
     "layerZero": {
-      "chainId": 10160,
-      "address": "0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab"
+      "chainId": 10245,
+      "address": "0x55370E0fBB5f5b8dAeD978BA1c075a499eB107B8"
     }
   },
   "MANTLETEST": {
     "mainnet": false,
     "zkLinkChainId": 12,
     "layerZero": {
-      "chainId": 10181,
-      "address": "0x2cA20802fd1Fd9649bA8Aa7E50F0C82b479f35fe"
+      "chainId": 10246,
+      "address": "0x53fd4C4fBBd53F6bC58CaE6704b92dB1f360A648"
     }
   },
   "MANTATEST": {
     "mainnet": false,
-    "zkLinkChainId": 13,
-    "layerZero": {
-      "chainId": 10221,
-      "address": "0x55370E0fBB5f5b8dAeD978BA1c075a499eB107B8"
-    }
+    "zkLinkChainId": 13
   },
   "TAIKOTEST": {
     "mainnet": false,
@@ -335,10 +284,6 @@
   },
   "METISTEST": {
     "mainnet": false,
-    "zkLinkChainId": 19,
-    "layerZero": {
-      "chainId": 10151,
-      "address": "0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1"
-    }
+    "zkLinkChainId": 19
   }
 }
