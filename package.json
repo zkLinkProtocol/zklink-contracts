@@ -27,7 +27,8 @@
     "flatten-origin-master": "SYNC_TYPE=1 MASTER=true npx hardhat run script/combine_zklink_abi.js",
     "flatten-origin-slaver": "SYNC_TYPE=1 MASTER=false npx hardhat run script/combine_zklink_abi.js",
     "flatten-nexus-master": "SYNC_TYPE=2 MASTER=true npx hardhat run script/combine_zklink_abi.js",
-    "flatten-nexus-slaver": "SYNC_TYPE=2 MASTER=false npx hardhat run script/combine_zklink_abi.js"
+    "flatten-nexus-slaver": "SYNC_TYPE=2 MASTER=false npx hardhat run script/combine_zklink_abi.js",
+    "flatten-all": "npm run flatten-origin-master && npm run flatten-origin-slaver && npm run flatten-nexus-master && npm run flatten-nexus-slaver"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.5",

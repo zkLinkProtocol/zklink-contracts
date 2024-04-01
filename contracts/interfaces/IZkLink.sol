@@ -36,8 +36,7 @@ interface IZkLink {
     /// @param _owner Address of the tokens owner
     /// @param _tokenId Token id
     /// @param _amount Amount to withdraw to request.
-    /// @return The actual withdrawn amount
     /// @dev NOTE: We will call ERC20.transfer(.., _amount), but if according to internal logic of ERC20 token zkLink contract
     /// balance will be decreased by value more then _amount we will try to subtract this value from user pending balance
-    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external returns (uint128);
+    function withdrawPendingBalance(address payable _owner, uint16 _tokenId, uint128 _amount) external;
 }
