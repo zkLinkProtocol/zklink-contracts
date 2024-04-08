@@ -196,6 +196,16 @@
     "layerZero": {
       "chainId": 10161,
       "address": "0xae92d5aD7583AD66E49A0c67BAd18F6ba52dDDc1"
+    },
+    "l1Gateway": {
+      "LINEATEST": {
+        "contractName": "LineaL1Gateway",
+        "initializeParams": [
+          "0x70BaD09280FD342D02fe64119779BC1f0791BAC2",
+          "0x2D8b29213cCE9DeF01A01718078950C429F9A806",
+          "0x32d123756d32d3ed6580935f8edf416e57b940f4"
+        ]
+      }
     }
   },
   "ZKSYNCTEST": {
