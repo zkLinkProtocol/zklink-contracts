@@ -24,7 +24,7 @@ interface Events {
     event Withdrawal(uint16 indexed tokenId, uint128 amount);
 
     /// @notice Event emitted when user funds are withdrawn from the zkLink state but not from contract
-    event WithdrawalPending(uint16 indexed tokenId, bytes32 indexed recepient, uint128 amount);
+    event WithdrawalPending(uint16 indexed tokenId, bytes32 indexed recipient, uint128 amount);
 
     /// @notice Event emitted when user funds are withdrawn from the zkLink state to a target contract
     event WithdrawalCall(bytes32 indexed withdrawHash);

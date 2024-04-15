@@ -84,7 +84,7 @@ abstract contract LineaGateway is BaseGateway, ILineaGateway {
     /// @dev Bridge token to remote gateway
     /// @param _token The token on local chain
     /// @param _amount The token amount
-    /// @param _fee The fee payed to message service
+    /// @param _fee The fee paid to message service
     /// @return Return native token and whether it is USDC
     function bridgeERC20ToRemoteGateway(address _token, uint256 _amount, uint256 _fee) internal returns (bool, address) {
         bool isUSDC;
