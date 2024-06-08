@@ -139,13 +139,17 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         require(amount > 0, "b1");
 
         // ===Interactions===
+        address payable _receiver = _owner;
+        if (_owner == DEFAULT_FEE_ADDRESS) {
+            _receiver = payable(networkGovernor);
+        }
         address tokenAddress = rt.tokenAddress;
         if (tokenAddress == ETH_ADDRESS) {
             // solhint-disable-next-line  avoid-low-level-calls
-            (bool success, ) = _owner.call{value: amount}("");
+            (bool success, ) = _receiver.call{value: amount}("");
             require(success, "b2");
         } else {
-            IERC20(tokenAddress).safeTransfer(_owner, amount);
+            IERC20(tokenAddress).safeTransfer(_receiver, amount);
         }
 
         // improve withdrawn amount decimals
