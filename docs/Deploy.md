@@ -18,7 +18,8 @@ The example configuration file path is `etc/EXAMPLE.json`
     "CHAIN_ID": 1,
     "MAX_CHAIN_ID": 4,
     "ALL_CHAINS": 15,
-    "MASTER_CHAIN_ID": 1
+    "MASTER_CHAIN_ID": 1,
+    "SYNC_TYPE": 0
   }
 }
 ```
@@ -36,6 +37,8 @@ The example configuration file path is `etc/EXAMPLE.json`
 * `UPGRADE_NOTICE_PERIOD`  is the contract upgrade lock time, when deploy in local development you could set this value to zero, and then we can upgrade contract immediately.
 
 * `PRIORITY_EXPIRATION` is how long we wait for priority operation to handle by zklink.
+
+* `SYNC_TYPE` is crosschain message sync type.
 
 `macro` also has two variables about constraints on `CHAIN_ID`:
 
