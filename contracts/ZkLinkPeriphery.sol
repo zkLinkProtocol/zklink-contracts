@@ -283,6 +283,12 @@ contract ZkLinkPeriphery is ReentrancyGuard, Storage, Events {
         return bridges[index].enableBridgeFrom;
     }
 
+    function setAccountAuthPubkeyHash(address account, bytes calldata _pubkeyHash, uint32 _nonce) external active onlyGovernor {
+        require(_pubkeyHash.length == PUBKEY_HASH_BYTES, "B0"); // PubKeyHash should be 20 bytes.
+        authFacts[account][_nonce] = keccak256(_pubkeyHash);
+        emit FactAuth(account, _nonce, _pubkeyHash);
+    }
+
     // =======================Block interface======================
 
     /// @notice Recursive proof input data (individual commitments are constructed onchain)
