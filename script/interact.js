@@ -64,15 +64,15 @@ task("depositERC20", "Deposit erc20 token to zkLink on testnet")
             const erc20Factory = await hardhat.ethers.getContractFactory('ERC20');
             const erc20 = erc20Factory.attach(token);
             const tokenBalance = await erc20.connect(sender).balanceOf(sender.address);
-            console.log('sender token balance', hardhat.ethers.formatEther(tokenBalance, decimals));
+            console.log('sender token balance', hardhat.ethers.formatUnits(tokenBalance, decimals));
 
             const zkLinkFactory = await hardhat.ethers.getContractFactory('ZkLink');
             const zkLink = zkLinkFactory.attach(zkLinkProxy);
             const amountInWei = hardhat.ethers.parseUnits(amount, decimals);
-            const allowance = await erc20.connect(sender).allowance(sender.address, zkLink);
+            const allowance = await erc20.connect(sender).allowance(sender.address, zkLinkProxy);
             if (allowance === 0n) {
                     console.log('add unlimited allowance');
-                    const tx = await erc20.connect(sender).approve(zkLink, hardhat.ethers.MaxUint256);
+                    const tx = await erc20.connect(sender).approve(zkLinkProxy, hardhat.ethers.MaxUint256);
                     await tx.wait();
                     console.log('approve tx hash', tx.hash);
             }
