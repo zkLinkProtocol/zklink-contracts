@@ -16,6 +16,15 @@ import "../interfaces/ISyncService.sol";
 /// * lzReceive cost more gas than `_gasLimit` that endpoint send, and user should call `retryMessage` to fix it.
 /// * lzReceive reverted unexpected, and we can fix bug and deploy a new contract to fix it.
 /// @author zk.link
+///
+/// ┌─────────────────────────────────────────────────────────────────────────────┐
+/// │ LZ adapterParams fix (2026-08-05) vs deployed apex_mainnet (2f65dc8):          │
+/// │  * 4 LZ calls no longer pass `new bytes(0)`; they pass `_adapterParams(dst)`   │
+/// │    which builds a non-empty type-1 adapterParams carrying dest gas.            │
+/// │  * added `setMinDstGas` (onlyGovernor) + `_adapterParams` helper.              │
+/// │  * added `minDstGasLookup` mapping + `SetMinDstGas` event in LayerZeroStorage. │
+/// │  Everything else is identical to the deployed version.                        │
+/// └─────────────────────────────────────────────────────────────────────────────┘
 contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
     modifier onlyEndpoint {
         require(msg.sender == address(endpoint), "Require endpoint");
@@ -69,11 +78,31 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         emit UpdateDestination(zkLinkChainId, lzChainId, contractAddr);
     }
 
+    // ===================== LZ adapterParams fix (2026-08-05) =====================
+    /// @notice Set the min lzReceive gas for a destination lz chain, used to build adapterParams.
+    /// @dev MUST be set (>0) for every destination this bridge sends to, otherwise send/estimate revert.
+    /// @param lzChainId destination LayerZero chain id
+    /// @param minDstGas gas for lzReceive on the destination chain (e.g. 200000~300000, calibrate per chain)
+    function setMinDstGas(uint16 lzChainId, uint minDstGas) external onlyGovernor {
+        minDstGasLookup[lzChainId] = minDstGas;
+        emit SetMinDstGas(lzChainId, minDstGas);
+    }
+
+    /// @notice Build LayerZero v1 type-1 adapterParams for a destination.
+    /// @dev type-1 = abi.encodePacked(uint16(1), uint256(gas)). Empty adapterParams is rejected
+    /// by the post-2026-08-03 Executor model (revert 0x6592671c).
+    function _adapterParams(uint16 dstChainId) internal view returns (bytes memory) {
+        uint gas = minDstGasLookup[dstChainId];
+        require(gas > 0, "minDstGas not set");
+        return abi.encodePacked(uint16(1), gas);
+    }
+    // ============================================================================
+
     function estimateSendSyncHashFee(bytes32 syncHash) external view returns (uint nativeFee) {
         uint16 dstChainId = zkLinkChainIdToLZChainId[MASTER_CHAIN_ID];
         checkDstChainId(dstChainId);
         bytes memory payload = buildSyncHashPayload(syncHash);
-        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
+        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, _adapterParams(dstChainId)); // LZ fix: was new bytes(0)
     }
 
     function sendSyncHash(bytes32 syncHash) external override onlyZkLink payable {
@@ -87,7 +116,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
         bytes memory payload = buildSyncHashPayload(syncHash);
         // solhint-disable-next-line check-send-result
-        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
+        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), _adapterParams(dstChainId)); // LZ fix: was new bytes(0)
     }
 
     function buildSyncHashPayload(bytes32 syncHash) internal pure returns (bytes memory payload) {
@@ -98,7 +127,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         uint16 dstChainId = zkLinkChainIdToLZChainId[destZkLinkChainId];
         checkDstChainId(dstChainId);
         bytes memory payload = buildConfirmPayload(blockNumber);
-        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, new bytes(0));
+        (nativeFee, ) = endpoint.estimateFees(dstChainId, address(this), payload, false, _adapterParams(dstChainId)); // LZ fix: was new bytes(0)
     }
 
     function confirmBlock(uint8 destZkLinkChainId, uint32 blockNumber) external override onlyZkLink payable {
@@ -111,7 +140,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
         bytes memory path = abi.encodePacked(trustedRemote, address(this));
         bytes memory payload = buildConfirmPayload(blockNumber);
         // solhint-disable-next-line check-send-result
-        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), new bytes(0));
+        endpoint.send{value:msg.value}(dstChainId, path, payload, payable(tx.origin), address(0), _adapterParams(dstChainId)); // LZ fix: was new bytes(0)
     }
 
     function buildConfirmPayload(uint32 blockNumber) internal pure returns (bytes memory payload) {

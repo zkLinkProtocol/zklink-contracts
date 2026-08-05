@@ -29,6 +29,18 @@ contract LayerZeroStorage is Config {
     /// payLoadHash is the keccak256 of message payload
     mapping(uint16 => mapping(bytes => mapping(uint64 => bytes32))) public failedMessages;
 
+    // ============================================================================
+    // === LZ adapterParams fix (2026-08-05) — APPEND-ONLY, keep at end of storage ===
+    // Reason: LayerZero deprecated the ULNv2 relayer (2026-08-03); the new Executor
+    // model rejects empty adapterParams (revert 0x6592671c). We must send a non-empty
+    // type-1 adapterParams carrying the destination lzReceive gas. This mapping holds
+    // that per-destination gas, set by governor.
+    // ============================================================================
+    /// @notice lz chainId => min gas for lzReceive on the destination chain.
+    /// @dev used to build LayerZero v1 type-1 adapterParams: abi.encodePacked(uint16(1), gas)
+    mapping(uint16 => uint) public minDstGasLookup;
+
     event UpdateDestination(uint8 zkLinkChainId, uint16 lzChainId, bytes destination);
     event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
+    event SetMinDstGas(uint16 lzChainId, uint minDstGas); // LZ adapterParams fix
 }
