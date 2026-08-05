@@ -32,7 +32,7 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
     }
 
     modifier onlyGovernor {
-        require(msg.sender == zklink.networkGovernor(), "Caller is not governor");
+        require(msg.sender == governor, "Caller is not governor");
         _;
     }
 
@@ -48,7 +48,20 @@ contract LayerZeroBridge is ReentrancyGuard, LayerZeroStorage, ISyncService, ILa
 
         zklink = _zklink;
         endpoint = _endpoint;
+        governor = msg.sender; // governance fix: deployer owns config during setup
     }
+
+    // ===================== Governance fix (2026-08-05) =====================
+    /// @notice Change current governor (one-step, mirrors ZkLinkPeriphery.changeGovernor)
+    /// @param _newGovernor Address of the new governor
+    function changeGovernor(address _newGovernor) external onlyGovernor {
+        require(_newGovernor != address(0), "H");
+        if (governor != _newGovernor) {
+            governor = _newGovernor;
+            emit NewGovernor(_newGovernor);
+        }
+    }
+    // =========================================================================
 
     //---------------------------UserApplication config----------------------------------------
     function setConfig(uint16 _version, uint16 _chainId, uint _configType, bytes calldata _config) external override onlyGovernor {

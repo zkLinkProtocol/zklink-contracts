@@ -40,7 +40,19 @@ contract LayerZeroStorage is Config {
     /// @dev used to build LayerZero v1 type-1 adapterParams: abi.encodePacked(uint16(1), gas)
     mapping(uint16 => uint) public minDstGasLookup;
 
+    // ============================================================================
+    // === Governance fix (2026-08-05) — APPEND-ONLY ===
+    // Reason: bridge must be configurable by the deployer EOA during setup (setDestination/
+    // setMinDstGas) before control is handed to the on-chain governor (Safe). Previously
+    // onlyGovernor was hardwired to zklink.networkGovernor(), so only the Safe could
+    // configure — requiring 16 multisig signatures. Now governor is a local slot
+    // initialized to the deployer; the deployer configures, then calls changeGovernor(Safe).
+    // ============================================================================
+    /// @notice bridge governance address (init = deployer; transferred to Safe after setup)
+    address public governor;
+
     event UpdateDestination(uint8 zkLinkChainId, uint16 lzChainId, bytes destination);
     event MessageFailed(uint16 srcChainId, bytes srcAddress, uint64 nonce, bytes payload);
     event SetMinDstGas(uint16 lzChainId, uint minDstGas); // LZ adapterParams fix
+    event NewGovernor(address indexed newGovernor); // governance fix
 }
